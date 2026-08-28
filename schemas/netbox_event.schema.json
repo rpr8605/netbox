@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://netbox/schemas/netbox_event.schema.json",
+  "title": "Netbox Canonical Event",
+  "description": "Every check result, HL7 metadata event, heartbeat, and update event written by the Netbox device agent. PHI is explicitly excluded when phi_mode is false; the sidecar's code path does not hold raw content past metadata extraction. This schema is the single source of truth for the device agent (TS), the sidecar (Python), and the ingestion API once both sides ship.",
+  "type": "object",
+  "definitions": {
+    "kind": { "enum": ["check_result", "hl7_metadata", "heartbeat", "update_event"] },
+    "service": {
+      "enum": ["ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom"]
+    },
+    "tier": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+    "status": { "enum": ["reachable", "verified_ready", "active", "degraded", "down", "unknown"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "hl7_metadata": {
+      "type": "object",
+      "properties": {
+        "message_type": { "type": "string", "description": "HL7v2 message type / trigger event e.g. ADT, ORU, ORM" },
+        "direction": { "type": "string", "enum": ["inbound", "outbound"] },
+        "ack_status": { "type": "string", "enum": ["ACK", "NACK", "timeout"] },
+        "correlation_token": {
+          "type": "string",
+          "description": "per-device keyed HMAC-SHA256, used to later prove identical messages across hops without holding raw identifiers"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "event_id", "device_id", "site_id", "occurred_at", "kind",
+    "service", "tier_observed", "status", "latency_ms",
+    "confidence", "freshness_s", "phi_mode"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string", "format": "uuid" },
+    "site_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "kind": { "$ref": "#/definitions/kind" },
+    "service": { "$ref": "#/definitions/service" },
+    "tier_observed": { "$ref": "#/definitions/tier" },
+    "status": { "$ref": "#/definitions/status" },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "confidence": { "$ref": "#/definitions/confidence" },
+    "freshness_s": { "type": "integer", "minimum": 0, "description": "seconds since the observation was recorded at the device" },
+    "phi_mode": {
+      "type": "boolean",
+      "description": "false = raw HL7 body was never in memory after metadata extraction (a structural guarantee, not merely a flag). true only after signed amendment enables it."
+    },
+    "hl7_metadata": {
+      "$ref": "#/definitions/hl7_metadata"
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "hl7_metadata" } }, "required": ["kind"] },
+      "then": { "required": ["hl7_metadata"] }
+    }
+  ]
+}
