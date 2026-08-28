@@ -1,0 +1,12 @@
+{
+  "name": "netbox-device-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulated Netbox device: enrollment, cert issuance, mTLS heartbeat/events. Doubles as the Phase 1 end-to-end test harness.",
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": {
+    "node-forge": "^1.3.1",
+    "undici": "^7.4.0"
+  }
+}

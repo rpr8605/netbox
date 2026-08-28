@@ -1,0 +1,65 @@
+# docker-compose.yml — Phase 1 local stack
+# step-ca (private CA) + control-plane (Fastify API + console) + device simulator.
+# All services are local-only; no real hospital data, no real HL7 feed.
+services:
+  step-ca:
+    image: smallstep/step-ca:latest
+    container_name: netbox-step-ca
+    user: root
+    entrypoint: ["sh", "/home/step/entrypoint.sh"]
+    environment:
+      CA_PASSWORD: ${CA_PASSWORD:-dev-only-insecure-changeit!}
+      STEPPATH: /home/step
+    volumes:
+      - ./pki-config/entrypoint.sh:/home/step/entrypoint.sh:ro
+      - ./pki-config/config.render:/home/step/config
+      - pki-certs:/home/step/certs
+      - pki-secrets:/home/step/secrets
+      - pki-db:/home/step/db
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  control-plane:
+    build:
+      context: .
+      dockerfile: control-plane/Dockerfile
+    container_name: netbox-control-plane
+    environment:
+      NODE_ENV: development
+      PORT: 9100
+      CA_URL: https://step-ca:9000
+      CA_FINGERPRINT: ${CA_FINGERPRINT:-}
+      PROVISIONER_NAME: ${PROVISIONER_NAME:-netbox-device}
+      PROVISIONER_PRIVATE_JWK_PATH: /run/secrets/provisioner_private_jwk
+      DB_PATH: /data/netbox.db
+    volumes:
+      - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
+      - cp-data:/data
+    ports:
+      - "9100:9100"
+    depends_on:
+      step-ca:
+        condition: service_healthy
+
+  device-sim:
+    build:
+      context: .
+      dockerfile: device-sim/Dockerfile
+    container_name: netbox-device-sim
+    environment:
+      CONTROL_PLANE_URL: https://control-plane:9100
+      CA_URL: https://step-ca:9000
+    depends_on:
+      control-plane:
+        condition: service_started
+
+volumes:
+  pki-db:
+  pki-certs:
+  pki-secrets:
+  cp-data:

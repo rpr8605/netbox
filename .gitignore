@@ -1,0 +1,14 @@
+# .gitignore — Phase 1
+node_modules/
+dist/
+*.log
+.env
+.env.local
+pki-config/password
+pki-config/provisioner/private_jwk.json
+pki-config/provisioner/public_jwk.json
+pki-config/config.render/ca.json
+pki-config/config/secrets.json
+pki-config/db/
+control-plane/data/
+device-sim/data/

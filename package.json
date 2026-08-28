@@ -1,0 +1,15 @@
+{
+  "name": "netbox",
+  "private": true,
+  "type": "module",
+  "description": "Netbox remote hospital infrastructure monitoring appliance — Phase 1 workspace.",
+  "scripts": {
+    "gen-types": "node scripts/gen_schema.js",
+    "pki-seed": "node scripts/pki_seed.js",
+    "compose:up": "docker compose up -d step-ca control-plane",
+    "phase1:test": "docker compose up --build --abort-on-container-exit --exit-code-from device-sim"
+  },
+  "dependencies": {
+    "jose": "^6.0.10"
+  }
+}

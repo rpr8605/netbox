@@ -1,0 +1,32 @@
+{
+  "address": ":9000",
+  "dnsNames": [
+    "localhost"
+  ],
+  "logger": "{\"format\":\"json\"}",
+  "authority": {
+    "provisioners": [
+      {
+        "type": "JWK",
+        "name": "netbox-device",
+        "key": {
+          "kty": "EC",
+          "x": "64YWHDUz3D6n58J_1n6RsA7gNYUlyQ-u75P2fVwDA_k",
+          "y": "GPI2_x14w7WRVLMZZpfSO_DHv7VA1sXEQNktbbprCp8",
+          "crv": "P-256",
+          "kid": "netbox-device"
+        }
+      }
+    ],
+    "claims": {
+      "minTLSCertDuration": "5m",
+      "maxTLSCertDuration": "24h",
+      "defaultTLSCertDuration": "12h",
+      "disableRenewal": false
+    }
+  },
+  "db": {
+    "type": "BadgerV2",
+    "dataSource": "/home/step/db"
+  }
+}

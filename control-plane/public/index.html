@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- control-plane/public/index.html
+     Minimal fleet console (Phase 2 bare-bones scope): device list, state,
+     last-seen, and the operator quarantine-release button. Phase 7's React
+     console replaces this; do not grow this page beyond registry truth. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Netbox — Fleet (Phase 1/2 console)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #17202a; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccd; padding: 6px 10px; text-align: left; font-size: 14px; }
+    th { background: #f4f6f8; }
+    .quarantine { color: #b26a00; font-weight: 600; }
+    .active { color: #1e8449; font-weight: 600; }
+    .revoked { color: #b03a2e; font-weight: 600; }
+    button { padding: 4px 10px; }
+  </style>
+</head>
+<body>
+  <h1>Netbox fleet console <small>(Phase 1/2 minimal)</small></h1>
+  <p>Device registry as the control plane sees it. Quarantined devices must be
+     confirmed by an operator after their first valid certificate presentation.</p>
+  <table id="t">
+    <thead><tr>
+      <th>device_id</th><th>site_id</th><th>state</th>
+      <th>cert serial</th><th>last seen</th><th></th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    async function load() {
+      const devices = await (await fetch('/api/devices')).json();
+      const tb = document.querySelector('#t tbody');
+      tb.innerHTML = '';
+      for (const d of devices) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.device_id}</td><td>${d.site_id}</td>
+          <td class="${d.state}">${d.state}</td>
+          <td>${d.cert_serial ?? '—'}</td><td>${d.last_seen_at ?? '—'}</td>
+          <td>${d.state === 'quarantine' ? '<button>Confirm</button>' : ''}</td>`;
+        const btn = tr.querySelector('button');
+        if (btn) btn.onclick = async () => {
+          const r = await fetch(`/api/devices/${d.device_id}/confirm`, { method: 'POST' });
+          if (!r.ok) alert((await r.json()).error);
+          load();
+        };
+        tb.appendChild(tr);
+      }
+    }
+    load(); setInterval(load, 5000);
+  </script>
+</body>
+</html>
