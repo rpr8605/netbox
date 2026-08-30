@@ -18,6 +18,16 @@ import { request, Agent } from 'undici';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
+function pubkeyPem(keys) {
+  return forge.pki.publicKeyToPem(keys.publicKey);
+}
+function signPayload(privKeyPem, payload) {
+  const key = forge.pki.privateKeyFromPem(privKeyPem);
+  const md = forge.md.sha256.create();
+  md.update(payload, 'utf8');
+  return Buffer.from(key.sign(md), 'binary').toString('base64');
+}
+
 const CP = process.env.CONTROL_PLANE_URL ?? 'https://control-plane:9100';
 const CA = process.env.CA_URL ?? 'https://step-ca:9000';
 // `||` not `??`: compose injects empty strings for unset vars.
@@ -97,9 +107,13 @@ async function main() {
   fs.mkdirSync('/data', { recursive: true });
   fs.writeFileSync('/data/device_key.pem', forge.pki.privateKeyToPem(keys.privateKey));
 
-  // 3. Redeem token -> step-ca one-time token + CA fingerprint.
-  const redeem = await api('POST', '/api/enroll/redeem', { enrollment_token: tok.body.enrollment_token });
-  check('token redeemed for step-ca OTT + fingerprint', redeem.status === 200 && !!redeem.body.step_ca?.ott);
+  // 3. Redeem token (pinning long-term public key for retrust) -> OTT + fp.
+  const deviceKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
+  const redeem = await api('POST', '/api/enroll/redeem', {
+    enrollment_token: tok.body.enrollment_token,
+    public_key_pem: pubkeyPem(keys),
+  });
+  check('token redeemed + key pinned (for retrust)', redeem.status === 200 && !!redeem.body.step_ca?.ott);
 
   // 3b. Token is single-use: replay must fail.
   const replay = await api('POST', '/api/enroll/redeem', { enrollment_token: tok.body.enrollment_token });
@@ -160,6 +174,31 @@ async function main() {
 
   const crEv2 = await api('POST', '/api/events', canonicalEvent('check_result'), mtls);
   check('check_result accepted after confirm', crEv2.status === 202);
+
+  // ---- key-continuity retrust (approved Phase 3 flow) ---------------------
+  // Simulates the expired-cert path: challenge -> SIGNED PoP -> new OTT.
+  const ch = await api('POST', '/api/enroll/retrust/challenge', { device_id: DEVICE_ID });
+  check('retrust challenge issued', ch.status === 200 && !!ch.body.challenge,
+    `status=${ch.status} body=${JSON.stringify(ch.body)}`);
+
+  const payload = `netbox-retrust-v1\0${DEVICE_ID}\0${ch.body.challenge}`;
+  const sig = signPayload(deviceKeyPem, payload);
+  const rt = await api('POST', '/api/enroll/retrust', {
+    device_id: DEVICE_ID,
+    challenge: ch.body.challenge,
+    signature_b64: sig,
+    public_key_pem: pubkeyPem(keys),
+  });
+  check('retrust PoP accepted, fresh OTT issued', rt.status === 200 && !!rt.body.step_ca?.ott,
+    `status=${rt.status} body=${JSON.stringify(rt.body)}`);
+
+  const chBad = await api('POST', '/api/enroll/retrust/challenge', { device_id: DEVICE_ID });
+  const badSig = Buffer.from('not-a-real-signature').toString('base64');
+  const rtBad = await api('POST', '/api/enroll/retrust', {
+    device_id: DEVICE_ID, challenge: chBad.body.challenge,
+    signature_b64: badSig, public_key_pem: pubkeyPem(keys),
+  });
+  check('retrust with invalid signature refused', rtBad.status === 403);
 
   // ---- negative 1: forged token ----------------------------------------
   const forged = await api('POST', '/api/enroll/redeem', { enrollment_token: 'forged-token-value' });

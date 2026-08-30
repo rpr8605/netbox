@@ -1,0 +1,16 @@
+# pipeline/Dockerfile.worker
+# Root filesystem builder. Ordered stage scripts under pipeline/stages/*.sh
+# operate on $TARGET; the output is a bootable Debian rootfs.ext4 the RAUC
+# stage later wraps into a signed bundle.
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      debootstrap e2fsprogs dosfstools parted cryptsetup squashfs-tools jq \
+      util-linux fdisk mount kpartx grub-efi-amd64-bin \
+      && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
+COPY pipeline/stages /work/stages
+COPY pipeline/manifests /work/manifests
+COPY pipeline/rootfs_files /work/rootfs_files
+COPY pipeline/assemble_image.sh /work/assemble_image.sh
+COPY vm-harness /work/vm-harness
+RUN chmod +x /work/stages/*.sh /work/vm-harness/*.sh /work/assemble_image.sh

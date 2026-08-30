@@ -1,0 +1,21 @@
+# pipeline/manifests/netbox-rauc.manifest
+# Declarative RAUC bundle manifest consumed by stages/40-rauc.sh. The bundle
+# carries ONE rootfs image deployed to the inactive slot; slot choice happens
+# on-device at install time via rauc.service.
+[bundle]
+format = netbox-disk/1
+compatible = netbox-n1xx
+version = 0.1.0
+
+[keyring]
+# Verified against the control-plane-minted offline release root (emit_release_root).
+path = certs/release-root.crt
+
+[image.rootfs]
+filename = rootfs.ext4
+slotclass = rootfs
+hooks = pre-install,post-install
+
+[hooks]
+pre-install = "rauc.service mark-otherbad rootfs.other"
+post-install = "rauc.service mark-good rootfs.other"

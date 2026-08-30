@@ -1,0 +1,13 @@
+# pipeline/compose.build.yml — one-shot image build. The worker assembles the
+# rootfs + bundle artifacts; output lands in out/<RELEASE_VERSION>/.
+services:
+  image-build:
+    build:
+      context: ..
+      dockerfile: pipeline/Dockerfile.worker
+    environment:
+      RELEASE_VERSION: ${RELEASE_VERSION:-0.1.0}
+    volumes:
+      - ../:/work:ro
+      - ../out:/out
+    command: ["bash", "/work/pipeline/executor.sh", "/target", "amd64"]

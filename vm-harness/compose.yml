@@ -1,0 +1,14 @@
+# vm-harness/compose.yml — run the QEMU harness against a built disk image.
+services:
+  vm-harness:
+    build:
+      context: ..
+      dockerfile: vm-harness/Dockerfile
+    privileged: true
+    network_mode: host
+    volumes:
+      - ../out:/out
+      - vm-serial:/tmp
+    command: ["bash", "/work/vm-harness/run_qemu.sh", "${RELEASE_VERSION:-0.1.0}"]
+volumes:
+  vm-serial:

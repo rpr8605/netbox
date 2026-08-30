@@ -10,8 +10,10 @@
 // valid for 5 minutes, so a stolen JWK has a tiny abuse window, and a stolen
 // raw token is useless after redemption (used_at gate in db.js).
 import crypto from 'node:crypto';
-import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice } from '../db.js';
+import forge from 'node-forge';
+import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice, setDeviceKeyFp } from '../db.js';
 import { mintStepCaToken, caBootstrap } from '../ca.js';
+import { publicKeyFingerprint } from './retrust.js';
 
 export default async function enrollRoutes(app) {
   // Operator endpoint. Phase 1: bound to localhost by the server config; Phase 8
@@ -34,8 +36,10 @@ export default async function enrollRoutes(app) {
   });
 
   // Device endpoint — the only unauthenticated-by-cert device call in the system.
+  // Accepts an optional public_key_pem; first redemption PINS sha256(der(pubkey))
+  // as the device_key_fp used by key-continuity retrust (routes/retrust.js).
   app.post('/api/enroll/redeem', async (req, reply) => {
-    const { enrollment_token } = req.body ?? {};
+    const { enrollment_token, public_key_pem } = req.body ?? {};
     if (!enrollment_token) return reply.code(400).send({ error: 'enrollment_token required' });
 
     const tokenHash = crypto.createHash('sha256').update(enrollment_token).digest('hex');
@@ -43,6 +47,15 @@ export default async function enrollRoutes(app) {
     if (!row) {
       // Deliberately vague: don't let an oracle distinguish expired vs never-existed.
       return reply.code(403).send({ error: 'invalid enrollment token' });
+    }
+
+    if (public_key_pem) {
+      try {
+        const fp = publicKeyFingerprint(public_key_pem);
+        setDeviceKeyFp(row.device_id, fp);
+      } catch {
+        return reply.code(400).send({ error: 'malformed public_key_pem' });
+      }
     }
 
     const ott = await mintStepCaToken(row.device_id);

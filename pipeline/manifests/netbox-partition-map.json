@@ -1,0 +1,10 @@
+{
+  "_comment": "Declarative disk layout consumed by stages/20-partition.sh + 40-rauc.sh. boot = unencrypted auto-unlock keyfile partition (user decision 2); data = LUKS container; rootfs_a/_b = RAUC A/B slots.",
+  "partitions": [
+    { "label": "EFI",      "size": "128MiB", "type": "fat32",  "role": "boot" },
+    { "label": "BOOT",     "size": "256MiB", "type": "ext2",   "role": "boot-keyfile" },
+    { "label": "ROOTFS_A", "size": "2GiB",   "type": "ext4",   "role": "rauc-slot-rootfs.0" },
+    { "label": "ROOTFS_B", "size": "2GiB",   "type": "ext4",   "role": "rauc-slot-rootfs.1" },
+    { "label": "DATA",     "size": "grow",   "type": "ext4",   "role": "luks-data" }
+  ]
+}

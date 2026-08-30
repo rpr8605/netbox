@@ -1,0 +1,11 @@
+# pipeline/compose.assemble.yml — privileged disk-image assembly step.
+services:
+  assemble:
+    build:
+      context: ..
+      dockerfile: pipeline/Dockerfile.worker
+    privileged: true
+    volumes:
+      - ../:/work:ro
+      - ../out:/out
+    command: ["bash", "/work/pipeline/assemble_image.sh", "${RELEASE_VERSION:-0.1.0}"]

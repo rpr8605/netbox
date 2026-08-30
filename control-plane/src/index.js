@@ -20,6 +20,7 @@ import { caBootstrap, mintStepCaToken, bootstrapAgent } from './ca.js';
 import enrollRoutes from './routes/enroll.js';
 import deviceRoutes from './routes/devices.js';
 import eventRoutes from './routes/events.js';
+import retrustRoutes from './routes/retrust.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 9100);
@@ -77,6 +78,7 @@ await app.register(fastifyStatic, { root: path.join(__dirname, '..', 'public') }
 await app.register(enrollRoutes);
 await app.register(deviceRoutes);
 await app.register(eventRoutes);
+await app.register(retrustRoutes);
 
 app.get('/api/health', async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
 

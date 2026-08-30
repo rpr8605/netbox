@@ -1,0 +1,7 @@
+label: gpt
+unit: sectors
+,size=128MiB,type=uefi,name=EFI
+,size=256MiB,type=linux,name=BOOT
+,size=2GiB,type=linux,name=ROOTFS_A
+,size=2GiB,type=linux,name=ROOTFS_B
+,type=linux,name=DATA

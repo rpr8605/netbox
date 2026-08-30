@@ -22,18 +22,27 @@ CREATE TABLE IF NOT EXISTS devices (
   state          TEXT NOT NULL CHECK (state IN ('quarantine','active','revoked')),
   cert_serial    TEXT,
   cert_not_after TEXT,
+  device_key_fp  TEXT,                    -- sha256 of RSA public-key DER, pinned at enrollment
   enrolled_at    TEXT,
   last_seen_at   TEXT,
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS enrollment_tokens (
-  token_hash  TEXT PRIMARY KEY,          -- sha256 of the one-time token; raw token never stored
+  token_hash  TEXT PRIMARY KEY,
   device_id   TEXT NOT NULL,
   site_id     TEXT NOT NULL,
   expires_at  TEXT NOT NULL,
   used_at     TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS retrust_challenges (
+  challenge_hash TEXT PRIMARY KEY,
+  device_id      TEXT NOT NULL,
+  expires_at     TEXT NOT NULL,
+  used_at        TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -121,4 +130,28 @@ export function listEvents(deviceId, limit = 50) {
   return db.prepare(
     `SELECT * FROM events WHERE device_id = ? ORDER BY occurred_at DESC LIMIT ?`
   ).all(deviceId, limit);
+}
+
+export function setDeviceKeyFp(deviceId, fp) {
+  // Only pins when unset — the enrollment-time key must never be re-keyed here.
+  db.prepare(`UPDATE devices SET device_key_fp = ? WHERE device_id = ? AND device_key_fp IS NULL`)
+    .run(fp, deviceId);
+}
+
+export function createRetrustChallenge({ challengeHash, deviceId }) {
+  const expiresAt = new Date(Date.now() + 60_000).toISOString().replace('T', ' ').slice(0, 19);
+  db.prepare(
+    `INSERT INTO retrust_challenges (challenge_hash, device_id, expires_at) VALUES (?, ?, ?)`
+  ).run(challengeHash, deviceId, expiresAt);
+}
+
+export function consumeRetrustChallenge(challengeHash, deviceId) {
+  const row = db.prepare(
+    `SELECT * FROM retrust_challenges
+     WHERE challenge_hash = ? AND device_id = ? AND used_at IS NULL AND expires_at > datetime('now')`
+  ).get(challengeHash, deviceId);
+  if (!row) return null;
+  db.prepare(`UPDATE retrust_challenges SET used_at = datetime('now') WHERE challenge_hash = ?`)
+    .run(challengeHash);
+  return row;
 }
