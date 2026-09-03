@@ -16,12 +16,18 @@ out/release-sign/
 
 # Build artifacts + scratch: the pipeline regenerates these on every build;
 # they are large binaries and dev logs, not source. Never commit them.
-out/*.raw
-out/*.img
+# NOTE: `**` matters — the disk image lands at out/<version>/netbox-disk.img,
+# one level deep, so `out/*.img` does NOT catch it (that's how 5 GB got
+# committed once already). Match at any depth.
+out/**/*.raw
+out/**/*.img
 out/**/*.raucb
 out/**/*.ext4
 out/**/SHA256SUMS
-out/*.png
+out/**/*.png
+out/manifest.json
+out/**/sfdisk.script
+out/**/manifest/manifest.raucm
 *.log
 data/
 __pycache__/
