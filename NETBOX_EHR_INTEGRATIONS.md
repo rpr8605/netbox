@@ -166,12 +166,24 @@ flags that explicitly so nobody builds against a name that no longer owns the pr
 | 13 | **Netsmart** | Netsmart (independent) | Behavioral health EHR — many CAHs run an integrated behavioral health or substance-use unit on a separate system from the main inpatient EHR | Behavioral health is a common CAH service line requiring its own critical-service entry | HL7v2 typical | L0–L2 + HL7v2 tap |
 | 14 | **WellSky** (also relevant: PointClickCare) | WellSky (independent) | Post-acute/long-term-care and swing-bed system — most CAHs operate swing beds (acute-to-long-term-care conversion), which runs on a system distinct from the main EHR | Swing beds are a defining CAH operational feature, not an edge case | HL7v2 typical for census/ADT feeds | L0–L2 + HL7v2 tap |
 | 15 | **Sunquest / SCC Soft Computer** | Sunquest (independent); SCC Soft Computer (independent) | Laboratory information systems (LIS) — the actual system behind the "lab" critical-service entry in most hospitals; the EHR usually isn't where lab result flow originates | The canonical schema already has `service: "lab"` — this is what that maps to in the real world at most target sites | HL7v2 (ORU) standard | L0–L2 + HL7v2 tap, L4 via observed ORU/ACK |
+| 16 | **VA facilities — VistA / CPRS** | Department of Veterans Affairs (VistA is public-domain/open-source-derived; CPRS is the VA's own clinical front end on top of it) | The VA's legacy inpatient/outpatient EHR, still running at the large majority of the 164 VA medical facilities as of the transition status checked 2026-09-02 (11 sites live on the replacement platform in 2026, 13 targeted by year end, full completion targeted 2031 — meaning VistA/CPRS remains the production system at 150+ sites for years yet) | Explicit ask; a long, real dual-support window makes this worth building now rather than waiting for the 2031 target | HL7v2 is native and long-established (VistA ships its own HL7 package, with an "HL7-Optimized" supplement) — a real, un-exotic HL7v2 MLLP feed, same shape as any other legacy HL7v2-only row above. VA also runs a public FHIR R4 developer platform (Lighthouse/VA API Platform) for veteran-facing data, worth confirming per site whether a facility's local instance is reachable through it or only through the legacy HL7 feed | L0–L2 + HL7v2 tap always; L3/L4 achievable via observed ADT/ORU/ORM+ACK, same pattern as Healthland/legacy MEDITECH |
+| 17 | **IHS / tribal facilities — RPMS** | Indian Health Service (RPMS is IHS's own long-running fork of the same VistA/MUMPS-Fileman lineage as VA's system — same underlying architecture, separate codebase and ownership) | Legacy EHR at IHS direct-service and tribal facilities nationwide; IHS's own "PATH EHR" modernization program is replacing RPMS with Oracle Health technology (GDIT as systems integrator), with a single pilot site (Lawton Service Unit, OK) targeted to go live around September 2026 — meaning RPMS remains the production system at essentially every IHS/tribal site for the foreseeable rollout period | Same rural/critical-access/underserved profile Netbox already targets, arguably more acute — many tribal facilities are smaller and more resource-constrained than the CAHs in rows 1–15 | HL7v2 (RPMS ships its own HL7 patches/supplement, same MLLP shape as VistA above — ADT messages specifically documented). IHS's current HIE modernization (the "Four Directions Hub") runs on **InterSystems HealthShare** as its integration engine, with HL7 C-CDA and a piloted FHIR API layer — not yet a named adapter in Section 4 above, so treat as "confirm per site" via the generic network-check adapter until there's a real deployment to build a dedicated admin-API reader against | L0–L2 + HL7v2 tap always; L3/L4 where a site's HealthShare/FHIR layer is confirmed reachable |
 
 **Smaller/niche mentions worth knowing about but not building a named profile for yet:**
 Praxis EMR (concept-processing, template-free, small ambulatory practices) and a handful
 of single-state or single-region vendors turn up in rural-market research but at low
 enough prevalence that the generic adapters plus a config profile should cover them
 without a dedicated row — revisit if a specific customer needs one.
+
+---
+
+### VA and IHS — the Cerner/Oracle Health convergence, and why tribal facilities are a distinct sales motion
+
+Both federal transitions (VA's, IHS's) land on **Oracle Health** — this isn't a coincidence to build around lightly, though. Neither is the small-hospital "CommunityWorks" tier already in row 2 of the table above; both are bespoke federal enterprise Oracle Health Millennium builds, run through federal systems integrators (Oracle itself for VA; GDIT for IHS), almost certainly behind FedRAMP-authorized infrastructure with PIV/CAC-gated admin access rather than a commercial site's normal OAuth client-credentials flow. When it's time to build a federal-specific config profile (not yet — the transition is early and slow enough that VistA/RPMS is the right thing to build against first), treat it as its own profile rather than an extension of row 2's CommunityWorks profile, and expect the FHIR auth path to need real verification against VA's Lighthouse/API Platform docs rather than an assumption carried over from the commercial Oracle Health adapter.
+
+The practical build sequencing this implies: VistA/CPRS and RPMS are both already-familiar territory for the existing HL7v2 passive tap — no new adapter code, just two new config profiles, following the exact same pattern as the Healthland/legacy-MEDITECH rows. That's cheap to add now. A dedicated Oracle Health *federal* profile is not cheap to add now — it depends on a live relationship with a specific VA or IHS site to verify the real API surface against, per the same "confirm at build time, don't assume from general knowledge" discipline already governing the Rhapsody/Cloverleaf notes in Section 2 — so it belongs later in the build order, roughly whenever there's a real federal or tribal prospect to build it for, the same rule already applied to Handoff's Cloverleaf/Rhapsody connectors.
+
+One more thing worth knowing before treating "VA and IHS" as a single go-to-market motion: they aren't. VA facilities are conventional federal government procurement — GSA Schedule, SAM.gov registration, VA's own acquisition rules, a slow and bureaucratic sales cycle. IHS is different in a way that matters a lot for a small vendor: under the Indian Self-Determination and Education Assistance Act (Public Law 93-638), many tribes operate their own facilities under self-determination compacts or contracts rather than as direct IHS-operated sites — those "638" tribal facilities can procure independently of IHS's own federal contracting process, closer to how a standalone rural hospital buys things than how VA buys things. That makes IHS's tribal facilities plausibly a far more reachable near-term customer than VA is, and it's the same target profile (small, rural, underserved, running legacy HL7v2-only infrastructure) Netbox is already built for — worth treating as an extension of the existing CAH sales motion, not a detour into federal contracting, at least for the tribally-operated sites specifically.
 
 ---
 
@@ -294,4 +306,112 @@ Build order for this piece:
 
 Stop after step 4 is demoable and report back before adding the remaining vendor profiles
 from Section 5.
+```
+
+---
+
+## 11. Interface topology visibility — a Fleet Console feature, not a new Handoff integration
+
+This section exists because of a real question: should Netbox pull in Handoff (the
+separate interface-observability product) so hospital staff and Ryan's own team can
+actually *see* interface health, not just a per-system up/down row? The answer settled on:
+**yes, but scoped narrowly** — topology visibility only, built on data Netbox is already
+collecting via the Mirth Connect/NextGen Connect admin-API reader (Section 4), not a port
+of Handoff's anomaly detection, AI narration, or financial-impact layers. Those stay
+Handoff's job. Netbox's job here is just: show what's talking to what, and whether it's
+healthy, using data the appliance already has a reason to collect.
+
+**Why this belongs in the Fleet Console specifically, not a new subsystem:** the main
+build spec's Fleet Console (`NETBOX_BUILD_SPEC.md`, Section 7) is already a multi-site,
+role-aware dashboard — every event already carries a `site_id`, and RBAC already
+distinguishes **customer IT admin** (the hospital's own staff, sees their site only) from
+**operations manager** and **support technician** (Ryan's team, sees across every
+monitored site). That split is exactly what a "master control dashboard for a monitored
+service" needs. Nothing new has to be invented for that; it just hasn't had a feature
+built on top of it yet that's worth looking at across sites. Interface topology is a good
+first one, because a hospital's interface engine breaking is a genuinely high-value thing
+for an ops team to see the moment it happens, across every site they're responsible for,
+not just when that one hospital's IT person happens to notice and call.
+
+**Data model — extend the canonical schema, don't invent a parallel one.** Add two things:
+
+1. A **channel registry**, populated from the Mirth/NextGen admin-API reader when a site's
+   config profile is set up: `{ site_id, channel_id, engine_type: "mirth" | "nextgen" |
+   "rhapsody" | "cloverleaf" | "iguana", channel_name, source_system, destination_system }`.
+   This is what turns a flat list of channels into something that can be drawn as a graph —
+   `source_system` and `destination_system` are the two ends of an edge.
+2. A `channel_id` field, added as an **optional** field on the existing canonical event
+   shape (Section 4 of the main spec) — present only when a `check_result` or
+   `hl7_metadata` event is actually describing a specific interface channel rather than a
+   whole system. No new event kind needed; this is the same schema, one more optional
+   field, so nothing that already exists has to change shape.
+
+Keep the field names above close to how Handoff's own topology layer already describes
+nodes and edges (source/destination, channel/connector identity) rather than inventing
+Netbox-specific vocabulary for the same concept. Nobody is asking Kimi to integrate the two
+codebases right now — but if a hospital later runs both Netbox and full Handoff, or if a
+deeper integration ever makes sense, the data shapes should already line up instead of
+needing a translation layer bolted on after the fact.
+
+**Fleet Console UI — two views, both using the RBAC that already exists:**
+
+- **Per-site topology view** (visible to customer IT admin for their own site, and to
+  operations manager/support technician for any site): a graph of that site's interface
+  channels — nodes are systems, edges are channels, edge color reflects current status
+  (reachable/verified_ready/active/degraded/down, the same enum already in the schema).
+  Clicking an edge shows last-message time, recent error count, and connector state,
+  pulled straight from the Mirth/NextGen admin-API reader's data.
+- **Cross-site rollup view** (operations manager/support technician only): not a full
+  topology graph of every hospital at once — that gets unreadable fast — but a sortable
+  list of every monitored site with its worst current interface-channel status and a count
+  of degraded/down channels, so an ops person scanning many hospitals can see at a glance
+  which ones need attention right now. This is the actual "master control dashboard" piece
+  Ryan described — it's a rollup view over the same per-site data, not a new data source.
+
+**Explicitly not in this slice of work:** no AI-generated explanation of what a broken
+interface means, no financial-impact estimate, no cross-system distributed tracing beyond
+what the admin-API reader already exposes per channel. That's the line between "Netbox
+shows you interfaces" and "Handoff explains and prices what they're costing you" — the
+second one stays a separate, deeper product, not a Netbox feature, per the scope decision
+made for this build.
+
+**Build sequencing:** this slots in right after Section 9's step 3 (the Mirth/NextGen
+admin-API reader) is demoable — it has no dependency on the remaining vendor profiles in
+Section 5, since topology visibility works identically regardless of which EHR sits behind
+the interface engine.
+
+---
+
+## 12. Copy-paste prompt for Kimi — interface topology visibility (Fleet Console)
+
+```
+You are continuing work on "Netbox." The Mirth Connect/NextGen Connect admin-API reader
+from Section 10's step 2 is done and demoable. Read Section 11 of
+NETBOX_EHR_INTEGRATIONS.md in full before starting — it explains why this is scoped to
+topology visibility only, not a Handoff integration, and why it belongs in the existing
+Fleet Console rather than a new subsystem.
+
+Build, in order:
+1. The channel registry table/model: site_id, channel_id, engine_type, channel_name,
+   source_system, destination_system — populated from the admin-API reader when a site's
+   config profile includes an interface engine.
+2. Add channel_id as an optional field on the existing canonical event schema
+   (NETBOX_BUILD_SPEC.md Section 4) — do not create a new event kind or a parallel schema.
+3. Fleet Console per-site topology view: a graph of that site's channels, nodes as
+   systems, edges as channels, edge color from the existing status enum
+   (reachable/verified_ready/active/degraded/down). Clicking an edge shows last-message
+   time, recent error count, connector state.
+4. Fleet Console cross-site rollup view, visible only to the operations manager and
+   support technician roles: a sortable list of every monitored site with its worst
+   current channel status and a count of degraded/down channels. Customer IT admin role
+   must not see other sites in this view — enforce this with the existing RBAC, don't
+   add a new permission model.
+5. Do not build any AI narration, financial-impact scoring, or cross-system distributed
+   tracing as part of this. If you find yourself wanting to add any of that to make the
+   feature feel complete, stop and flag it instead — that work is explicitly out of scope
+   here.
+
+Use synthetic test data and a simulated multi-site setup (at least 3 sites, at least one
+with a deliberately degraded channel) to demo both views. Stop and report back once both
+views are demoable against that simulated setup, before doing anything else.
 ```

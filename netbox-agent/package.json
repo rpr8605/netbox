@@ -1,0 +1,7 @@
+{
+  "name": "netbox-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Netbox device agent (on-image runtime). node:* builtins ONLY — the image ships no npm tree (see agent.js header), so do not add dependencies here."
+}

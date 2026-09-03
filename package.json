@@ -8,7 +8,9 @@
     "pki-seed": "node scripts/pki_seed.js",
     "compose:up": "docker compose up -d step-ca control-plane",
     "phase1:test": "docker compose up --build --abort-on-container-exit --exit-code-from device-sim",
-    "phase3:build-image": "node pipeline/build.js"
+    "phase3:build-image": "node pipeline/build.js",
+    "ehr:unit": "node scripts/test_ehr_unit.js",
+    "ehr:e2e": "node scripts/test_ehr_e2e.js"
   },
   "dependencies": {
     "jose": "^6.0.10"

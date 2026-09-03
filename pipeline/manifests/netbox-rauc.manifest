@@ -2,20 +2,15 @@
 # Declarative RAUC bundle manifest consumed by stages/40-rauc.sh. The bundle
 # carries ONE rootfs image deployed to the inactive slot; slot choice happens
 # on-device at install time via rauc.service.
-[bundle]
-format = netbox-disk/1
+#
+# RAUC 1.8 note (debugged live, do not regress): the manifest must be MINIMAL —
+# [update] with compatible+version, and [image.<slotclass>] with filename only.
+# [bundle], [keyring], slotclass=, and a [hooks] group are all REJECTED by
+# `rauc bundle` (1.8) — the signature lives in the CMS appended by --cert/--key,
+# and the keyring is enforced at verify time (verify_bundle.sh), not here.
+[update]
 compatible = netbox-n1xx
 version = __RELEASE_VERSION__
 
-[keyring]
-# Verified against the control-plane-minted offline release root (emit_release_root).
-path = certs/release-root.crt
-
 [image.rootfs]
 filename = rootfs.ext4
-slotclass = rootfs
-hooks = pre-install,post-install
-
-[hooks]
-pre-install = "rauc.service mark-otherbad rootfs.other"
-post-install = "rauc.service mark-good rootfs.other"

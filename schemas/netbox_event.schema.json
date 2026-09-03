@@ -2,15 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://netbox/schemas/netbox_event.schema.json",
   "title": "Netbox Canonical Event",
-  "description": "Every check result, HL7 metadata event, heartbeat, and update event written by the Netbox device agent. PHI is explicitly excluded when phi_mode is false; the sidecar's code path does not hold raw content past metadata extraction. This schema is the single source of truth for the device agent (TS), the sidecar (Python), and the ingestion API once both sides ship.",
+  "description": "Every check result, HL7 metadata event, heartbeat, update event, and security-signal event written by the Netbox device agent. PHI is explicitly excluded when phi_mode is false; the sidecar's code path does not hold raw content past metadata extraction. security_signal (Step 1, ransomware/posture) is NOT a status event (up/down) — it carries `signal`/`severity` and requires a `security_signal_payload` object, gated by the same if/then pattern as hl7_metadata. This schema is the single source of truth for the agent (TS), the sidecar (Python), and the ingestion API once both sides ship.",
   "type": "object",
   "definitions": {
-    "kind": { "enum": ["check_result", "hl7_metadata", "heartbeat", "update_event"] },
+    "kind": { "enum": ["check_result", "hl7_metadata", "heartbeat", "update_event", "security_signal"] },
     "service": {
       "enum": ["ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom"]
     },
     "tier": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
     "status": { "enum": ["reachable", "verified_ready", "active", "degraded", "down", "unknown"] },
+    "signal": { "enum": ["unusual", "advisory", "verified_unusual"] },
+    "severity": { "enum": ["info", "warn", "critical"] },
     "confidence": { "enum": ["high", "medium", "low"] },
     "hl7_metadata": {
       "type": "object",
@@ -24,11 +26,23 @@
         }
       },
       "additionalProperties": false
+    },
+    "security_signal_payload": {
+      "type": "object",
+      "required": ["signal", "source", "basis"],
+      "properties": {
+        "signal": { "$ref": "#/definitions/signal" },
+        "severity": { "$ref": "#/definitions/severity" },
+        "source": { "type": "string", "description": "adapter tag: graph-audit | graph-signin | backup-proxy | backup-api" },
+        "observed": { "type": "object", "description": "raw fields the agent actually saw (e.g. 'new admin: id, role, dts')" },
+        "basis": { "type": "string", "description": "why this is unusual (rationale string used by Fleet Console)" }
+      },
+      "additionalProperties": false
     }
   },
   "required": [
     "event_id", "device_id", "site_id", "occurred_at", "kind",
-    "service", "tier_observed", "status", "latency_ms",
+    "service", "latency_ms",
     "confidence", "freshness_s", "phi_mode"
   ],
   "properties": {
@@ -40,15 +54,21 @@
     "service": { "$ref": "#/definitions/service" },
     "tier_observed": { "$ref": "#/definitions/tier" },
     "status": { "$ref": "#/definitions/status" },
+    "signal": { "$ref": "#/definitions/signal" },
+    "severity": { "$ref": "#/definitions/severity" },
     "latency_ms": { "type": "integer", "minimum": 0 },
     "confidence": { "$ref": "#/definitions/confidence" },
     "freshness_s": { "type": "integer", "minimum": 0, "description": "seconds since the observation was recorded at the device" },
+    "channel_id": { "type": "string", "description": "Optional interface-engine channel stable id (e.g. a Mirth channel name/id) this observation belongs to. Used by the Fleet Console per-site topology view to group check_results under their interface channels — never required, never PHI, just a routing label." },
     "phi_mode": {
       "type": "boolean",
       "description": "false = raw HL7 body was never in memory after metadata extraction (a structural guarantee, not merely a flag). true only after signed amendment enables it."
     },
     "hl7_metadata": {
       "$ref": "#/definitions/hl7_metadata"
+    },
+    "security_signal_payload": {
+      "$ref": "#/definitions/security_signal_payload"
     }
   },
   "additionalProperties": true,
@@ -56,6 +76,10 @@
     {
       "if": { "properties": { "kind": { "const": "hl7_metadata" } }, "required": ["kind"] },
       "then": { "required": ["hl7_metadata"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "security_signal" } }, "required": ["kind"] },
+      "then": { "required": ["security_signal_payload"] }
     }
   ]
 }

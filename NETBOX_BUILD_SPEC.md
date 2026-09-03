@@ -227,3 +227,76 @@ control plane). Every later phase depends on this identity/trust foundation bein
 ```
 
 Hand Kimi this document in full alongside that prompt — the prompt scopes the first unit of work, but every later phase depends on the schema and tool choices made in Sections 2–7, so it needs the whole spec in context.
+
+---
+
+## 12. Copy-paste build prompt for Kimi — Phase 3 (the Configurator)
+
+Use this once Phase 1 (schema & PKI foundation) and Phase 2 (minimal control plane) from
+Section 8 are demoable — the Configurator's first-boot flow enrolls a device against
+exactly those two things, so it can't be meaningfully tested without them.
+
+```
+You are continuing work on "Netbox," the remote hospital infrastructure monitoring
+appliance. Phase 1 (canonical schema + step-ca + device enrollment/quarantine flow) and
+Phase 2 (device registry, ingestion API, bare-bones console) from Section 8 of the
+attached build spec are already built and demoable. Follow the attached spec exactly for
+architecture and tool choices — do not substitute different tools (e.g. do not replace
+RAUC or LUKS with a custom-built equivalent) without flagging why first.
+
+DOCUMENTATION REQUIREMENT: apply Section 10's standard to every file — header comments,
+docstrings explaining what AND when/why, and inline comments on every deliberate safety
+decision (full-disk encryption as non-optional, the quarantine gate on first boot, why the
+image artifact is signed before it ever touches a drive).
+
+Do not use any real hospital data, real patient identifiers, or a real HL7 feed at any
+point in this build.
+
+Build Phase 3 only (Section 8, Section 2):
+
+1. **Base image build.** A minimal Debian or Ubuntu Server install, stripped to what the
+   device agent needs. Read-only root filesystem where practical, with a small explicit
+   writable data partition for telemetry cache, logs, and local config.
+
+2. **RAUC bundle pipeline.** A script/pipeline (shell + Packer, or a preseed/cloud-init-
+   driven build) that takes the current release's agent software, bakes it into the base
+   image, signs it, and outputs both a flashable artifact and its RAUC bundle. This is one
+   build producing both outputs, not two separate things to maintain — the artifact that
+   ships on day one is the same one the fleet update-checks against later over OTA.
+
+3. **LUKS full-disk encryption**, applied as standard on every image build, not optional.
+
+4. **First-boot provisioning script**, wired into the Phase 1 enrollment flow already
+   built: on first boot, the device generates its keypair (TPM-2.0-sealed if the board has
+   one, LUKS-sealed software key as fallback), requests a short-lived client cert from
+   step-ca, and sits in the quarantine state — reachable only for enrollment — until the
+   Phase 2 control plane confirms its identity and config/firmware-signature self-check.
+
+5. **The Configurator tool itself** — this is the actual deliverable Ryan runs on his own
+   machine, not just the pipeline that feeds it. A CLI (a lightweight local GUI is fine
+   too if it's genuinely faster to use, but CLI is the floor) that:
+   - lists available releases/configs to build or select from,
+   - detects attached drives and requires an explicit, unambiguous confirmation of the
+     write target before touching anything — this is the number one place a mistake
+     destroys the wrong disk, so make the confirmation step impossible to fat-finger
+     (show drive size/model/path, refuse to proceed on a drive that looks like the
+     machine's own boot disk),
+   - writes the signed image to the selected drive with a visible progress indicator,
+   - verifies the write after completion (read-back/checksum verification) before
+     reporting success,
+   - and separately supports "save as standalone install file" — the same signed artifact,
+     written to a file instead of a drive, for flashing elsewhere later. Same artifact,
+     two consumption paths, per Section 2 — don't build two different code paths for this.
+
+6. **End-to-end test:** build one real image, flash it with the Configurator tool to an
+   actual (or disposable virtual) drive, boot it, and confirm first-boot provisioning runs
+   to completion — the device enrolls against the Phase 1/2 control plane and comes out of
+   quarantine. Separately, confirm the "save as file" path produces a file that flashes
+   correctly by some other means (e.g. dd) and boots identically.
+
+Stop after Phase 3 is demoable and report back before continuing to Phase 4 (the device
+agent's L0–L4 checks). Steps 1–3 of the build order are the genuine prerequisite chain —
+nothing after this can be trusted or demoed credibly without it.
+```
+
+Hand Kimi this document in full alongside that prompt, same as Phase 1 — it needs Sections 2, 4, 8, and 10 in context, not just the excerpt above.

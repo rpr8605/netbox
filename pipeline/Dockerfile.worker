@@ -5,7 +5,7 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
       debootstrap e2fsprogs dosfstools parted cryptsetup squashfs-tools jq \
-      util-linux fdisk mount kpartx grub-efi-amd64-bin \
+      util-linux fdisk mount kpartx grub-efi-amd64-bin rauc openssl \
       && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY pipeline/stages /work/stages

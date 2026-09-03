@@ -1,0 +1,26 @@
+{
+  "profile_id": "epic-community-connect",
+  "vendor": "Epic",
+  "vendor_note": "Community Connect tier (EHR spec §5, row 1): L0–L2 always; L3/L4 depends on whether the PARENT ORG grants API access — a Connect site often can't get its own isolated API credentials. The FHIR check ships enabled:false until that grant exists (flagged at onboarding, per the row's own note); generic net checks carry the guaranteed signal.",
+  "checks": [
+    {
+      "name": "ehr-host-tls",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "ehr.example-hospital.local", "port": 443, "tls": true }
+    },
+    {
+      "name": "ehr-fhir-poll",
+      "service": "ehr",
+      "adapter": "fhir",
+      "enabled": false,
+      "params": {
+        "base_url": "https://ehr.example-hospital.local/fhir/r4",
+        "auth": { "method": "client_credentials",
+                  "token_url": "https://ehr.example-hospital.local/oauth/token",
+                  "client_id": "SYNTHETIC_CLIENT_ID",
+                  "client_secret": "SYNTHETIC_CLIENT_SECRET" }
+      }
+    }
+  ]
+}

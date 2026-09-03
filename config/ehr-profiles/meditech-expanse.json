@@ -1,0 +1,30 @@
+{
+  "profile_id": "meditech-expanse",
+  "vendor": "MEDITECH",
+  "vendor_note": "Expanse tier — the FHIR-capable MEDITECH product (EHR spec §5, row 3: Expanse L0–L4 achievable). Checks: FHIR L3 (capability + scoped synthetic read) plus an optional interface-engine admin read. Synthetic endpoints only; per-site values are set at onboarding.",
+  "checks": [
+    {
+      "name": "ehr-fhir-poll",
+      "service": "ehr",
+      "adapter": "fhir",
+      "params": {
+        "base_url": "https://ehr.example-hospital.local/fhir/r4",
+        "auth": { "method": "client_credentials",
+                  "token_url": "https://ehr.example-hospital.local/oauth/token",
+                  "client_id": "SYNTHETIC_CLIENT_ID",
+                  "client_secret": "SYNTHETIC_CLIENT_SECRET" },
+        "resource_read": { "resource_type": "Patient", "id": "synthetic-001" }
+      }
+    },
+    {
+      "name": "interface-engine-admin",
+      "service": "adt",
+      "adapter": "mirth",
+      "params": {
+        "base_url": "https://mirth.example-hospital.local/api",
+        "username": "SYNTHETIC_USER",
+        "password": "SYNTHETIC_PASSWORD"
+      }
+    }
+  ]
+}

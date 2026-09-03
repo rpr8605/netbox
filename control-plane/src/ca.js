@@ -37,6 +37,10 @@ export async function mintStepCaToken(deviceId) {
     .sign(key);
 }
 
+// The step-ca JWK provisioner name that mintStepCaToken stamps as the JWT
+// issuer. Exposed as a function (rather than each caller re-reading env) so
+// the issuer string can never drift from the provisioner key we actually sign
+// with — a mismatched iss makes step-ca reject every token with no other symptom.
 export function provName() { return PROV_NAME; }
 
 // Fetch CA root PEM + fingerprint. step-ca serves HTTPS with a cert we cannot
@@ -45,6 +49,12 @@ export function provName() { return PROV_NAME; }
 // which is exactly what the device simulator asserts in its pin check.
 export const bootstrapAgent = new Agent({ connect: { rejectUnauthorized: false } });
 
+// Fetch the CA root PEM + its SHA-256 fingerprint — the trust anchor a device
+// pins at bootstrap. Uses the verification-skipping agent above ON PURPOSE
+// (see its comment): trust is established by comparing `fingerprint`
+// out-of-band, and the device simulator's pin check is what actually asserts
+// it. "Fixing" the skipped TLS verification here without replacing that
+// fingerprint comparison would break first-boot enrollment, not harden it.
 export async function caBootstrap() {
   const res = await undiciFetch(`${CA_URL}/roots.pem`, { dispatcher: bootstrapAgent });
   if (!res.ok) throw new Error(`CA roots fetch failed: ${res.status}`);

@@ -12,6 +12,9 @@ IMG=/out/$VERSION/netbox-disk.img
 MEM=${2:-2048}
 SSH_FWD=${3:-2222}
 
+# Fresh serial log per run — tailing an old boot's log has been a recurring
+# false-negative source across this phase.
+: > /tmp/serial.log
 mkdir -p /tmp/swtpm-state
 swtpm socket --tpm2 --tpmstate dir=/tmp/swtpm-state \
   --ctrl type=unixio,path=/tmp/swtpm-sock \
@@ -31,3 +34,13 @@ qemu-system-x86_64 -m "$MEM" -smp 2 -enable-kvm \
   -serial file:/tmp/serial.log -display none -daemonize
 
 echo "qemu started; serial:/tmp/serial.log"
+# Poll for the provisioning units; surface failures instead of requiring
+# manual inspection of an un-tailed serial log.
+for i in $(seq 1 60); do
+  if grep -q "login:" /tmp/serial.log 2>/dev/null; then break; fi
+  sleep 2
+done
+echo "--- unit status probe ---"
+for u in decrypt-data.service netbox-firstboot.service netbox-agent.service; do
+  grep -i "$u" /tmp/serial.log | tail -3 || echo "$u: no serial lines"
+done

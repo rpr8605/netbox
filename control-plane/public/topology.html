@@ -1,0 +1,193 @@
+<!doctype html>
+<!-- control-plane/public/topology.html
+     Fleet Console per-site TOPOLOGY view (Prompt 5). Renders every critical
+     service in a site's register PLUS interface-engine channels as a node
+     graph, colored by the canonical status enum. A click on a node opens a
+     RULE-BASED detail panel: which check failed and its raw detail string, the
+     tier and what that tier means, time-in-state, and a co-occurring-signals
+     list — correlated FACTS, never a generated "why". -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Netbox — Site Topology</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1.5rem; color: #17202a; background:#f7f9fa; }
+  h1 { border-bottom: 2px solid #1a5276; padding-bottom: .3rem; }
+  #sites { margin-bottom: 1rem; }
+  #sites button { margin-right: .5rem; padding: .4rem .8rem; cursor: pointer; }
+  #stage { display: flex; gap: 1.5rem; align-items: flex-start; }
+  #graph { background: #fff; border: 1px solid #ccd; border-radius: 8px; }
+  #panel { width: 340px; background: #fff; border: 1px solid #ccd; border-radius: 8px; padding: 1rem; min-height: 300px; }
+  .legend span { margin-right: .8rem; font-size: 13px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .st-reachable { fill: #3498db; } .st-verified_ready { fill: #1e8449; } .st-active { fill: #1e8449; }
+  .st-degraded { fill: #b26a00; } .st-down { fill: #b03a2e; } .st-unknown { fill: #95a5a6; }
+  .edge { stroke: #b7c3cc; stroke-width: 2; }
+  .edge.down { stroke: #b03a2e; stroke-width: 2.5; stroke-dasharray: 5 3; }
+  .edge.degraded { stroke: #b26a00; stroke-dasharray: 4 2; }
+  .node-label { font-size: 11px; fill: #17202a; text-anchor: middle; }
+  .node-sub { font-size: 9px; fill: #7f8c8d; text-anchor: middle; }
+  .panel-status { font-size: 20px; font-weight: 700; }
+  .kv { margin: .25rem 0; font-size: 14px; }
+  .kv b { color: #1a5276; }
+  .detail { background: #f4f6f8; border-left: 3px solid #b03a2e; padding: .5rem; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  #cooc { margin-top: .5rem; }
+  #cooc li { font-size: 13px; margin: .2rem 0; }
+  .rule { font-size: 11px; color: #95a5a6; margin-top: 1rem; border-top: 1px dashed #ccd; padding-top: .5rem; }
+</style>
+</head>
+<body>
+  <h1>Netbox — Site Topology</h1>
+  <div id="sites">Sites: </div>
+  <div class="legend">
+    <span><span class="dot" style="background:#1e8449"></span>active / verified_ready</span>
+    <span><span class="dot" style="background:#3498db"></span>reachable</span>
+    <span><span class="dot" style="background:#b26a00"></span>degraded</span>
+    <span><span class="dot" style="background:#b03a2e"></span>down</span>
+    <span><span class="dot" style="background:#95a5a6"></span>unknown</span>
+  </div>
+  <div id="stage">
+    <svg id="graph" width="720" height="560"></svg>
+    <div id="panel"><em>Click a node for its detail panel.</em></div>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+let DATA = null; // last full-status payload for the selected site
+let SITES = [];
+
+async function loadSites() {
+  const devices = await (await fetch('/api/devices')).json();
+  const seen = new Map();
+  for (const d of devices) if (!seen.has(d.site_id)) seen.set(d.site_id, d);
+  SITES = [...seen.keys()];
+  const bar = $('#sites');
+  bar.innerHTML = 'Sites: ';
+  // A ?site=<id> param deep-links a specific site (the demo seeds a known set);
+  // otherwise pick the site with the most recent activity so the default view
+  // is the live one, not site #1 in an arbitrary order.
+  const want = new URLSearchParams(location.search).get('site');
+  SITES.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.textContent = `Site ${i + 1} (${SITES[i].slice(0, 8)}…)`;
+    b.onclick = () => loadSite(s);
+    bar.appendChild(b);
+  });
+  const pick = (want && SITES.includes(want)) ? want : SITES[0];
+  if (pick) loadSite(pick);
+}
+
+async function loadSite(siteId) {
+  DATA = await (await fetch(`/api/sites/${siteId}/full-status`)).json();
+  renderGraph(DATA);
+  $('#panel').innerHTML = '<em>Click a node for its detail panel.</em>';
+}
+
+// Layout: EHR at center-top; interface-engine channels mid; dependent services
+// fanned below; infra services (internet/phone/printing) at the bottom row.
+function layout(services, channels) {
+  const W = 720, nodes = [];
+  const svc = Object.fromEntries(services.map(s => [s.service, s]));
+  const cx = W / 2;
+  nodes.push({ id: 'ehr', label: 'EHR', sub: svc.ehr?.tier_observed ?? '', x: cx, y: 90, status: svc.ehr?.status ?? 'unknown', kind: 'service', data: svc.ehr });
+  // interface engine channels
+  channels.forEach((c, i) => {
+    nodes.push({ id: 'ch:' + c.channel_id, label: c.display_name, sub: c.engine, x: 140 + i * 220, y: 220, status: c.status, kind: 'channel', data: c });
+  });
+  // clinical services row (depend on EHR / engine)
+  const clinical = ['adt', 'lab', 'pharmacy', 'imaging', 'eprescribe'];
+  clinical.forEach((s, i) => {
+    nodes.push({ id: s, label: s, sub: svc[s]?.tier_observed ?? '', x: 110 + i * 125, y: 370, status: svc[s]?.status ?? 'unknown', kind: 'service', data: svc[s] });
+  });
+  // infrastructure row
+  const infra = ['internet', 'phone', 'printing'];
+  infra.forEach((s, i) => {
+    nodes.push({ id: s, label: s, sub: '', x: 200 + i * 160, y: 500, status: svc[s]?.status ?? 'unknown', kind: 'service', data: svc[s] });
+  });
+  return nodes;
+}
+
+function statusClass(s) { return 'st-' + (s || 'unknown'); }
+
+function renderGraph(data) {
+  const svg = $('#graph'); svg.innerHTML = '';
+  const nodes = layout(data.services, data.channels);
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const edges = [];
+  // EHR connects to each channel; channels connect to clinical services;
+  // clinical services connect to EHR; infra connects to internet.
+  const ehr = byId['ehr'];
+  nodes.filter(n => n.kind === 'channel').forEach(ch => edges.push([ehr, ch]));
+  const chans = nodes.filter(n => n.kind === 'channel');
+  ['adt', 'lab', 'pharmacy', 'imaging', 'eprescribe'].forEach(s => {
+    const n = byId[s]; if (!n) return;
+    // clinical service links to EHR and to first channel (interface engine) if present
+    edges.push([ehr, n]);
+    if (chans[0]) edges.push([chans[0], n]);
+  });
+  ['phone', 'printing'].forEach(s => { const n = byId[s]; if (n) edges.push([byId['internet'], n]); });
+
+  // draw edges first (under nodes)
+  for (const [a, b] of edges) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', a.x); l.setAttribute('y1', a.y);
+    l.setAttribute('x2', b.x); l.setAttribute('y2', b.y);
+    // edge color follows the WORSE of the two endpoints' statuses
+    const worst = (a.status === 'down' || b.status === 'down') ? 'down'
+      : (a.status === 'degraded' || b.status === 'degraded') ? 'degraded' : '';
+    l.setAttribute('class', 'edge ' + worst);
+    svg.appendChild(l);
+  }
+  for (const n of nodes) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.style.cursor = 'pointer';
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 30);
+    c.setAttribute('class', statusClass(n.status));
+    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', 2);
+    g.appendChild(c);
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', n.x); t.setAttribute('y', n.y + 4); t.setAttribute('class', 'node-label');
+    t.textContent = n.label; g.appendChild(t);
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    s.setAttribute('x', n.x); s.setAttribute('y', n.y + 46); s.setAttribute('class', 'node-sub');
+    s.textContent = n.status; g.appendChild(s);
+    g.onclick = () => showPanel(n, data);
+    svg.appendChild(g);
+  }
+}
+
+// RULE-BASED detail panel. Every field is a direct lookup from the payload —
+// no generated prose, no inferred root cause. Co-occurring signals are listed
+// as correlated facts ("also degraded at this site"), never as causation.
+function showPanel(node, data) {
+  const p = $('#panel');
+  const d = node.data ?? {};
+  const tm = data.tier_meaning ?? {};
+  const tierText = d.tier_observed ? (tm[d.tier_observed] ?? d.tier_observed) : 'n/a';
+  const cooc = (data.degraded_or_down ?? []).filter(x => x.name !== node.label && x.name !== d.service);
+  p.innerHTML = `
+    <div class="panel-status" style="color:${statusColor(node.status)}">${node.label} — ${node.status}</div>
+    <div class="kv"><b>Kind:</b> ${node.kind}</div>
+    ${d.detail ? `<div class="kv"><b>Last check detail:</b><div class="detail">${escapeHtml(d.detail)}</div></div>` : ''}
+    <div class="kv"><b>Tier observed:</b> ${escapeHtml(tierText)}</div>
+    <div class="kv"><b>Time in this state:</b> ${d.time_in_state_s != null ? d.time_in_state_s + 's' : 'n/a'}</div>
+    ${d.check_name ? `<div class="kv"><b>Check:</b> ${escapeHtml(d.check_name)}${d.adapter ? ` (${escapeHtml(d.adapter)})` : ''}</div>` : ''}
+    ${d.latency_ms != null ? `<div class="kv"><b>Latency:</b> ${d.latency_ms}ms</div>` : ''}
+    ${d.occurred_at ? `<div class="kv"><b>Last observed:</b> ${escapeHtml(d.occurred_at)}</div>` : ''}
+    <div id="cooc"><b>Co-occurring signals at this site</b> (also degraded/down):
+      ${cooc.length ? '<ul>' + cooc.map(x => `<li>${escapeHtml(x.name)} — ${escapeHtml(x.status)} <i>(${x.kind})</i></li>`).join('') + '</ul>'
+                    : '<div style="color:#95a5a6">none — this is the only node currently degraded/down</div>'}
+    </div>
+    <div class="rule">Rule-based panel: fields above are recorded facts from the latest check_result(s). No root cause is inferred; co-occurring signals are correlation, not causation.</div>
+  `;
+}
+function statusColor(s) {
+  return { active: '#1e8449', verified_ready: '#1e8449', reachable: '#3498db', degraded: '#b26a00', down: '#b03a2e', unknown: '#95a5a6' }[s] ?? '#95a5a6';
+}
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+loadSites();
+</script>
+</body>
+</html>

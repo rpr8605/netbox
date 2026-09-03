@@ -23,7 +23,7 @@ const validate = ajv.compile(schema);
 // that's the whole point of the state.
 const ALLOWED_BY_STATE = {
   quarantine: new Set(['heartbeat']),
-  active: new Set(['check_result', 'hl7_metadata', 'heartbeat', 'update_event']),
+  active: new Set(['check_result', 'hl7_metadata', 'heartbeat', 'update_event', 'security_signal']),
 };
 
 function deviceFromCert(req, reply) {
@@ -64,6 +64,12 @@ export default async function eventRoutes(app) {
     const ev = req.body;
     if (!validate(ev)) {
       return reply.code(400).send({ error: 'schema validation failed', details: validate.errors });
+    }
+    // Status-shape guardrail for Step 1: security_signal carries signal/severity
+    // and MUST NOT also carry the up/down status enum — collapsing these distorts
+    // the Fleet Console's "unusual event vs. up/down" boundary (see schema desc).
+    if (ev.kind === 'security_signal' && ev.status !== undefined) {
+      return reply.code(400).send({ error: 'security_signal events must not carry `status`' });
     }
     if (ev.device_id !== device.device_id) {
       // Cert identity is authoritative; a device cannot report as another device.

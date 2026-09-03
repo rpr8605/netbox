@@ -1,0 +1,13 @@
+{
+  "profile_id": "va-vista-cprs",
+  "vendor": "VA (VistA/CPRS)",
+  "vendor_note": "HL7v2 passive tap only — the only DIVIDED-bed federal segment: many VA facilities still run VistA/CPRS with sole HL7v2. Netbox's net-check adapter gives L0-L2 against the MLLP endpoint, HL7 signal comes from the passive sidecar (spec §9 step . Existen Legion ad/observ channel). Lighthouse (VA's FHIR/CLOUD EHR overhaul) exists and deserves a future dedicated profile, bu there is no live site verified yet; treat this as a documented extension point, not a wired integration.",
+  "checks": [
+    {
+      "name": "mllp-listener-tcp",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "vista.example-hospital.local", "port": 2575, "tls": false }
+    }
+  ]
+}

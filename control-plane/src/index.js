@@ -21,6 +21,14 @@ import enrollRoutes from './routes/enroll.js';
 import deviceRoutes from './routes/devices.js';
 import eventRoutes from './routes/events.js';
 import retrustRoutes from './routes/retrust.js';
+import channelRoutes from './routes/channels.js';
+import alertRoutes from './routes/alerts.js';
+import supportRoutes, { sweepSupportSessions } from './routes/support.js';
+import topologyViewRoutes from './routes/topology_view.js';
+import { sweepEscalations } from './alerting.js';
+import { deliver } from './deliver.js';
+import { appendAudit, listAudit } from './db.js';
+import { requirePerm } from './rbac.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 9100);
@@ -79,8 +87,29 @@ await app.register(enrollRoutes);
 await app.register(deviceRoutes);
 await app.register(eventRoutes);
 await app.register(retrustRoutes);
+await app.register(channelRoutes);
+await app.register(alertRoutes);
+await app.register(supportRoutes);
+await app.register(topologyViewRoutes);
+
+// Audit log read — security-auditor and operations-manager only. Read-only by
+// design: there is no route that mutates audit_log, and the db triggers make
+// UPDATE/DELETE raise.
+app.get('/api/audit', { preHandler: requirePerm('audit:read', appendAudit) }, async (req) => {
+  return listAudit(Number(req.query?.limit ?? 100));
+});
 
 app.get('/api/health', async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
+
+// Escalation sweep: any open alert past its ack window escalates to the next
+// tier. Support-session sweep: any session past its expires_at is closed.
+// Both run on a short timer so a missed ack / expired tunnel is enforced by
+// the system, not by someone watching a dashboard.
+const SWEEP_MS = Number(process.env.SWEEP_INTERVAL_MS ?? 5000);
+setInterval(() => {
+  sweepEscalations({ deliver: (c, a) => deliver(c, a, app.config ?? {}) }).catch(() => {});
+  sweepSupportSessions();
+}, SWEEP_MS);
 
 await app.listen({ port: PORT, host: '0.0.0.0' });
 app.log.info(`control plane listening on :${PORT}; CA fingerprint ${root.fingerprint}`);

@@ -16,10 +16,19 @@ done
 kpartx -av "$LOOP" >/dev/null
 TM=$(mktemp -d)
 mount -o ro "/dev/mapper/$(basename "$LOOP")p3" "$TM"
-echo "== / =="; ls -l "$TM/root" | grep -E "vmlinuz|initrd|boot|sbin" || true
-echo "== /boot =="; ls -l "$TM/root/boot" | head -20 || true
-echo "== /sbin =="; ls -l "$TM/root/sbin" | head -5 || true
-echo "== /usr/sbin/init =="; ls -l "$TM/root/usr/sbin/init" || true
+echo "== / =="; ls -l "$TM" | grep -E "vmlinuz|initrd|boot|sbin" || true
+echo "== /boot =="; ls -l "$TM/boot" | head -20 || true
+echo "== /sbin =="; ls -l "$TM/sbin" | head -5 || true
+echo "== /usr/sbin/init =="; ls -l "$TM/usr/sbin/init" || true
+echo "== systemd wants =="; ls -l "$TM/etc/systemd/system/multi-user.target.wants/" 2>/dev/null | head -20 || true
+echo "== agent dir (recursive) =="
+ls -lR "$TM/opt/netbox-agent/" 2>/dev/null || true
+echo "== required agent files present? =="
+for f in agent.js provision.js \
+         lib/graph.js lib/post_event.js lib/signal_emit.js lib/backup_risk.js \
+         lib/enroll.js lib/issue_cert.js lib/tpm.js; do
+  if [ -f "$TM/opt/netbox-agent/$f" ]; then echo "  OK   $f"; else echo "  MISS $f"; fi
+done
 umount "$TM"
 kpartx -dv "$LOOP" >/dev/null 2>&1 || true
 losetup -d "$LOOP"

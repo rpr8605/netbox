@@ -7,9 +7,14 @@ import forge from 'node-forge';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 
-export const RENEW_FRACTION = 0.55; // renew at ~55% of TTL; must hold <1 and >~0.5
+// Renew at ~55% of cert TTL: >~0.5 so a failed attempt leaves real time to
+// retry, <1 so we never ride the expiry edge. Both bounds must hold.
+export const RENEW_FRACTION = 0.55;
+// Success statuses across step-ca and control-plane endpoints (both are used).
 export const HTTP_OK = [200, 201];
 
+// Read deployment identity from env. Returns nulls rather than throwing so
+// first boot can distinguish "not yet provisioned" from a crash.
 export function loadEnv() {
   return {
     cp: process.env.CONTROL_PLANE_URL,
@@ -19,6 +24,8 @@ export function loadEnv() {
   };
 }
 
+// Minimal JSON request helper; the agent/dispatcher is injected so the mTLS
+// path and test fakes share one call shape.
 export async function http(agent, method, url, body) {
   return agent({ method, url, body: body ? JSON.stringify(body) : undefined,
                  headers: body ? { 'content-type':'application/json' } : undefined });

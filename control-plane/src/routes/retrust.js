@@ -18,10 +18,25 @@ import forge from 'node-forge';
 import { getDevice, createRetrustChallenge, consumeRetrustChallenge } from '../db.js';
 import { mintStepCaToken, caBootstrap } from '../ca.js';
 
+// SHA-256 of a public key's DER encoding — the value compared against the
+// devices.device_key_fp pin set once at enrollment. DER is hashed, not PEM
+// text, because PEM armor/whitespace can differ for the SAME key while DER is
+// canonical; a text-level hash would false-reject the rightful key and lock a
+// legitimate device out of re-trust. This is step (a) of the header's trust
+// argument — do not weaken the comparison.
+// SHA-256 of a public key's DER encoding — the value compared against the
+// devices.device_key_fp pin set once at enrollment. DER is hashed, not PEM
+// text, because PEM armor/whitespace can differ for the SAME key while DER is
+// canonical; a text-level hash would false-reject the rightful key and lock a
+// legitimate device out of re-trust. This is step (a) of the header's trust
+// argument — do not weaken the comparison.
+// forge 1.4 changed publicKeyToAsn1() to no longer expose getBytes(), which
+// silently breaks every fingerprint check; node:crypto's export({type:'spki',
+// form:'der'}) is canonical and stable, so it replaced forge here.
 export function publicKeyFingerprint(publicKeyPem) {
-  const cert = forge.pki.publicKeyFromPem(publicKeyPem);
-  const der = forge.pki.publicKeyToAsn1(cert).getBytes();
-  return crypto.createHash('sha256').update(der, 'binary').digest('hex');
+  const key = crypto.createPublicKey(publicKeyPem);
+  const der = key.export({ format: 'der', type: 'spki' });
+  return crypto.createHash('sha256').update(der).digest('hex');
 }
 
 export default async function retrustRoutes(app) {
@@ -76,6 +91,13 @@ export default async function retrustRoutes(app) {
   });
 }
 
+// Proof-of-possession check — step (b) of the header's trust argument: verify
+// `signatureB64` over the exact string `netbox-retrust-v1\0device_id\0challenge`
+// with the already fingerprint-pinned public key. Deliberately fails CLOSED:
+// any parse/verify error returns false rather than throwing, so malformed input
+// can never become an accidental allow. The versioned `\0`-separated prefix
+// binds the signature to this flow so one captured in any other context can't
+// be replayed here.
 export function verifySignature(publicKeyPem, payload, signatureB64) {
   try {
     const pub = forge.pki.publicKeyFromPem(publicKeyPem);

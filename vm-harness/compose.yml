@@ -5,10 +5,15 @@ services:
       context: ..
       dockerfile: vm-harness/Dockerfile
     privileged: true
-    network_mode: host
     volumes:
       - ../out:/out
       - vm-serial:/tmp
+    networks:
+      - default
+      - netbox_default   # reach the real control-plane for enrollment
     command: ["bash", "/work/vm-harness/run_qemu.sh", "${RELEASE_VERSION:-0.1.0}"]
+networks:
+  netbox_default:
+    external: true
 volumes:
   vm-serial:

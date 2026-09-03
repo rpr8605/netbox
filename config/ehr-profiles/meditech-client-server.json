@@ -1,0 +1,13 @@
+{
+  "profile_id": "meditech-client-server",
+  "vendor": "MEDITECH",
+  "vendor_note": "Client-Server (legacy 6.x) tier — HL7v2-only, no modern API (EHR spec §5, row 3: L0–L2 + HL7v2 tap; many CAHs still run this). Checks: generic L1 on the MLLP listener + optional L2 if the site enables TLS on 2575 (uncommon — flag sites that don't, per the tier table). HL7v2 signal comes from the passive sidecar.",
+  "checks": [
+    {
+      "name": "mllp-listener-tcp",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "ehr.example-hospital.local", "port": 2575, "tls": false }
+    }
+  ]
+}

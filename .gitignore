@@ -12,3 +12,22 @@ pki-config/config/secrets.json
 pki-config/db/
 control-plane/data/
 device-sim/data/
+out/release-sign/
+
+# Build artifacts + scratch: the pipeline regenerates these on every build;
+# they are large binaries and dev logs, not source. Never commit them.
+out/*.raw
+out/*.img
+out/**/*.raucb
+out/**/*.ext4
+out/**/SHA256SUMS
+out/*.png
+*.log
+data/
+__pycache__/
+vm-harness/_*.sh
+
+# GENERATED at build time by pipeline/build.js from repo-root netbox-agent/ —
+# the single source of truth for the device agent. Never commit a hand-maintained
+# copy here; it previously drifted and shipped images missing the signal code.
+pipeline/rootfs_files/

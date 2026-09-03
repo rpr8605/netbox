@@ -6,7 +6,9 @@
  * Outputs: schemas/typescript.ts (TS, enums as literal unions where practical),
  *          schemas/python.py (TypedDict literals).
  */
-const fs = require('fs');
+const { createRequire } = await import('node:module');
+import fs from 'node:fs';
+const require = createRequire(import.meta.url);
 const schema = JSON.parse(fs.readFileSync('schemas/netbox_event.schema.json', 'utf8'));
 
 // ---------- TypeScript ----------

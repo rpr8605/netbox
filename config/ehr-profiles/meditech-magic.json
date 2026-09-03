@@ -1,0 +1,13 @@
+{
+  "profile_id": "meditech-magic",
+  "vendor": "MEDITECH",
+  "vendor_note": "Magic tier — proprietary MTI-style APIs, not HL7-native in all deployments (EHR spec §5, row 3: Magic = L0–L2 + HL7v2 tap if enabled; no FHIR). Checks: generic L1/L2 on the EHR app server only; HL7v2 signal comes from the passive sidecar, not this profile.",
+  "checks": [
+    {
+      "name": "ehr-host-tls",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "ehr.example-hospital.local", "port": 443, "tls": true }
+    }
+  ]
+}

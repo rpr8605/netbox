@@ -1,0 +1,20 @@
+{
+  "profile_id": "athenahealth",
+  "vendor": "athenahealth",
+  "vendor_note": "athenaOne cloud-native; API/maturity rows in §5 row 8 hold (per live developer portal docs: 2-legged OAuth token, FHIR on USCDI route plus SMART App Launch 2-legged for certified APIs). FHIR-first 'L0-L4 realistic' without the HL7-only caveat that most other vendors carry. Synthetic endpoints only; per-site values set at onboarding.",
+  "checks": [
+    {
+      "name": "ehr-fhir-poll",
+      "service": "ehr",
+      "adapter": "fhir",
+      "params": {
+        "base_url": "https://ehr.example-hospital.local/fhir/r4",
+        "auth": { "method": "client_credentials",
+                  "token_url": "https://ehr.example-hospital.local/oauth/token",
+                  "client_id": "SYNTHETIC_CLIENT_ID",
+                  "client_secret": "SYNTHETIC_CLIENT_SECRET" },
+        "resource_read": { "resource_type": "Patient", "id": "synthetic-001" }
+      }
+    }
+  ]
+}

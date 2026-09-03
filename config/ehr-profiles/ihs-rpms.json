@@ -1,0 +1,13 @@
+{
+  "profile_id": "ihs-rpms",
+  "vendor": "IHS/Tribal (RPMS)",
+  "vendor_note": "RPMS at IHS/tribal facilities: HL7v2 passive tap pattern, net-check giving L0-L2 against the MLLP endpoint, HL7 from the passive sidecar. IHS's HIE (InterSystems HealthShare, 'Four Directions Hub') is NOT a supported admin-API-reader target yet — don't replace this with a HealthShare-specific check; add a generic network check (L0-L2) against a confirmed endpoint, per the same 'confirm per site, don't build ahead of demand' rule.",
+  "checks": [
+    {
+      "name": "mllp-listener-tcp",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "rpms.example-hospital.local", "port": 2575, "tls": false }
+    }
+  ]
+}

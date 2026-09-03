@@ -40,17 +40,39 @@ async function main() {
   }
 
   if (cmd === 'save') {
+    // "Save as standalone install file": export the ALREADY-BUILT artifact —
+    // same image, second path (spec Phase 3 step 5). Does NOT rebuild; it
+    // copies out/<version>/netbox-disk.img and verifies the copy's SHA256
+    // against the source so the standalone file is provably the same artifact.
     const version = args[0] ?? manifest().version;
-    execFileSync('node', ['pipeline/build.js'], { stdio: 'inherit', env: { ...process.env, RELEASE_VERSION: version } });
-    console.log(`standalone install file written under out/${version}`);
+    const src = `out/${version}/netbox-disk.img`;
+    if (!fs.existsSync(src)) { console.error(`no built image at ${src} — run the pipeline first`); process.exit(1); }
+    const dest = `out/${version}/netbox-install-${version}.img`;
+    fs.copyFileSync(src, dest);
+    // Stream the SHA256 — the image is multi-GB; readFileSync throws >2 GiB.
+    const { createHash } = await import('node:crypto');
+    const sum = p => new Promise((res, rej) => {
+      const h = createHash('sha256');
+      fs.createReadStream(p).on('data', c => h.update(c)).on('end', () => res(h.digest('hex'))).on('error', rej);
+    });
+    if (await sum(src) !== await sum(dest)) { console.error('save: sha256 mismatch after copy'); process.exit(1); }
+    console.log(`standalone install file: ${dest}`);
+    console.log(`sha256 verified identical to ${src}`);
     return;
   }
 
   if (cmd === 'flash') {
     const target = args.find(a => a.startsWith('--target='))?.slice(9);
     if (!target) { console.error('flash requires --target=DEVICE'); process.exit(1); }
-    const ps = execSync('wmic diskdrive get DeviceId,Model,Size --format:csv', { shell: 'cmd.exe' }).toString();
-    console.log(ps);
+    // Device listing is for real drives; a file target (QEMU/dev path) skips
+    // the wmic enumeration but keeps the unmissable confirm gate below.
+    const isFile = /\.(raw|img)$/.test(target) || fs.existsSync(target);
+    if (!isFile) {
+      const ps = execSync('wmic diskdrive get DeviceId,Model,Size --format:csv', { shell: 'cmd.exe' }).toString();
+      console.log(ps);
+    } else {
+      console.log(`file target (QEMU/dev path): ${target}`);
+    }
     const ok = await confirmHard(target);
     if (!ok) { console.error('target not confirmed; aborting'); process.exit(1); }
     const version = args.find(a => /^v?\d/.test(a)) ?? manifest().version;

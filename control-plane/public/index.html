@@ -29,6 +29,28 @@
     </tr></thead>
     <tbody></tbody>
   </table>
+
+  <h2>Channel registry</h2>
+  <table id="channels">
+    <thead><tr><th>channel_id</th><th>display_name</th><th>engine</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <form id="register">
+    <input id="cid" placeholder="channel_id" required>
+    <input id="cname" placeholder="display name" required>
+    <input id="ceng" placeholder="engine (e.g. mirth)" required>
+    <button type="submit">Register</button>
+  </form>
+
+  <h2>Topology</h2>
+  <p>Per-site view groups newest check_result per channel. The cross-site
+     rollup is restricted to <code>operations-manager</code> / <code>support-technician</code> — a stub gate
+     lives at the route, not here.</p>
+  <form id="siteq">
+    <input id="siteid" placeholder="site_id (e.g. 6634…fa858)" required>
+    <button type="submit">View site topology</button>
+  </form>
+  <div id="topo"></div>
   <script>
     async function load() {
       const devices = await (await fetch('/api/devices')).json();
@@ -48,7 +70,41 @@
         };
         tb.appendChild(tr);
       }
+      // channels registry + form
+      const channels = await (await fetch('/api/channels')).json();
+      const cb = document.querySelector('#channels tbody');
+      cb.innerHTML = '';
+      for (const c of channels) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${c.channel_id}</td><td>${c.display_name}</td><td>${c.engine}</td>`;
+        cb.appendChild(tr);
+      }
     }
+    document.querySelector('#register').onsubmit = async (e) => {
+      e.preventDefault();
+      const r = await fetch('/api/channels', { method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ channel_id: document.querySelector('#cid').value,
+                               display_name: document.querySelector('#cname').value,
+                               engine: document.querySelector('#ceng').value }) });
+      if (!r.ok) alert((await r.json()).error);
+      document.querySelector('#cid').value = document.querySelector('#cname').value = document.querySelector('#ceng').value = '';
+      load();
+    };
+    document.querySelector('#siteq').onsubmit = async (e) => {
+      e.preventDefault();
+      const siteId = document.querySelector('#siteid').value;
+      const t = await (await fetch(`/api/sites/${siteId}/topology`)).json();
+      const div = document.querySelector('#topo');
+      div.innerHTML = '';
+      if (!t.channels?.length) { div.textContent = 'No channel activity for this site yet.'; return; }
+      for (const ch of t.channels) {
+        const p = document.createElement('p');
+        p.innerHTML = `<b>${ch.display_name}</b> [${ch.engine}] — status: <span class="${ch.newest?.status}">${ch.newest?.status ?? 'no data'}</span>;
+          <small>${ch.newest?.detail ?? ''} · ${ch.newest?.occurred_at ?? ''}</small>`;
+        div.appendChild(p);
+      }
+    };
     load(); setInterval(load, 5000);
   </script>
 </body>

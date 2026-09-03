@@ -1,0 +1,13 @@
+{
+  "profile_id": "trubridge-evident",
+  "vendor": "TruBridge (Evident/Thrive)",
+  "vendor_note": "Formerly CPSI Evident (EHR spec §5, row 4): HL7v2 standard; FHIR support varies by deployment vintage — confirm per site rather than assuming. Checks: generic L1/L2 on the EHR host; FHIR entries are added only where onboarding confirmed FHIR, per 'L0–L2 guaranteed, L3/L4 where FHIR is present'.",
+  "checks": [
+    {
+      "name": "ehr-host-tls",
+      "service": "ehr",
+      "adapter": "net",
+      "params": { "host": "ehr.example-hospital.local", "port": 443, "tls": true }
+    }
+  ]
+}
