@@ -124,7 +124,7 @@ async function partC() {
   const os = await import('node:os');
   const path = await import('node:path');
   const fs = await import('node:fs');
-  const tmpDb = path.join(os.tmpdir(), `netbox-audit-test-${crypto.randomUUID()}.db`);
+  const tmpDb = path.join(os.tmpdir(), `beacon-relay-audit-test-${crypto.randomUUID()}.db`);
   process.env.DB_PATH = tmpDb;
   const { db, appendAudit } = await import('../control-plane/src/db.js');
   appendAudit({ auditId: 'tamper-target', actor: 'test', action: 'test.entry' });

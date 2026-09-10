@@ -13,7 +13,7 @@ cat > "$TARGET/etc/fstab" <<'EOF'
 # container and mounts it itself (and mkfs's it on first boot). A fstab entry
 # would race the LUKS open via data.mount and double-mount.
 EOF
-echo netbox > "$TARGET/etc/hostname"
+echo beacon-relay > "$TARGET/etc/hostname"
 
 # Root mounts read-only (fstab: /dev/sda3 ro), so any mountpoint the system
 # needs at runtime must exist in the image NOW — you cannot mkdir on a ro root
@@ -30,10 +30,10 @@ Name=en*
 DHCP=yes
 EOF
 
-# First-boot config: baked into the rootfs at /etc/netbox.env (NOT /boot —
+# First-boot config: baked into the rootfs at /etc/beacon-relay.env (NOT /boot —
 # /boot is the unencrypted keyfile partition and would shadow the rootfs copy).
 mkdir -p "$TARGET/etc"
 {
   echo "CONTROL_PLANE_URL=${CONTROL_PLANE_URL:-https://10.0.2.2:9100}"
   echo "CA_URL=${CA_URL:-https://10.0.2.2:9000}"
-} > "$TARGET/etc/netbox.env"
+} > "$TARGET/etc/beacon-relay.env"

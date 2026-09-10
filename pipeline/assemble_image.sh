@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # pipeline/assemble_image.sh — turn /out/<version> artifacts into a single
-# flashable disk image (netbox-disk.img) using the declarative partition map.
+# flashable disk image (beacon-relay-disk.img) using the declarative partition map.
 # Requires a privileged container (loop devices, mount). Layout breaks MUST
-# stay in pipeline/manifests/netbox-partition-map.json, not here.
+# stay in pipeline/manifests/beacon-relay-partition-map.json, not here.
 set -euo pipefail
 VERSION=${1:?version}
 SIZE_MB=${2:-5120}
-IMG=/out/$VERSION/netbox-disk.img
-MAP=/work/pipeline/manifests/netbox-partition-map.json
+IMG=/out/$VERSION/beacon-relay-disk.img
+MAP=/work/pipeline/manifests/beacon-relay-partition-map.json
 
 # Loop exhaustion dead letters: dead `docker compose ... run` containers hold
 # loops even after exit, so a naive losetup -f resurrects failures forever.
@@ -110,9 +110,9 @@ initrd /initrd.img-6.1.0-50-amd64
 boot
 EOF
     cat > /tmp/grub.embed.cfg <<'EOF'
-echo NETBOX_EMBED_START
+echo BEACON_RELAY_EMBED_START
 ls (hd0,gpt1)/grub/
-echo NETBOX_EMBED_END
+echo BEACON_RELAY_EMBED_END
 configfile (hd0,gpt1)/grub/grub.cfg
 EOF
     grub-mkimage -O x86_64-efi -c /tmp/grub.embed.cfg -p "(hd0,gpt1)/grub" -o /tmp/grubx64.efi \

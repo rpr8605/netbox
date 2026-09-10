@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * audit_docs.js — deterministic documentation-coverage check for Netbox, no AI involved.
+ * audit_docs.js — deterministic documentation-coverage check for Beacon Relay, no AI involved.
  *
  * What it does: walks the repo, and for every .js/.ts file (skipping node_modules, .git,
- * dist/build output, and markdown), checks two things per Section 10 of NETBOX_BUILD_SPEC.md:
+ * dist/build output, and markdown), checks two things per Section 10 of BEACON_RELAY_BUILD_SPEC.md:
  *   1. Does the file have a header comment block before its first real line of code?
  *   2. For each exported function/class/const it can find, is there a comment immediately
  *      above the declaration?

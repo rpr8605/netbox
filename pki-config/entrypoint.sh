@@ -10,11 +10,11 @@ STEPPATH="${STEPPATH:-/home/step}"
 mkdir -p "$STEPPATH/certs" "$STEPPATH/secrets" "$STEPPATH/db"
 if [ ! -f "$STEPPATH/certs/root_ca.crt" ]; then
   step certificate create --no-password --insecure --profile root-ca \
-    "Netbox Demo Root CA" \
+    "Beacon Relay Demo Root CA" \
     "$STEPPATH/certs/root_ca.crt" "$STEPPATH/secrets/root_ca_key"
   step certificate create --no-password --insecure --profile intermediate-ca \
     --ca "$STEPPATH/certs/root_ca.crt" --ca-key "$STEPPATH/secrets/root_ca_key" \
-    "Netbox Demo Intermediate CA" \
+    "Beacon Relay Demo Intermediate CA" \
     "$STEPPATH/certs/intermediate_ca.crt" "$STEPPATH/secrets/intermediate_ca_key"
   echo "step-ca: root + intermediate CA material generated"
 fi

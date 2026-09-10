@@ -5,7 +5,7 @@
 //
 // Trust argument (deliberate — do not weaken silently):
 //   - Expired cert fails TLS, so possession is proven by signing
-//     `netbox-retrust-v1\0device_id\0challenge` and sending the public key PEM
+//     `beacon-relay-retrust-v1\0device_id\0challenge` and sending the public key PEM
 //     alongside. The server (a) hashes the public key's DER and compares to
 //     the pinned fingerprint (set once at enrollment redeem), and (b) verifies
 //     the signature with that exact public key.
@@ -80,7 +80,7 @@ export default async function retrustRoutes(app) {
     }
 
     // (b) verify the signature over device_id + challenge with that key
-    const payload = `netbox-retrust-v1\0${device_id}\0${challenge}`;
+    const payload = `beacon-relay-retrust-v1\0${device_id}\0${challenge}`;
     if (!verifySignature(public_key_pem, payload, signature_b64)) {
       return reply.code(403).send({ error: 'proof-of-possession failed' });
     }
@@ -92,7 +92,7 @@ export default async function retrustRoutes(app) {
 }
 
 // Proof-of-possession check — step (b) of the header's trust argument: verify
-// `signatureB64` over the exact string `netbox-retrust-v1\0device_id\0challenge`
+// `signatureB64` over the exact string `beacon-relay-retrust-v1\0device_id\0challenge`
 // with the already fingerprint-pinned public key. Deliberately fails CLOSED:
 // any parse/verify error returns false rather than throwing, so malformed input
 // can never become an accidental allow. The versioned `\0`-separated prefix

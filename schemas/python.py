@@ -12,7 +12,7 @@ class HL7Metadata(TypedDict, total=False):
     correlation_token: Optional[str]
 
 
-class NetboxEvent(TypedDict, total=False):
+class BeaconRelayEvent(TypedDict, total=False):
     event_id: str
     device_id: str
     site_id: str

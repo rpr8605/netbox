@@ -42,12 +42,12 @@ async function main() {
   if (cmd === 'save') {
     // "Save as standalone install file": export the ALREADY-BUILT artifact —
     // same image, second path (spec Phase 3 step 5). Does NOT rebuild; it
-    // copies out/<version>/netbox-disk.img and verifies the copy's SHA256
+    // copies out/<version>/beacon-relay-disk.img and verifies the copy's SHA256
     // against the source so the standalone file is provably the same artifact.
     const version = args[0] ?? manifest().version;
-    const src = `out/${version}/netbox-disk.img`;
+    const src = `out/${version}/beacon-relay-disk.img`;
     if (!fs.existsSync(src)) { console.error(`no built image at ${src} — run the pipeline first`); process.exit(1); }
-    const dest = `out/${version}/netbox-install-${version}.img`;
+    const dest = `out/${version}/beacon-relay-install-${version}.img`;
     fs.copyFileSync(src, dest);
     // Stream the SHA256 — the image is multi-GB; readFileSync throws >2 GiB.
     const { createHash } = await import('node:crypto');

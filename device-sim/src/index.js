@@ -1,5 +1,5 @@
 // device-sim/src/index.js
-// Responsibility: simulate one Netbox device through the full Phase 1 flow and
+// Responsibility: simulate one Beacon Relay device through the full Phase 1 flow and
 // assert the trust boundaries hold. This file IS the Phase 1 end-to-end test —
 // it exits 0 only if every step, including the negative cases, behaves as speced.
 //
@@ -181,7 +181,7 @@ async function main() {
   check('retrust challenge issued', ch.status === 200 && !!ch.body.challenge,
     `status=${ch.status} body=${JSON.stringify(ch.body)}`);
 
-  const payload = `netbox-retrust-v1\0${DEVICE_ID}\0${ch.body.challenge}`;
+  const payload = `beacon-relay-retrust-v1\0${DEVICE_ID}\0${ch.body.challenge}`;
   const sig = signPayload(deviceKeyPem, payload);
   const rt = await api('POST', '/api/enroll/retrust', {
     device_id: DEVICE_ID,

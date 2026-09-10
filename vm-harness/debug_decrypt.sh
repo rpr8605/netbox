@@ -4,7 +4,7 @@
 # Used to isolate why decrypt-data.service fails in QEMU (verified separately).
 set -euo pipefail
 VERSION=${1:-0.1.0}
-cp "/out/$VERSION/netbox-disk.img" /tmp/probe.img
+cp "/out/$VERSION/beacon-relay-disk.img" /tmp/probe.img
 losetup -D >/dev/null 2>&1 || true
 LOOP=""
 for n in $(seq 0 255); do

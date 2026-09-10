@@ -1,8 +1,8 @@
 {
-  "name": "netbox",
+  "name": "beacon-relay",
   "private": true,
   "type": "module",
-  "description": "Netbox remote hospital infrastructure monitoring appliance — Phase 1 workspace.",
+  "description": "Beacon Relay remote hospital infrastructure monitoring appliance — Phase 1 workspace.",
   "scripts": {
     "gen-types": "node scripts/gen_schema.js",
     "pki-seed": "node scripts/pki_seed.js",

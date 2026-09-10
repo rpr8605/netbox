@@ -9,6 +9,6 @@ COPY control-plane/package.json control-plane/package-lock.json* ./
 RUN npm install --omit=dev
 COPY control-plane/src ./src
 COPY control-plane/public ./public
-COPY schemas/netbox_event.schema.json ./schemas/netbox_event.schema.json
+COPY schemas/beacon_relay_event.schema.json ./schemas/beacon_relay_event.schema.json
 EXPOSE 9100
 CMD ["node", "src/index.js"]

@@ -16,8 +16,8 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import { request, Agent } from '../control-plane/node_modules/undici/index.js';
-import { loadProfile, runProfile } from '../netbox-agent/lib/ehr_check.js';
-import { runFhirCheck } from '../netbox-agent/lib/fhir_r4.js';
+import { loadProfile, runProfile } from '../beacon-relay-agent/lib/ehr_check.js';
+import { runFhirCheck } from '../beacon-relay-agent/lib/fhir_r4.js';
 import fs from 'node:fs';
 
 const CP = process.env.CONTROL_PLANE_URL ?? 'https://localhost:9100';

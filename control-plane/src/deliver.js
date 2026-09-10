@@ -1,6 +1,6 @@
 // control-plane/src/deliver.js
 // Responsibility: the delivery rails for the alerting engine (spec §6) —
-// Twilio SMS/voice, SES/SendGrid email, Slack/Teams webhook. Netbox owns the
+// Twilio SMS/voice, SES/SendGrid email, Slack/Teams webhook. Beacon Relay owns the
 // escalation DECISIONS (alerting.js); this file is the proven plumbing that
 // actually sends. Each channel is a small function over the injected config;
 // a channel with no credentials configured returns {skipped:true} so a

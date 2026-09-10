@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DB_PATH = process.env.DB_PATH ?? './data/netbox.db';
+const DB_PATH = process.env.DB_PATH ?? './data/beacon-relay.db';
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 // The single process-wide SQLite handle (WAL + foreign keys on). Every route

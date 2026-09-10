@@ -14,7 +14,7 @@ import addFormats from 'ajv-formats';
 import fs from 'node:fs';
 import { getDevice, insertEvent, touchDevice, recordCertPresentation } from '../db.js';
 
-const schema = JSON.parse(fs.readFileSync('./schemas/netbox_event.schema.json', 'utf8'));
+const schema = JSON.parse(fs.readFileSync('./schemas/beacon_relay_event.schema.json', 'utf8'));
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(schema);

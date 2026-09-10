@@ -13,11 +13,11 @@ import fs from 'node:fs';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import Ajv from '../control-plane/node_modules/ajv/dist/ajv.js';
 import addFormats from '../control-plane/node_modules/ajv-formats/dist/index.js';
-import { loadProfile, runProfile } from '../netbox-agent/lib/ehr_check.js';
-import { runNetCheck } from '../netbox-agent/lib/net_checks.js';
-import { setMockPostEvent } from '../netbox-agent/lib/post_event.js';
+import { loadProfile, runProfile } from '../beacon-relay-agent/lib/ehr_check.js';
+import { runNetCheck } from '../beacon-relay-agent/lib/net_checks.js';
+import { setMockPostEvent } from '../beacon-relay-agent/lib/post_event.js';
 
-const schema = JSON.parse(fs.readFileSync('schemas/netbox_event.schema.json', 'utf8'));
+const schema = JSON.parse(fs.readFileSync('schemas/beacon_relay_event.schema.json', 'utf8'));
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(schema);
@@ -181,7 +181,7 @@ async function main() {
   check('FHIR: metadata + scoped read -> active/L3', r1.results[0].status === 'active' && r1.results[0].tier === 'L3', JSON.stringify(r1.results[0].detail));
 
   // backend_services auth: signed assertion verified by stub
-  const { runFhirCheck } = await import('../netbox-agent/lib/fhir_r4.js');
+  const { runFhirCheck } = await import('../beacon-relay-agent/lib/fhir_r4.js');
   const p2 = { base_url: `http://127.0.0.1:${fhirPort}/fhir/r4`,
                auth: { method: 'backend_services', token_url: `http://127.0.0.1:${fhirPort}/oauth/token`,
                        client_id: 'synthetic-client', private_key: forge.pki.privateKeyToPem(fhirKeys.privateKey) } };
@@ -202,7 +202,7 @@ async function main() {
   check('FHIR endpoint down -> down', r4.status === 'down', r4.detail);
 
   // ---- Mirth across HTTP ---------------------------------------------------
-  const { runMirthCheck } = await import('../netbox-agent/lib/mirth_admin.js');
+  const { runMirthCheck } = await import('../beacon-relay-agent/lib/mirth_admin.js');
   const mirthServer = startMirthStub();
   const mirthPort = await listen(mirthServer);
   const m1 = await runOne('mirth', 'healthy', 'adt', { base_url: `http://127.0.0.1:${mirthPort}/api`, username: 'admin', password: 'adminpass' });

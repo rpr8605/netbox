@@ -4,7 +4,7 @@
 services:
   step-ca:
     image: smallstep/step-ca:latest
-    container_name: netbox-step-ca
+    container_name: beacon-relay-step-ca
     user: root
     entrypoint: ["sh", "/home/step/entrypoint.sh"]
     environment:
@@ -28,15 +28,15 @@ services:
     build:
       context: .
       dockerfile: control-plane/Dockerfile
-    container_name: netbox-control-plane
+    container_name: beacon-relay-control-plane
     environment:
       NODE_ENV: development
       PORT: 9100
       CA_URL: https://step-ca:9000
       CA_FINGERPRINT: ${CA_FINGERPRINT:-}
-      PROVISIONER_NAME: ${PROVISIONER_NAME:-netbox-device}
+      PROVISIONER_NAME: ${PROVISIONER_NAME:-beacon-relay-device}
       PROVISIONER_PRIVATE_JWK_PATH: /run/secrets/provisioner_private_jwk
-      DB_PATH: /data/netbox.db
+      DB_PATH: /data/beacon-relay.db
     volumes:
       - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
       - cp-data:/data
@@ -50,7 +50,7 @@ services:
     build:
       context: .
       dockerfile: device-sim/Dockerfile
-    container_name: netbox-device-sim
+    container_name: beacon-relay-device-sim
     environment:
       CONTROL_PLANE_URL: https://control-plane:9100
       CA_URL: https://step-ca:9000

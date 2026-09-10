@@ -10,7 +10,7 @@
 // RULE-BASED, NOT GENERATIVE: this view model returns STRUCTURED FACTS ONLY.
 // The detail panel renders them deterministically — no prose about WHY a node
 // is down, no inferred root cause. (EHR spec §11: explanation is Handoff's
-// job, not Netbox's.) The "co-occurring signals" list is a mechanical
+// job, not Beacon Relay's.) The "co-occurring signals" list is a mechanical
 // co-occurrence: other nodes at the SAME site currently degraded/down,
 // presented as facts without asserting causation.
 import { listEventsBySite, listChannels, getChannel } from '../db.js';

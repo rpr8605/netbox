@@ -10,7 +10,7 @@ import { SignJWT, importJWK } from 'jose';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 const CA_URL = process.env.CA_URL ?? 'https://localhost:9000';
-const PROV_NAME = process.env.PROVISIONER_NAME ?? 'netbox-device';
+const PROV_NAME = process.env.PROVISIONER_NAME ?? 'beacon-relay-device';
 const PRIV_PATH = process.env.PROVISIONER_PRIVATE_JWK_PATH ?? '../pki-config/provisioner/private_jwk.json';
 
 let _privKey = null;
@@ -28,7 +28,7 @@ async function provisionerKey() {
 export async function mintStepCaToken(deviceId) {
   const key = await provisionerKey();
   return await new SignJWT({ sub: deviceId })
-    .setProtectedHeader({ alg: 'ES256', kid: 'netbox-device', typ: 'JWT' })
+    .setProtectedHeader({ alg: 'ES256', kid: 'beacon-relay-device', typ: 'JWT' })
     .setIssuer(provName())
     .setAudience(`${CA_URL}/1.0/sign`)
     .setIssuedAt()

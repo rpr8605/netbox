@@ -3,5 +3,5 @@
 # confirm GPT data like ESP flags and filesystem types on the QEMU/OVMF path.
 set -euo pipefail
 VERSION=${1:?version}
-cp "/out/$VERSION/netbox-disk.img" /tmp/probe.img
+cp "/out/$VERSION/beacon-relay-disk.img" /tmp/probe.img
 parted -s /tmp/probe.img print free

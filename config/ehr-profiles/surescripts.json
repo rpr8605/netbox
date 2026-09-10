@@ -1,7 +1,7 @@
 {
   "profile_id": "surescripts",
   "vendor": "Surescripts (connectivity)",
-  "vendor_note": "Not an EHR — the national e-prescribing / medication-history network (EHR spec §6). Netbox is never the thing that originates or intercepts a real prescription transaction (that stays inside the EHR's certified e-prescribing module). What Netbox legitimately checks: network-path health (L0-L2 generic checks) to the site's configured Surescripts gateway endpoint, mapped onto the existing service: 'eprescribe' enum value. NOT a native Surescripts network integration (requires Surescripts' own vendor certification — explicitly out of scope).",
+  "vendor_note": "Not an EHR — the national e-prescribing / medication-history network (EHR spec §6). Beacon Relay is never the thing that originates or intercepts a real prescription transaction (that stays inside the EHR's certified e-prescribing module). What Beacon Relay legitimately checks: network-path health (L0-L2 generic checks) to the site's configured Surescripts gateway endpoint, mapped onto the existing service: 'eprescribe' enum value. NOT a native Surescripts network integration (requires Surescripts' own vendor certification — explicitly out of scope).",
   "checks": [
     {
       "name": "gateway-edge-tls",

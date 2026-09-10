@@ -5,7 +5,7 @@
 # keeps the RAUC slot labels and the actual GPT labels from drifting apart.
 set -euo pipefail
 TARGET=$1
-MAP=/work/pipeline/manifests/netbox-partition-map.json
+MAP=/work/pipeline/manifests/beacon-relay-partition-map.json
 jq -r '.partitions | to_entries[] | "PART_\(.key+1)_\(.value.role | gsub("[^A-Za-z0-9]";"_") | ascii_upcase)=\(.value.label)"' \
   "$MAP" > /tmp/partition.env
 echo "partition map staged:"

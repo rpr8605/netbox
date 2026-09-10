@@ -4,7 +4,7 @@
 # with data, not guesses. Keep as a permanent pipeline diagnostic.
 set -euo pipefail
 VERSION=${1:?version}
-cp "/out/$VERSION/netbox-disk.img" /tmp/probe.img
+cp "/out/$VERSION/beacon-relay-disk.img" /tmp/probe.img
 losetup -D >/dev/null 2>&1 || true
 LOOP=""
 for n in $(seq 0 255); do

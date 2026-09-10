@@ -9,8 +9,8 @@ import path from 'node:path';
 const version = process.env.RELEASE_VERSION ?? '0.1.0';
 
 // --- Stage agent source BEFORE any container step reads it -------------------
-// The repo-root netbox-agent/ is the SINGLE source of truth for the device
-// agent. pipeline/rootfs_files/opt/netbox-agent/ is a GENERATED artifact, not
+// The repo-root beacon-relay-agent/ is the SINGLE source of truth for the device
+// agent. pipeline/rootfs_files/opt/beacon-relay-agent/ is a GENERATED artifact, not
 // hand-maintained source — it was previously a manually-committed duplicate,
 // and it drifted: the rootfs tree was missing graph.js, post_event.js,
 // signal_emit.js, and backup_risk.js, so a built device image silently shipped
@@ -19,8 +19,8 @@ const version = process.env.RELEASE_VERSION ?? '0.1.0';
 // mounts /work. Plain recursive copy — never a symlink: this repo is developed
 // from Windows (PowerShell/WSL), and NTFS symlinks need elevation/Developer
 // Mode and break under docker bind mounts and cross-OS git checkouts.
-const AGENT_SRC = 'netbox-agent';
-const AGENT_DST = 'pipeline/rootfs_files/opt/netbox-agent';
+const AGENT_SRC = 'beacon-relay-agent';
+const AGENT_DST = 'pipeline/rootfs_files/opt/beacon-relay-agent';
 fs.rmSync(AGENT_DST, { recursive: true, force: true });      // drop any stale tree
 fs.cpSync(AGENT_SRC, AGENT_DST, { recursive: true });        // full clean copy
 
@@ -46,7 +46,7 @@ console.log(`staged ${REQUIRED_AGENT_FILES.length} agent files into ${AGENT_DST}
 //    same public cert at verify_bundle; it never enters the image itself.
 execFileSync('docker', ['compose',
   '-f', 'pipeline/compose.assemble.yml',
-  '--project-name', 'netbox-image',
+  '--project-name', 'beacon-relay-image',
   'run', '--rm',
   '--entrypoint', 'bash',
   'assemble', '/work/pipeline/emit_release_root.sh'], { stdio: 'inherit' });
@@ -58,7 +58,7 @@ execFileSync('docker', ['compose',
 // exists". Every build must start from a fresh container.
 execFileSync('docker', ['compose',
   '-f', 'pipeline/compose.build.yml',
-  '--project-name', 'netbox-image',
+  '--project-name', 'beacon-relay-image',
   'up', '--build', '--force-recreate', '--abort-on-container-exit', 'image-build'], { stdio: 'inherit', env: { ...process.env, RELEASE_VERSION: version } });
 
 // 3) Signing happens inside 40-rauc.sh at pack time (RAUC embeds CMS over the
@@ -72,7 +72,7 @@ execFileSync('docker', ['compose',
 //    storage; it needs rauc installed, which only image-build has.
 execFileSync('docker', ['compose',
   '-f', 'pipeline/compose.build.yml',
-  '--project-name', 'netbox-image',
+  '--project-name', 'beacon-relay-image',
   'run', '--rm', '--no-deps',
   '--entrypoint', 'bash',
   'image-build', `/work/pipeline/verify_bundle.sh`, version], { stdio: 'inherit' });
@@ -81,7 +81,7 @@ execFileSync('docker', ['compose',
 execFileSync('node', ['pipeline/gen_sfdisk.js', version], { stdio: 'inherit' });
 execFileSync('docker', ['compose',
   '-f', 'pipeline/compose.assemble.yml',
-  '--project-name', 'netbox-image',
+  '--project-name', 'beacon-relay-image',
   'up', '--build', '--abort-on-container-exit', 'assemble'], { stdio: 'inherit', env: { ...process.env, RELEASE_VERSION: version } });
 
 const sha = fs.readFileSync(`out/${version}/SHA256SUMS`, 'utf8').trim().split('\n');
@@ -92,7 +92,7 @@ const manifest = {
     const [digest, path] = l.split(/\s+/, 2);
     return { path, sha256: digest };
   }),
-  flash_path: `out/${version}/netbox-disk.img`,
+  flash_path: `out/${version}/beacon-relay-disk.img`,
   bundle_path: `out/${version}`,
 };
 fs.mkdirSync('out', { recursive: true });

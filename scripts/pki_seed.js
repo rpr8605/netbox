@@ -2,7 +2,7 @@
 /**
  * scripts/pki_seed.js
  * Responsibility: seed the local step-ca CA config with an ES256 JWK pair plus
- * the corresponding JWK provisioner bound to name `netbox-device`, and also
+ * the corresponding JWK provisioner bound to name `beacon-relay-device`, and also
  * emit the private JWK to pki-config/provisioner/private_jwk.json (kept off
  * disk by .gitignore) so the control plane signs enrollment tokens.
  *
@@ -21,7 +21,7 @@ const PUB_JWK_FILE = path.join(PROV_DIR, 'public_jwk.json');
 const PRIV_JWK_FILE = path.join(PROV_DIR, 'private_jwk.json');
 const PW_FILE = 'pki-config/password';
 
-const provisionerName = process.env.PKI_PROVISIONER ?? 'netbox-device';
+const provisionerName = process.env.PKI_PROVISIONER ?? 'beacon-relay-device';
 
 function jwkPub(p) {
   const { d, ...pub } = p;
@@ -38,7 +38,7 @@ async function main() {
     publicJwk = jwkPub(privateJwk.private);
   } else {
     const p = await generateKeyPair('ES256', { extractable: true });
-    const priv = { private: { ...await exportJWK(p.privateKey), kid: 'netbox-device' } };
+    const priv = { private: { ...await exportJWK(p.privateKey), kid: 'beacon-relay-device' } };
     privateJwk = priv;
     fs.writeFileSync(PRIV_JWK_FILE, JSON.stringify(priv, null, 2));
     console.log('pki seed: created new ES256 JWK pair', PRIV_JWK_FILE);
@@ -92,7 +92,7 @@ async function main() {
       maxVersion: 1.3,
       renegotiation: false,
     },
-    commonName: 'Netbox Demo Online CA',
+    commonName: 'Beacon Relay Demo Online CA',
   };
   fs.writeFileSync(path.join(renderDir, 'ca.json'), JSON.stringify(cfg, null, 2));
   console.log(`pki seed: rendered pki-config/config.render/ca.json (provisioner '${provisionerName}')`);

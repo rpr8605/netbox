@@ -3,7 +3,7 @@
 // owner mapping, plain-language impact statements, runbook attachment,
 // required acknowledgment with automatic escalation on timeout, and
 // suppression/maintenance windows. Delivery rails (Twilio SMS/voice, SES/
-// SendGrid email, Slack/Teams webhook) are INJECTED — Netbox owns the
+// SendGrid email, Slack/Teams webhook) are INJECTED — Beacon Relay owns the
 // escalation DECISIONS (who, when, how loud, what's attached) as product IP;
 // the senders are proven plumbing.
 // Called by: routes/alerts.js (fire/ack), and the sweep timer in index.js.

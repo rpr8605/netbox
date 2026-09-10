@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scripts/gen_schema.js
- * Responsibility: render TS + Python types for the Netbox canonical event.
+ * Responsibility: render TS + Python types for the Beacon Relay canonical event.
  * How invoked: `node scripts/gen_schema.js` (also pre-build hook).
  * Outputs: schemas/typescript.ts (TS, enums as literal unions where practical),
  *          schemas/python.py (TypedDict literals).
@@ -9,14 +9,14 @@
 const { createRequire } = await import('node:module');
 import fs from 'node:fs';
 const require = createRequire(import.meta.url);
-const schema = JSON.parse(fs.readFileSync('schemas/netbox_event.schema.json', 'utf8'));
+const schema = JSON.parse(fs.readFileSync('schemas/beacon_relay_event.schema.json', 'utf8'));
 
 // ---------- TypeScript ----------
 let ts = `/* eslint-disable */
 // schemas/typescript.ts — GENERATED, do not edit by hand.
 // Twin: schemas/python.py + scripts/gen_schema.js.
 
-export type NetboxEvent = {
+export type BeaconRelayEvent = {
   /** v4 */
   event_id: string;
   device_id: string;
@@ -62,7 +62,7 @@ class HL7Metadata(TypedDict, total=False):
     correlation_token: Optional[str]
 
 
-class NetboxEvent(TypedDict, total=False):
+class BeaconRelayEvent(TypedDict, total=False):
     event_id: str
     device_id: str
     site_id: str

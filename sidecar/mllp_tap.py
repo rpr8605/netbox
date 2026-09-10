@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sidecar/mllp_tap.py — Netbox HL7/MLLP passive-tap sidecar (spec §3).
+sidecar/mllp_tap.py — Beacon Relay HL7/MLLP passive-tap sidecar (spec §3).
 
 Reads MLLP traffic PASSIVELY (it is a tap on a mirror/SPAN feed or a read-only
 socket: never in the message path, never able to block or delay a real message).
@@ -61,7 +61,7 @@ class CorrelationTokenizer:
             raise ValueError("device_secret must be non-empty (per-device key)")
         # store only an HMAC of the secret, not the raw secret, so a memory
         # read of this object does not hand back the raw key material
-        self._keyed = hmac.new(b"netbox-correlation-key", device_secret, hashlib.sha256).digest()
+        self._keyed = hmac.new(b"beacon-relay-correlation-key", device_secret, hashlib.sha256).digest()
 
     def tokenize(self, identifier: str) -> str:
         return hmac.new(self._keyed, identifier.encode("utf-8"), hashlib.sha256).hexdigest()

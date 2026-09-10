@@ -2,7 +2,7 @@
 // schemas/typescript.ts — GENERATED, do not edit by hand.
 // Twin: schemas/python.py + scripts/gen_schema.js.
 
-export type NetboxEvent = {
+export type BeaconRelayEvent = {
   /** v4 */
   event_id: string;
   device_id: string;

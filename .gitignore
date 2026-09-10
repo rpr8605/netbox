@@ -16,7 +16,7 @@ out/release-sign/
 
 # Build artifacts + scratch: the pipeline regenerates these on every build;
 # they are large binaries and dev logs, not source. Never commit them.
-# NOTE: `**` matters — the disk image lands at out/<version>/netbox-disk.img,
+# NOTE: `**` matters — the disk image lands at out/<version>/beacon-relay-disk.img,
 # one level deep, so `out/*.img` does NOT catch it (that's how 5 GB got
 # committed once already). Match at any depth.
 out/**/*.raw
@@ -33,7 +33,7 @@ data/
 __pycache__/
 vm-harness/_*.sh
 
-# GENERATED at build time by pipeline/build.js from repo-root netbox-agent/ —
+# GENERATED at build time by pipeline/build.js from repo-root beacon-relay-agent/ —
 # the single source of truth for the device agent. Never commit a hand-maintained
 # copy here; it previously drifted and shipped images missing the signal code.
 pipeline/rootfs_files/

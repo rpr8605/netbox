@@ -11,12 +11,12 @@ import Ajv from '../control-plane/node_modules/ajv/dist/ajv.js';
 import addFormats from '../control-plane/node_modules/ajv-formats/dist/index.js';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { emitSecuritySignal } from '../netbox-agent/lib/signal_emit.js';
-import { setMockPostEvent } from '../netbox-agent/lib/post_event.js';
-import { runGraphSignals } from '../netbox-agent/lib/graph.js';
-import { checkBackupProxyTier1, checkBackupApiTier2 } from '../netbox-agent/lib/backup_risk.js';
+import { emitSecuritySignal } from '../beacon-relay-agent/lib/signal_emit.js';
+import { setMockPostEvent } from '../beacon-relay-agent/lib/post_event.js';
+import { runGraphSignals } from '../beacon-relay-agent/lib/graph.js';
+import { checkBackupProxyTier1, checkBackupApiTier2 } from '../beacon-relay-agent/lib/backup_risk.js';
 
-const schema = JSON.parse(fs.readFileSync('schemas/netbox_event.schema.json', 'utf8'));
+const schema = JSON.parse(fs.readFileSync('schemas/beacon_relay_event.schema.json', 'utf8'));
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(schema);

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vm-harness/run_qemu.sh â€” boots out/<version>/netbox-disk.img under
+# vm-harness/run_qemu.sh â€” boots out/<version>/beacon-relay-disk.img under
 # QEMU+OVMF+swtpm. Boots to a login/serial log and polls the sdp URI to
 # detect cloud-init/enrollment completion. Re-uses the compose control plane
 # image's mTLS expectations only if the image is configured to; the harness
@@ -8,7 +8,7 @@
 # signaling requires agent-network plumbing â€” flagged in the report.
 set -euo pipefail
 VERSION=${1:?version}
-IMG=/out/$VERSION/netbox-disk.img
+IMG=/out/$VERSION/beacon-relay-disk.img
 MEM=${2:-2048}
 SSH_FWD=${3:-2222}
 
@@ -41,6 +41,6 @@ for i in $(seq 1 60); do
   sleep 2
 done
 echo "--- unit status probe ---"
-for u in decrypt-data.service netbox-firstboot.service netbox-agent.service; do
+for u in decrypt-data.service beacon-relay-firstboot.service beacon-relay-agent.service; do
   grep -i "$u" /tmp/serial.log | tail -3 || echo "$u: no serial lines"
 done

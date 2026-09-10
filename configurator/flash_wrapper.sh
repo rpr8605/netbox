@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# configurator/flash_wrapper.sh — write out/<version>/netbox-disk.img to a
+# configurator/flash_wrapper.sh — write out/<version>/beacon-relay-disk.img to a
 # target, then verify. Target for dev/CI is a QEMU-compatible raw file; the
 # configurator CLI is the only caller and it pre-gates the unmissable confirm.
 # Paths resolve from the repo root so this runs identically on the Windows dev
@@ -8,7 +8,7 @@ set -euo pipefail
 VERSION=${1:?version}
 TARGET=${2:?target (dev: a raw file under out/qemu-disk.raw; prod: /dev/sdX)}
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-IMG="$REPO_ROOT/out/$VERSION/netbox-disk.img"
+IMG="$REPO_ROOT/out/$VERSION/beacon-relay-disk.img"
 LOG_SHA=$(sha256sum "$IMG" | awk '{print $1}')
 
 echo "flash: $IMG -> $TARGET"

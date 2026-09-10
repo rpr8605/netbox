@@ -11,7 +11,7 @@ set -euo pipefail
 VERSION=${1:-0.1.0}
 MEM=${2:-1024}
 CP=${CONTROL_PLANE_URL:-https://control-plane:9100}
-SRC=/out/$VERSION/netbox-disk.img
+SRC=/out/$VERSION/beacon-relay-disk.img
 IMG=/tmp/acceptance-disk.raw
 SERIAL=/tmp/serial.log
 DEVICE_ID=$(cat /proc/sys/kernel/random/uuid)

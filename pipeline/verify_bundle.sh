@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pipeline/verify_bundle.sh — verify the signed netbox.raucb against the
+# pipeline/verify_bundle.sh — verify the signed beacon-relay.raucb against the
 # release-signing keyring (public cert, same as embedded – intentionally not
 # using a second source-of-truth) via `rauc info --keyring`. Device-side
 # counter is `rauc verify`, which requires a daemon; on the worker the CLI
@@ -11,7 +11,7 @@
 # string.
 set -euo pipefail
 VERSION=${1:?usage: verify_bundle.sh <version>}
-BUNDLE=/out/$VERSION/netbox.raucb
+BUNDLE=/out/$VERSION/beacon-relay.raucb
 CRT=/out/release-sign/build/signing.crt
 [ -f "$BUNDLE" ] || { echo "missing bundle: $BUNDLE" >&2; exit 1; }
 [ -f "$CRT" ] || { echo "missing keyring cert: $CRT" >&2; exit 1; }
@@ -20,8 +20,8 @@ CRT=/out/release-sign/build/signing.crt
 # which RAUC rejects as "unknown filesystem (type=1021997)". Copy to
 # container-local storage before verifying — the CMS check is content-only.
 WORK=$(mktemp -d)
-cp "$BUNDLE" "$WORK/netbox.raucb"
-BUNDLE="$WORK/netbox.raucb"
+cp "$BUNDLE" "$WORK/beacon-relay.raucb"
+BUNDLE="$WORK/beacon-relay.raucb"
 
 echo "== verify: no keyring must NOT show a verified signature =="
 OUT_UNVERIFIED=$(rauc info "$BUNDLE" 2>&1 || true)

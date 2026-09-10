@@ -16,5 +16,5 @@ if [ -f "$KEY" ] && [ -f "$CRT" ]; then
 fi
 openssl ecparam -genkey -name prime256v1 -noout -out "$KEY"
 openssl req -new -x509 -key "$KEY" -days 3650 \
-  -subj '/CN=netbox-release-offline-root/O=netbox/C=US' -out "$CRT"
+  -subj '/CN=beacon-relay-release-offline-root/O=beacon-relay/C=US' -out "$CRT"
 echo "emitted release-signing root: private=$KEY public=$CRT"

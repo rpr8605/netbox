@@ -13,13 +13,13 @@ import os from 'node:os';
 import path from 'node:path';
 // Isolate persisted monitor state per run — the loop writes /data on-device;
 // the host harness redirects it to a temp file so parts don't share state.
-const STATE_FILE = path.join(os.tmpdir(), `netbox-monstate-${crypto.randomUUID()}.json`);
-process.env.NETBOX_STATE_PATH = STATE_FILE;
-process.env.NETBOX_DOWNTIME_CACHE = path.join(os.tmpdir(), `netbox-downtime-${crypto.randomUUID()}.json`);
-import { setMockPostEvent } from '../netbox-agent/lib/post_event.js';
-import { startMonitorLoop } from '../netbox-agent/lib/monitor_loop.js';
-import { startDowntimeServer, refreshDowntimeCache, readDowntimeCache } from '../netbox-agent/lib/downtime.js';
-import { confirmOutage } from '../netbox-agent/lib/outage_confirm.js';
+const STATE_FILE = path.join(os.tmpdir(), `beacon-relay-monstate-${crypto.randomUUID()}.json`);
+process.env.BEACON_RELAY_STATE_PATH = STATE_FILE;
+process.env.BEACON_RELAY_DOWNTIME_CACHE = path.join(os.tmpdir(), `beacon-relay-downtime-${crypto.randomUUID()}.json`);
+import { setMockPostEvent } from '../beacon-relay-agent/lib/post_event.js';
+import { startMonitorLoop } from '../beacon-relay-agent/lib/monitor_loop.js';
+import { startDowntimeServer, refreshDowntimeCache, readDowntimeCache } from '../beacon-relay-agent/lib/downtime.js';
+import { confirmOutage } from '../beacon-relay-agent/lib/outage_confirm.js';
 
 const results = [];
 function check(name, ok, detail = '') {
