@@ -10,10 +10,13 @@ services:
       - vm-serial:/tmp
     networks:
       - default
-      - beacon_relay_default   # reach the real control-plane for enrollment
+      - netbox_default   # the real control-plane's compose network (project name
+                         # is the directory name `netbox`, not the brand). Reach it
+                         # for enrollment; do not rename this to the brand — the
+                         # network name is derived from the directory, not the product.
     command: ["bash", "/work/vm-harness/run_qemu.sh", "${RELEASE_VERSION:-0.1.0}"]
 networks:
-  beacon_relay_default:
+  netbox_default:
     external: true
 volumes:
   vm-serial:

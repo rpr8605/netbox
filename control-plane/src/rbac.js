@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 // route gates read; adding a permission means editing THIS map, not a route.
 export const ROLE_PERMISSIONS = {
   'support-technician': new Set([
-    'devices:read', 'events:read', 'topology:read', 'topology:rollup',
+    'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:ack', 'support:request', 'support:open',
   ]),
   'customer-it-admin': new Set([
@@ -23,8 +23,8 @@ export const ROLE_PERMISSIONS = {
     'alerts:read', 'downtime:manage',
   ]),
   'operations-manager': new Set([
-    'devices:read', 'events:read', 'topology:read', 'topology:rollup',
-    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:rules:write',
+    'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
+    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:rules:write', 'channels:write',
   ]),
   'security-auditor': new Set([
     'devices:read', 'events:read', 'topology:read', 'audit:read',

@@ -59,11 +59,26 @@ export function startMonitorLoop(ctx, {
           // event is posted ONLY after it completes, so the timeline proves
           // the order (retry -> second dep -> WAN -> LTE) before the alert.
           log(`monitor: ${name} flipped to failing; running outage confirmation`);
+          // retryCheck re-runs the ACTUAL failed check; secondDependency probes
+          // an independent target — another enabled check in the profile if one
+          // exists, else a real DNS resolve of the CP host (independent of both
+          // the EHR endpoint and the WAN TCP probe). These are the real wiring —
+          // defaultDeps throws if either is missing.
+          const failedCheck = profile.checks.find(c => c.name === name);
+          const otherCheck = profile.checks.find(c => c.name !== name && c.enabled !== false);
           const confirm = await confirmOutage({
             name,
             deps: defaultDeps({
               cpHost: ctx.cpHost, cpPort: ctx.cpPort,
               lteTarget: ctx.lteTarget,
+              retryCheck: () => runAdapter(failedCheck),
+              secondDependency: otherCheck
+                ? () => runAdapter(otherCheck)
+                : async () => {
+                    const dns = await import('node:dns');
+                    return new Promise(resolve => dns.lookup(ctx.cpHostName, (err, addr) =>
+                      resolve(err ? { ok: false, detail: `DNS: ${err.code}` } : { ok: true, detail: `DNS ${ctx.cpHostName} -> ${addr}` })));
+                  },
             }),
             log,
           });

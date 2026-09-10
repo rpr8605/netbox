@@ -81,11 +81,17 @@ export async function confirmOutage({ name, retries = 2, retryDelayMs = 1000, de
 
 // Default probes for the real device. LTE is a distinct interface probe —
 // on hardware it binds the modem interface; in the harness it's a second
-// loopback target. Kept injectable so the E2E can show the full sequence.
-export function defaultDeps({ cpHost, cpPort, lteTarget }) {
+// loopback target. retryCheck and secondDependency are REQUIRED inputs: the
+// caller (monitor_loop) wires the real ones — a stub that always returns
+// ok:false would make every outage look "confirmed" without ever re-testing
+// the dependency, which is exactly the false-positive the sequence exists to
+// prevent. There is deliberately no default for these two.
+export function defaultDeps({ cpHost, cpPort, lteTarget, retryCheck, secondDependency }) {
+  if (typeof retryCheck !== 'function') throw new Error('defaultDeps requires a real retryCheck (re-runs the failed check)');
+  if (typeof secondDependency !== 'function') throw new Error('defaultDeps requires a real secondDependency (independent target)');
   return {
-    retryCheck: async () => ({ ok: false, detail: 'no retryCheck wired' }),
-    secondDependency: async () => ({ ok: false, detail: 'no secondDependency wired' }),
+    retryCheck,
+    secondDependency,
     wanPath: () => tcpProbe(cpHost, cpPort),
     ltePath: () => lteTarget ? tcpProbe(lteTarget.host, lteTarget.port) : Promise.resolve({ ok: false, detail: 'no LTE interface configured' }),
   };

@@ -112,7 +112,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 
 | Suite | Command | Result |
 |---|---|---|
-| Documentation audit | `node audit_docs.cjs .` | 62 files scanned, 0 missing header, 0 missing doc comment, 137 exports |
+| Documentation audit | `node audit_docs.cjs .` | 71 files scanned, 0 missing header, 0 missing doc comment, 162 exports |
 | EHR adapters unit | `node scripts/test_ehr_unit.js` | 16/16 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 10/10 |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 18/18 |

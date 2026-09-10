@@ -20,12 +20,16 @@ function safe(name, fn) {
 }
 
 // Heartbeat is "did the last heartbeat POST land" — checked via the timestamp
-// the daemon records after each successful POST. A stale timestamp here means
-// the heartbeat emitter itself has silently stopped.
-export function checkHeartbeat({ lastHeartbeatOkAt, maxAgeMs = 30_000 }) {
+// the daemon records after each successful POST. Accepts EITHER a live getter
+// (getLastHeartbeatOkAt) or a static value (lastHeartbeatOkAt): the getter is
+// what production passes so the check reads the CURRENT value every cycle, not
+// a stale snapshot captured once at startup. A stale timestamp here means the
+// heartbeat emitter itself has silently stopped.
+export function checkHeartbeat({ getLastHeartbeatOkAt, lastHeartbeatOkAt, maxAgeMs = 30_000 }) {
   return safe('heartbeat', () => {
-    if (!lastHeartbeatOkAt) return { ok: false, detail: 'no successful heartbeat yet' };
-    const age = Date.now() - lastHeartbeatOkAt;
+    const ts = typeof getLastHeartbeatOkAt === 'function' ? getLastHeartbeatOkAt() : lastHeartbeatOkAt;
+    if (!ts) return { ok: false, detail: 'no successful heartbeat yet' };
+    const age = Date.now() - ts;
     return age <= maxAgeMs
       ? { ok: true, detail: `last heartbeat ${Math.round(age / 1000)}s ago` }
       : { ok: false, detail: `heartbeat silent for ${Math.round(age / 1000)}s (> ${Math.round(maxAgeMs / 1000)}s)` };

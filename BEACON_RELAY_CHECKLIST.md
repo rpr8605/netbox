@@ -33,7 +33,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ### §2 / §8.3 — The Configurator (Phase 3)
 - Base image build (minimal Debian, ro root, writable /data partition) — **DONE** (pipeline stages 00–30; QEMU acceptance).
 - RAUC bundle pipeline (one build → flashable artifact + signed bundle) — **DONE** (`pipeline/build.js` EXIT=0; `bundle assembled … CMS signed`; `VERIFY OK`).
-- LUKS full-disk encryption, non-optional — **DONE** (decrypt-data.service luksFormats+opens /data every boot; post-boot `luksDump` confirmed LUKS2 container).
+- LUKS encryption of the data partition, non-optional — **DONE** (decrypt-data.service luksFormats+opens /data every boot; the unlock keyfile is TPM-sealed, not stored on the same drive; post-boot `luksDump` confirmed the LUKS2 container).
 - First-boot provisioning (keypair → TPM/LUKS seal → step-ca cert → quarantine until confirm) — **DONE** (`ACCEPTANCE_PASS`: TPM-seal → quarantine → confirm → active heartbeat in QEMU).
 - Configurator CLI: list releases — **DONE** (`configurator/src/index.js releases`).
 - Configurator CLI: confirm-target gate (unmissable, exact-string confirm) — **DONE** (flash flow shows gate; refused on mismatch).

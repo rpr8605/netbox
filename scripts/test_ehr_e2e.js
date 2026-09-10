@@ -77,7 +77,7 @@ async function enrollDevice(deviceId, siteId) {
   // the events route is what stamps them.
   const hb = await api('POST', '/api/heartbeat', null, mtls);
   if (hb.status !== 200) throw new Error(`heartbeat failed: ${JSON.stringify(hb.body)}`);
-  const confirm = await api('POST', `/api/devices/${deviceId}/confirm`);
+  const confirm = await api('POST', `/api/devices/${deviceId}/confirm?role=operations-manager`);
   if (confirm.status !== 200) throw new Error(`confirm failed: ${JSON.stringify(confirm.body)}`);
   return { mtls, deviceId, siteId };
 }

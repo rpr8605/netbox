@@ -80,7 +80,10 @@ def _parse_msh_fields(msg: bytes) -> dict:
     # MSH-9 is the message type / trigger event (e.g. ADT^A01, ORU^R01)
     msg_type = parts[8] if len(parts) > 8 else "UNKNOWN"
     message_type = msg_type.split("^")[0] if msg_type else "UNKNOWN"
-    return {"message_type": message_type}
+    # MSH-10 is the message control ID — the per-MESSAGE identifier that lets a
+    # correlation token prove THIS message across hops, not just the type.
+    message_control_id = parts[9] if len(parts) > 9 else ""
+    return {"message_type": message_type, "message_control_id": message_control_id}
 
 
 def extract_metadata(
@@ -100,10 +103,13 @@ def extract_metadata(
     written. Only the derived Hl7Metadata is returned.
     """
     meta = _parse_msh_fields(raw_frame)
-    # The correlation token binds the event to a per-device-keyed identifier
-    # WITHOUT storing the identifier. We tokenize a constant marker plus the
-    # message type here — the point is the token is keyed, not reversible.
-    token = tokenizer.tokenize(f"{meta['message_type']}|{direction}")
+    # The correlation token binds to a PER-MESSAGE identifier (MSH-10 message
+    # control ID) so two different messages of the same type tokenize
+    # differently — that is the "prove identical messages across hops" property
+    # the schema field promises. Falls back to type+direction only if MSH-10 is
+    # genuinely absent (a malformed header); never a PHI field.
+    identity = meta["message_control_id"] or f"{meta['message_type']}|{direction}"
+    token = tokenizer.tokenize(identity)
     return Hl7Metadata(
         message_type=meta["message_type"],
         direction=direction,
@@ -132,3 +138,52 @@ def parse_mllp_stream(buf: bytes) -> tuple[list[bytes], bytes]:
             return frames, buf[start:]
         frames.append(buf[start + 1:end])
         buf = buf[end + len(EB_CR):]
+
+
+# --- Passive listener --------------------------------------------------------
+# The tap is READ-ONLY: it accepts a mirror/SPAN feed (or a read-only copy of
+# MLLP traffic) and never writes to the socket — no ACKs, no responses, nothing
+# that could influence the real message path. This is the safety property the
+# header docstring promises: the tap can observe, never block or delay a real
+# message.
+def run_passive_listener(
+    host: str,
+    port: int,
+    on_metadata,
+    *,
+    tokenizer: CorrelationTokenizer,
+    direction: str = "inbound",
+) -> None:
+    """Listen on host:port for MLLP frames and emit metadata for each.
+
+    Read-only by construction: the socket is only ever read from, never written
+    to. on_metadata(Hl7Metadata) is called per complete frame. Runs until the
+    connection closes or the process is signalled.
+    """
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((host, port))
+        srv.listen(1)
+        conn, _addr = srv.accept()
+        with conn:
+            buf = b""
+            while True:
+                chunk = conn.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+                frames, buf = parse_mllp_stream(buf)
+                for frame in frames:
+                    started = time.time()
+                    meta = extract_metadata(
+                        frame,
+                        direction=direction,
+                        ack_status="ACK",
+                        latency_ms=0,
+                        tokenizer=tokenizer,
+                        phi_mode=False,
+                    )
+                    meta.latency_ms = int((time.time() - started) * 1000)
+                    on_metadata(meta)

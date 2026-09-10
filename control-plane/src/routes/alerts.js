@@ -10,6 +10,8 @@ import {
 } from '../db.js';
 import { fireAlert, acknowledgeAlert, validateImpactStatement } from '../alerting.js';
 import { deliver } from '../deliver.js';
+import { requirePerm } from '../rbac.js';
+import { appendAudit } from '../db.js';
 
 export default async function alertRoutes(app) {
   const cfg = app.config ?? {};
@@ -44,7 +46,7 @@ export default async function alertRoutes(app) {
   // Fire an alert for a rule+device. In production this is called by the
   // ingestion path when a confirmed outage lands; here it's the demo/test
   // surface that proves the engine end to end.
-  app.post('/api/alerts/fire', async (req, reply) => {
+  app.post('/api/alerts/fire', { preHandler: requirePerm('alerts:fire', appendAudit) }, async (req, reply) => {
     const { rule_id, device_id, site_id } = req.body ?? {};
     if (!rule_id || !device_id || !site_id) return reply.code(400).send({ error: 'rule_id, device_id, site_id required' });
     try {
@@ -56,7 +58,7 @@ export default async function alertRoutes(app) {
   });
 
   // The required ack. Stops the escalation sweep.
-  app.post('/api/alerts/:id/ack', async (req, reply) => {
+  app.post('/api/alerts/:id/ack', { preHandler: requirePerm('alerts:ack', appendAudit) }, async (req, reply) => {
     const out = await acknowledgeAlert({ alertId: req.params.id, actor: req.body?.actor ?? 'unknown' });
     if (!out.ok) return reply.code(400).send(out);
     return out;

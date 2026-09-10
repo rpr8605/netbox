@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import https from 'node:https';
 import { execSync } from 'node:child_process';
-import { tpmPresent } from './lib/tpm.js';
+import { tpmPresent, tpmSign, tpmReadPublicPem } from './lib/tpm.js';
 import { issueCert } from './lib/issue_cert.js';
 import { startMonitorLoop } from './lib/monitor_loop.js';
 import { startDowntimeServer, refreshDowntimeCache } from './lib/downtime.js';
@@ -25,6 +25,7 @@ import { loadProfile } from './lib/ehr_check.js';
 import { runNetCheck } from './lib/net_checks.js';
 import { runFhirCheck } from './lib/fhir_r4.js';
 import { runMirthCheck } from './lib/mirth_admin.js';
+import { runUpdateCycle } from './lib/update.js';
 
 const DEFAULTS = { renew_fraction: 0.55, heartbeat_ms: 10_000 };
 
@@ -57,8 +58,10 @@ const deviceId = fs.readFileSync('/data/device_id', 'utf8').trim();
 const isTpm = fs.existsSync('/data/device_key.mode')
   ? fs.readFileSync('/data/device_key.mode', 'utf8').trim() === 'tpm'
   : tpmPresent();
-const keyPem = fs.readFileSync(
-  isTpm ? '/data/tpm/key.plain.pem' : '/data/device_key.pem', 'utf8');
+// In TPM mode the long-term key never exists on disk — signing goes through
+// the TPM (tpmSign) and the public key is read back with tpmReadPublicPem.
+// In LUKS mode the software keyfile lives at /data/device_key.pem.
+const keyPem = isTpm ? null : fs.readFileSync('/data/device_key.pem', 'utf8');
 
 let certPem = fs.readFileSync('/data/device.crt', 'utf8');
 
@@ -91,7 +94,9 @@ function api(method, url, body, tlsOpts = {}) {
 
 // TLS identity key is separate from the pinned retrust key: renewal re-keys
 // the TLS identity into /data/tls_key.pem and the enrollment-pinned
-// device_key.pem is never touched after provisioning.
+// device_key.pem is never touched after provisioning. In TPM mode there is no
+// on-disk PEM at all — the TLS identity key is always a fresh file, and PoP
+// signing uses the TPM (see signPop).
 function tlsKeyPem() {
   return fs.existsSync('/data/tls_key.pem')
     ? fs.readFileSync('/data/tls_key.pem', 'utf8')
@@ -101,10 +106,12 @@ const mtls = () => ({ cert: certPem, key: tlsKeyPem() });
 
 function signPop(payload) {
   // PoP signature over `beacon-relay-retrust-v1\0device_id\0challenge` with the
-  // pinned long-term key — same scheme the control plane verifies. Temp files
-  // avoid PEM/newline mangling through any shell layer. They live on /data,
-  // NOT /tmp: the image root is read-only (spec §2), so /tmp writes EROFS.
+  // pinned long-term key — same scheme the control plane verifies. TPM mode
+  // signs inside the TPM (key never leaves the chip); LUKS mode uses the
+  // software keyfile via openssl. Temp files live on /data, NOT /tmp: the image
+  // root is read-only (spec §2), so /tmp writes EROFS.
   fs.writeFileSync('/data/.pop.payload', payload);
+  if (isTpm) return tpmSign('/data/.pop.payload');
   fs.writeFileSync('/data/.pop.key', keyPem, { mode: 0o600 });
   return execSync(
     'openssl dgst -sha256 -sign /data/.pop.key /data/.pop.payload | base64 -w0',
@@ -138,7 +145,11 @@ async function renewViaRetrust() {
 
   const payload = `beacon-relay-retrust-v1\0${deviceId}\0${ch.body.challenge}`;
   const sig = signPop(payload);
-  const pubPem = execSync('openssl rsa -pubout', { input: keyPem, encoding: 'utf8' });
+  // Public key presented for the fingerprint pin: TPM mode reads it from the
+  // TPM (public half only), LUKS mode derives it from the on-disk keyfile.
+  const pubPem = isTpm
+    ? tpmReadPublicPem()
+    : execSync('openssl rsa -pubout', { input: keyPem, encoding: 'utf8' });
 
   const rt = await api('POST', `${CP}/api/enroll/retrust`, {
     device_id: deviceId,
@@ -198,7 +209,11 @@ if (PROFILE_PATH) {
   const cpUrl = new URL(CP);
   startMonitorLoop(
     { deviceId, siteId, cpHost: cpUrl.hostname, cpPort: Number(cpUrl.port || 9100),
-      cpHostName: cpUrl.hostname, lastHeartbeatOkAt, lteTarget: null },
+      cpHostName: cpUrl.hostname, lteTarget: null,
+      // Live getter, NOT a by-value snapshot: checkHeartbeat must read the
+      // current value on every self-check or it permanently reports
+      // "heartbeat down" ~30s after boot while real heartbeats keep landing.
+      getLastHeartbeatOkAt: () => lastHeartbeatOkAt },
     {
       intervalMs: CFG.check_interval_ms ?? 15_000,
       post: async (ev) => api('POST', `${CP}/api/events`, ev, mtls()),
@@ -209,5 +224,25 @@ if (PROFILE_PATH) {
   );
   console.log(`agent: monitor loop running (profile=${profile.profile_id}, interval=${CFG.check_interval_ms ?? 15000}ms)`);
 }
+
+// --- OTA update client (spec §3) --------------------------------------------
+// Polls the control plane for a new signed RAUC bundle on a slow cadence. The
+// signature verify is a hard gate inside runUpdateCycle; a failed verify never
+// touches disk. mark-good runs only after a successful boot + health check.
+const CURRENT_VERSION = (() => { try { return fs.readFileSync('/etc/beacon-relay-version', 'utf8').trim(); } catch { return '0.1.0'; } })();
+async function updateTick() {
+  try {
+    const r = await runUpdateCycle(
+      { cpBase: CP, currentVersion: CURRENT_VERSION },
+      {
+        fetchJson: async (url) => (await api('GET', url, null, mtls())).body,
+        fetchBytes: async (url) => Buffer.from(JSON.stringify((await api('GET', url, null, mtls())).body)),
+      },
+    );
+    if (r.action !== 'none') console.log(`agent: update ${r.action} ${r.version ?? ''} ${r.reason ?? ''}`.trim());
+  } catch (e) { console.log(`agent: update check failed (non-fatal): ${e.message}`); }
+}
+setInterval(updateTick, CFG.update_interval_ms ?? 300_000);
+updateTick();
 
 console.log(`agent: daemon running; heartbeat=${CFG.heartbeat_ms}ms; tpm=${isTpm}; renew@${CFG.renew_fraction}`);

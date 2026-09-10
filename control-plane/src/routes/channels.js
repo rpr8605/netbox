@@ -13,6 +13,8 @@
 // ops-manager/support-technician ONLY" decision lives at this route, not in
 // the console.
 import { listChannels, getChannel, getDevice, listEvents, listEventsBySite, listDevices, upsertChannel } from '../db.js';
+import { requirePerm } from '../rbac.js';
+import { appendAudit } from '../db.js';
 
 // The ONLY two roles allowed on the cross-site rollup. customer-it-admin /
 // security-auditor / readonly-executive get per-site views instead, never the
@@ -55,7 +57,9 @@ function toTopology(events) {
 export default async function channelRoutes(app) {
   // Operator registers a channel_id -> display name/engine. Same stub-gate as
   // /api/enroll/tokens (Phase 2): real RBAC in Phase 8.
-  app.post('/api/channels', async (req, reply) => {
+  // Register a channel_id -> display name/engine. A WRITE to the registry —
+  // requires channels:write (operations-manager). Was unauthenticated before.
+  app.post('/api/channels', { preHandler: requirePerm('channels:write', appendAudit) }, async (req, reply) => {
     const { channel_id, display_name, engine } = req.body ?? {};
     if (!channel_id || !display_name || !engine) {
       return reply.code(400).send({ error: 'channel_id, display_name, engine required' });

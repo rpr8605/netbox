@@ -45,7 +45,7 @@ async function enrollDevice(deviceId, siteId) {
   const chain = `${signBody.crt ?? signBody.cert}\n${signBody.ca ?? ''}`;
   const mtls = new Agent({ connect: { rejectUnauthorized: false, ca: rootsPem, cert: chain, key: keyPem } });
   await api('POST', '/api/heartbeat', null, mtls);
-  await api('POST', `/api/devices/${deviceId}/confirm`);
+  await api('POST', `/api/devices/${deviceId}/confirm?role=operations-manager`);
   return { mtls, deviceId, siteId };
 }
 

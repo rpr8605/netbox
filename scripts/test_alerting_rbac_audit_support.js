@@ -8,10 +8,31 @@
 //      session closes at its time limit (not left open)
 // Run: node scripts/test_alerting_rbac_audit_support.js  (control plane up)
 import crypto from 'node:crypto';
+import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import { request, Agent } from '../control-plane/node_modules/undici/index.js';
 
 const CP = process.env.CONTROL_PLANE_URL ?? 'https://localhost:9100';
+const CA = process.env.CA_URL ?? 'https://localhost:9000';
 const insecure = new Agent({ connect: { rejectUnauthorized: false } });
+
+// enrollDevice — full real enrollment so we get a device mTLS cert. The support
+// broker's /open endpoint authenticates the DEVICE by its cert, so the test
+// needs a real one, not a stub.
+async function enrollDevice(deviceId, siteId) {
+  const tok = await api('POST', '/api/enroll/tokens', { device_id: deviceId, site_id: siteId });
+  const keys = forge.pki.rsa.generateKeyPair(2048);
+  const keyPem = forge.pki.privateKeyToPem(keys.privateKey);
+  const redeem = await api('POST', '/api/enroll/redeem', { enrollment_token: tok.body.enrollment_token, public_key_pem: forge.pki.publicKeyToPem(keys.publicKey) });
+  const rootsPem = await (await request(`${CA}/roots.pem`, { dispatcher: insecure })).body.text();
+  const csr = forge.pki.createCertificationRequest();
+  csr.publicKey = keys.publicKey;
+  csr.setSubject([{ name: 'commonName', value: deviceId }]);
+  csr.sign(keys.privateKey, forge.md.sha256.create());
+  const signRes = await request(`${CA}/1.0/sign`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ csr: forge.pki.certificationRequestToPem(csr), ott: redeem.body.step_ca.ott }), dispatcher: insecure });
+  const signBody = JSON.parse(await signRes.body.text());
+  const chain = `${signBody.crt ?? signBody.cert}\n${signBody.ca ?? ''}`;
+  return new Agent({ connect: { rejectUnauthorized: false, ca: rootsPem, cert: chain, key: keyPem } });
+}
 
 const results = [];
 function check(name, ok, detail = '') {
@@ -20,9 +41,9 @@ function check(name, ok, detail = '') {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function api(method, path, body) {
+async function api(method, path, body, agent) {
   const res = await request(`${CP}${path}`, {
-    method, dispatcher: insecure,
+    method, dispatcher: agent ?? insecure,
     headers: body ? { 'content-type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -49,7 +70,7 @@ async function partA() {
   await api('POST', '/api/alert-contacts', { severity: 'P1', tier: 2, channel: 'voice', address: '+15550199' });
 
   // Fire the alert from the broken-feed case (a device whose EHR went down).
-  const fire = await api('POST', '/api/alerts/fire', { rule_id: rule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID() });
+  const fire = await api('POST', '/api/alerts/fire?role=operations-manager', { rule_id: rule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID() });
   check('A2. alert fired (tier-1 delivery attempted)', fire.status === 200 && !!fire.body.alertId, JSON.stringify(fire.body).slice(0, 100));
   const alertId = fire.body.alertId;
   const before = await api('GET', '/api/alerts');
@@ -77,7 +98,7 @@ async function partA() {
     maintenance_start: new Date(Date.now() - 3600e3).toISOString(),
     maintenance_end: new Date(Date.now() + 3600e3).toISOString(),
   });
-  const mFire = await api('POST', '/api/alerts/fire', { rule_id: mRule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID() });
+  const mFire = await api('POST', '/api/alerts/fire?role=operations-manager', { rule_id: mRule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID() });
   check('A5. maintenance window suppresses the alert (no page)', mFire.body?.suppressed === true, JSON.stringify(mFire.body));
 
   // A jargon impact statement is rejected at the door.
@@ -107,6 +128,31 @@ async function partB() {
   check('B6. audit log allows security-auditor', allowAudit.status === 200);
   check('B7. audit log denies support-technician', denyAuditTech.status === 403);
   check('B8. audit log denies customer-it-admin', denyAuditCust.status === 403);
+
+  // Newly-gated write routes: each must 403 a role lacking the permission and
+  // 200/400 (not 403) for a role that has it. A 403 = denied is the assertion.
+  const denyConfirm = await api('POST', `/api/devices/${crypto.randomUUID()}/confirm?role=readonly-executive`);
+  const allowConfirm = await api('POST', `/api/devices/${crypto.randomUUID()}/confirm?role=operations-manager`);
+  check('B9. confirm denies readonly-executive', denyConfirm.status === 403);
+  check('B10. confirm allows operations-manager', allowConfirm.status !== 403);
+
+  const denyFire = await api('POST', '/api/alerts/fire?role=customer-it-admin', { rule_id: 'x', device_id: 'y', site_id: 'z' });
+  const allowFire = await api('POST', '/api/alerts/fire?role=operations-manager', { rule_id: 'x', device_id: 'y', site_id: 'z' });
+  check('B11. alert fire denies customer-it-admin', denyFire.status === 403);
+  check('B12. alert fire allows operations-manager (400 on unknown rule, not 403)', allowFire.status === 400);
+
+  const denyAck = await api('POST', `/api/alerts/${crypto.randomUUID()}/ack?role=readonly-executive`, {});
+  check('B13. alert ack denies readonly-executive', denyAck.status === 403);
+
+  const denySupp = await api('POST', '/api/support/sessions?role=readonly-executive', { device_id: 'x', requested_by: 'y' });
+  const allowSupp = await api('POST', '/api/support/sessions?role=support-technician', { device_id: 'x', requested_by: 'y' });
+  check('B14. support request denies readonly-executive', denySupp.status === 403);
+  check('B15. support request allows support-technician', allowSupp.status === 200);
+
+  const denyChan = await api('POST', '/api/channels?role=customer-it-admin', { channel_id: 'x', display_name: 'y', engine: 'z' });
+  const allowChan = await api('POST', '/api/channels?role=operations-manager', { channel_id: 'x', display_name: 'y', engine: 'z' });
+  check('B16. channels write denies customer-it-admin', denyChan.status === 403);
+  check('B17. channels write allows operations-manager', allowChan.status === 200);
 }
 
 // ------------------------------------------------------- C. audit immutable ---
@@ -141,32 +187,40 @@ async function partC() {
 async function partD() {
   console.log('--- D. remote-support broker: time-limited outbound tunnel ---');
   const deviceId = crypto.randomUUID();
-  const reqS = await api('POST', '/api/support/sessions', { device_id: deviceId, requested_by: 'ops-manager-1' });
+  const siteId = crypto.randomUUID();
+  const devMtls = await enrollDevice(deviceId, siteId); // real device cert for /open
+
+  // Session REQUEST is human-facing (RBAC-gated: support:request).
+  const reqS = await api('POST', '/api/support/sessions?role=support-technician', { device_id: deviceId, requested_by: 'ops-manager-1' });
   check('D1. session requested -> pending with JIT token', reqS.status === 200 && !!reqS.body.token, `state=pending ttl ok`);
 
-  // Wrong token is refused (and the refusal is audit-logged).
-  const badOpen = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: 'wrong-token' });
-  check('D2. open with wrong token refused', badOpen.status === 403);
+  // open WITHOUT the device cert (insecure agent) -> refused (mTLS check).
+  const noCert = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: reqS.body.token });
+  check('D2. open without the device mTLS cert refused', noCert.status === 403, `status=${noCert.status}`);
 
-  // Correct token opens the tunnel (outbound, time-limited).
-  const goodOpen = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: reqS.body.token });
-  check('D3. open with correct JIT token -> open', goodOpen.status === 200 && goodOpen.body.state === 'open', goodOpen.body?.state);
+  // open with device cert but WRONG token -> refused.
+  const badTok = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: 'wrong-token' }, devMtls);
+  check('D3. open with device cert + wrong token refused', badTok.status === 403, `status=${badTok.status}`);
+
+  // Correct cert + correct token opens the tunnel (outbound, time-limited).
+  const goodOpen = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: reqS.body.token }, devMtls);
+  check('D4. open with device cert + correct JIT token -> open', goodOpen.status === 200 && goodOpen.body.state === 'open', goodOpen.body?.state);
 
   // A second open with the same token is NOT allowed to extend the session.
-  const reopen = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: reqS.body.token });
-  check('D4. re-open with the consumed token is not a fresh open', reopen.status !== 200, `status=${reopen.status}`);
+  const reopen = await api('POST', `/api/support/sessions/${reqS.body.session_id}/open`, { token: reqS.body.token }, devMtls);
+  check('D5. re-open with the consumed token is not a fresh open', reopen.status !== 200, `status=${reopen.status}`);
 
   // The session closes at its time limit: create a 2-second session, open it,
   // wait past the TTL, and confirm a read reports it expired (not stuck open).
-  const shortS = await api('POST', '/api/support/sessions', { device_id: deviceId, requested_by: 'ops-manager-1', ttl_seconds: 2 });
-  await api('POST', `/api/support/sessions/${shortS.body.session_id}/open`, { token: shortS.body.token });
+  const shortS = await api('POST', '/api/support/sessions?role=support-technician', { device_id: deviceId, requested_by: 'ops-manager-1', ttl_seconds: 2 });
+  await api('POST', `/api/support/sessions/${shortS.body.session_id}/open`, { token: shortS.body.token }, devMtls);
   let afterExpiry = null;
   for (let i = 0; i < 10; i++) {
     await sleep(1500);
     const cur = await api('GET', `/api/support/sessions/${shortS.body.session_id}`);
     if (cur.body?.state === 'expired') { afterExpiry = cur; break; }
   }
-  check('D5. session closes at its time limit (not left open)', afterExpiry?.body?.state === 'expired', `state=${afterExpiry?.body?.state}`);
+  check('D6. session closes at its time limit (not left open)', afterExpiry?.body?.state === 'expired', `state=${afterExpiry?.body?.state}`);
 }
 
 await partA();

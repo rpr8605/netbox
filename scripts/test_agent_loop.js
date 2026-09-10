@@ -63,7 +63,10 @@ async function partA() {
   );
   await sleep(1500); // healthy ticks
   depUp = false;     // kill the dependency
-  await sleep(2500); // let the failure edge + confirmation sequence run
+  // The REAL wiring now re-runs the failed check twice with retryDelayMs=1000
+  // between (default), so the confirmation sequence takes >2s. Wait long
+  // enough for the full retry->second-dep->WAN->LTE->classify sequence + post.
+  await sleep(4500);
   loop.stop();
   wanListener.close(); lteListener.close();
 
@@ -91,6 +94,28 @@ async function partA() {
     log: (m) => { const mm = m.match(/step=(\S+)/); if (mm) seq2.push(mm[1]); },
   });
   check('A4. WAN down + LTE up => confirmed-wan-down', res2.outcome === 'confirmed-wan-down', res2.outcome);
+
+  // C4 regression: the heartbeat self-check must read the LIVE timestamp via a
+  // getter. A by-value snapshot goes permanently stale; a live getter never
+  // reports a false "heartbeat down" while heartbeats keep landing. This drives
+  // the loop with the getter form (exactly what agent.js now passes) and a
+  // short maxAgeMs so staleness would show immediately if the getter weren't read.
+  const postsC4 = [];
+  let liveHb = Date.now();
+  const loopC4 = startMonitorLoop(
+    { deviceId: crypto.randomUUID(), siteId: crypto.randomUUID(), cpHost: '127.0.0.1', cpPort: 1,
+      cpHostName: 'localhost', lteTarget: null, service: 'ehr', adapter: 'net',
+      getLastHeartbeatOkAt: () => liveHb },   // live getter, not a snapshot
+    { intervalMs: 400, post: async (ev) => { postsC4.push(ev); return { status: 202 }; },
+      runAdapter: async () => ({ ok: true }), profile: { profile_id: 'c4', vendor: 'T', checks: [] }, log: () => {} },
+  );
+  // Simulate heartbeats landing every 300ms (keep liveHb fresh), then run >2s.
+  const hbTimer = setInterval(() => { liveHb = Date.now(); }, 300);
+  await sleep(2200);
+  clearInterval(hbTimer);
+  loopC4.stop();
+  const falseHbDown = postsC4.filter(p => p.check_name === 'self:heartbeat' && p.status === 'down');
+  check('A5. live getter => NO false heartbeat-down while heartbeats land', falseHbDown.length === 0, `${falseHbDown.length} false downs`);
 }
 
 // ------------------------------------------------------------- B. self-mon ---

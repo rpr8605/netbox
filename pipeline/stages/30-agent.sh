@@ -28,10 +28,18 @@ for f in agent.js provision.js \
   }
 done
 
-# --- systemd: LUKS auto-unlock via unencrypted /boot keyfile -----------------
+# --- systemd: LUKS auto-unlock via TPM-sealed keyfile -------------------------
+# REDESIGN (security review): the previous unit stored the LUKS unlock keyfile
+# on the plaintext /boot partition (sda2) — the same physical disk as the
+# LUKS-protected /data partition (sda5) it unlocks. An attacker who removes the
+# drive reads /boot and unlocks /data: the stolen-drive threat model was
+# defeated by construction. The keyfile is now SEALED INTO THE TPM at a
+# persistent handle; the sealed blob lives on /data (ciphertext at rest) and is
+# useless off this device. Reuses the same tpm2 seal mechanism as
+# beacon-relay-agent/lib/tpm.js — one mechanism, not two.
 cat > "$TARGET/etc/systemd/system/decrypt-data.service" <<'EOF'
 [Unit]
-Description=Unlock beacon-relay LUKS data partition using /boot auto-unlock keyfile
+Description=Unlock beacon-relay LUKS data partition using a TPM-sealed keyfile
 DefaultDependencies=no
 After=systemd-modules-load.service systemd-udev-settle.service
 Before=local-fs-pre.target shutdown.target
@@ -44,50 +52,52 @@ Type=oneshot
 StandardOutput=journal+console
 StandardError=journal+console
 ExecStartPre=/usr/bin/udevadm settle --timeout=30
-ExecStartPre=/bin/sh -c 'echo "DECRYPT_PRE"; ls -la /dev/disk/by-label/ || true; echo "DECRYPT_POST_LABELS"'
-# Ã¢â€â‚¬Ã¢â€â‚¬ THREAT-MODEL BOUNDARY (Phase 3 input, decision 2) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-# The keyfile below lives on the small UNencrypted /boot partition. That is a
-# deliberate tradeoff, not an oversight:
-#   Ã¢â‚¬Â¢ PROTECTS: the threat model from spec Section 2 Ã¢â‚¬â€ a removed/stolen SSD
-#     read on another machine. Without this keyfile the drive is ciphertext.
-#   Ã¢â‚¬Â¢ DOES NOT PROTECT: an attacker with the WHOLE running appliance, who can
-#     boot it (or mount both partitions) and read /boot/beacon-relay.key to unlock
-#     the data partition. TPM sealing would resist that; a keyfile cannot.
-# The keyfile is generated at first boot and never leaves the device. Not
-# network-bound (no Clevis/Tang) so a WAN outage can't block local boot Ã¢â‚¬â€
-# downtime-mode availability beats key-sealing strength here.
-# If this unit is ever "hardened" by moving the keyfile elsewhere or adding a
-# network unlock server, re-read this comment before merging. 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── THREAT-MODEL BOUNDARY ───────────────────────────────────────────────
+# The LUKS unlock key is SEALED INTO THE TPM (persistent handle 0x81010002),
+# not stored as a plaintext keyfile on /boot. The sealed blob lives on /data
+# (itself ciphertext at rest). An attacker who removes the SSD gets only the
+# sealed blob, which no other machine can unseal — TPM unseal requires this
+# device. There is no passphrase fallback; do not add one without re-reading
+# this boundary (a fallback re-opens the same physical attack this closes).
+# Availability tradeoff (kept): no network unlock server, so a WAN outage can
+# never block local boot; the cost is that a failed TPM = lost /data, which is
+# the correct call for a field appliance whose /data holds only regenerable
+# state (certs re-enroll, telemetry re-accumulates).
+# ─────────────────────────────────────────────────────────────────────────
 ExecStart=/bin/sh -c '\
-  echo "decrypt: checking for existing keyfile"; \
-  if [ ! -f /boot/beacon-relay.key ]; then \
-    echo "decrypt: no keyfile; generating"; \
-    mkdir -p /boot; \
-    mount -o rw /dev/sda2 /boot || { echo "decrypt: MOUNT FAILED"; exit 1; }; \
-    mount | grep boot; \
-    dd if=/dev/urandom of=/boot/beacon-relay.key bs=512 count=1 status=none; \
-    chmod 0400 /boot/beacon-relay.key; \
-    ls -la /boot/beacon-relay.key; \
-    cryptsetup luksFormat --batch-mode /dev/sda5 /boot/beacon-relay.key || { echo "decrypt: LUKSFORMAT FAILED"; exit 1; }; \
-    echo "decrypt: keyfile created and LUKS formatted"; \
+  echo "decrypt: TPM-sealed unlock path"; \
+  mkdir -p /data; \
+  if [ ! -e /dev/mapper/beacon-relay-data ]; then \
+    if ! blkid /dev/sda5 2>/dev/null | grep -q crypto_LUKS; then \
+      echo "decrypt: first boot — generating + TPM-sealing LUKS key"; \
+      # 256 bytes, not 512: TPM2 sealed-data objects cap at 256 bytes of input
+      # for an RSA2048 primary. A 512-byte key fails tpm2_create with "size is
+      # larger than buffer". 256 bytes of /dev/urandom is ample entropy for a
+      # LUKS keyfile.
+      dd if=/dev/urandom of=/run/luks.key.plain bs=256 count=1 status=none; \
+      chmod 0400 /run/luks.key.plain; \
+      cryptsetup luksFormat --batch-mode /dev/sda5 /run/luks.key.plain || { echo "decrypt: LUKSFORMAT FAILED"; exit 1; }; \
+      umask 077; mkdir -p /run/tpm; \
+      tpm2_createprimary -C o -g sha256 -G rsa -c /run/tpm/luks.primary.ctx; \
+      tpm2_create -g sha256 -u /run/tpm/luks.pub -r /run/tpm/luks.priv -C /run/tpm/luks.primary.ctx -i /run/luks.key.plain; \
+      tpm2_load -C /run/tpm/luks.primary.ctx -u /run/tpm/luks.pub -r /run/tpm/luks.priv -c /run/tpm/luks.ctx; \
+      tpm2_evictcontrol -C o -c /run/tpm/luks.ctx 0x81010002; \
+      shred -u /run/luks.key.plain; rm -rf /run/tpm; \
+      echo "decrypt: key sealed to TPM 0x81010002, plaintext shredded"; \
+    fi; \
+    echo "decrypt: unsealing key from TPM and opening LUKS"; \
+    tpm2_unseal -c 0x81010002 | cryptsetup open --key-file - /dev/sda5 beacon-relay-data || { echo "decrypt: TPM unseal/open FAILED"; exit 1; }; \
+    echo "decrypt: opened"; \
+    if ! blkid /dev/mapper/beacon-relay-data >/dev/null 2>&1; then \
+      echo "decrypt: no filesystem on data partition; mkfs.ext4"; \
+      mkfs.ext4 -q /dev/mapper/beacon-relay-data || { echo "decrypt: MKFS FAILED"; exit 1; }; \
+      udevadm settle --timeout=30; \
+      echo "decrypt: filesystem created"; \
+    fi; \
   else \
-    echo "decrypt: keyfile exists"; \
+    echo "decrypt: already open"; \
   fi; \
-  echo "decrypt: opening LUKS"; \
-  # Keep /boot mounted — cryptsetup needs the keyfile path at open time.
-  # BOOT stays rw-mounted; the keyfile is 0600 root-only.
-  cryptsetup open --key-file /boot/beacon-relay.key /dev/sda5 beacon-relay-data && echo "decrypt: opened"; \
-  # First boot only: a freshly luksFormat-ed container has NO filesystem, so
-  # mount would fail. mkfs exactly once, gated on blkid finding none — never
-  # reformat a populated data partition.
-  if ! blkid /dev/mapper/beacon-relay-data >/dev/null 2>&1; then \
-    echo "decrypt: no filesystem on data partition; mkfs.ext4"; \
-    mkfs.ext4 -q /dev/mapper/beacon-relay-data || { echo "decrypt: MKFS FAILED"; exit 1; }; \
-    udevadm settle --timeout=30; \
-    echo "decrypt: filesystem created"; \
-  fi; \
-  mkdir -p /data; mount /dev/mapper/beacon-relay-data /data && echo "decrypt: /data mounted"'
+  mount /dev/mapper/beacon-relay-data /data && echo "decrypt: /data mounted"'
 RemainAfterExit=yes
 
 [Install]
@@ -140,10 +150,14 @@ WantedBy=multi-user.target
 EOF
 
 # --- binaries the rootfs needs but debootstrap leaves out -----------------
+# rauc is the OTA update client (spec §3: poll CP for signed bundle, verify
+# before touching disk, apply to inactive slot, mark good after boot). It was
+# missing entirely before — an appliance that can't update itself is a brick
+# the first time a CVE drops.
 chroot "$TARGET" apt-get update
 chroot "$TARGET" apt-get install -y --no-install-recommends \
   systemd-sysv nodejs cryptsetup ca-certificates \
-  linux-image-amd64 grub-efi-amd64-bin tpm2-tools openssl
+  linux-image-amd64 grub-efi-amd64-bin tpm2-tools openssl rauc
 # Triggered once: previous builds installed _some_ bundles but never
 # /usr/sbin/init, and an unsquashfs probe showed the missing binary. Make
 # this an explicit gate so sub-package resolution can't silently slip in.

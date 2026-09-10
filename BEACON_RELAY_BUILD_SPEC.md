@@ -66,7 +66,7 @@ This is a tool that runs on Ryan's machine, not on the appliance. Its job: produ
 - The device then requests a short-lived client certificate from the control plane's private CA. **Use step-ca (Smallstep)** for this rather than building a PKI from scratch — it's a real, actively maintained open-source CA purpose-built for automated short-lived certificate issuance and rotation to a device fleet, with mTLS support built in.
 - Until that certificate is issued and the device passes its own config/firmware-signature self-check, the device sits in a **quarantine state** — it can request enrollment, nothing else. This is what makes a cloned or tampered device harmless even if someone gets a copy of the disk image.
 
-**Disk encryption:** full-disk LUKS encryption as standard, not optional, so a failed/replaced/stolen SSD can't be read for stored telemetry — this also directly enables the "secure-wipe" and field-replacement requirements from the hardware lifecycle review.
+**Disk encryption:** LUKS encryption of the writable data partition (`/data`) as standard, not optional — the keyfile is sealed into the TPM at first boot (never stored on the same physical drive), so a failed/replaced/stolen SSD can't be read for stored telemetry. The root filesystem is read-only and holds no sensitive state; `/boot` is necessarily plaintext (it's what the bootloader reads). This directly enables the "secure-wipe" and field-replacement requirements from the hardware lifecycle review.
 
 **What "building the OS/install file" concretely means in practice:** a script/pipeline (this can reasonably be a shell + Packer-based build, or a simpler Debian preseed/cloud-init-driven build feeding into a RAUC bundle) that takes the current release's agent software, bakes it into a base image, signs it, and outputs a flashable artifact plus its RAUC bundle for future OTA delivery. One build produces both "what ships on day one" and "what the fleet update-checks against later" — the same artifact, not two different things to maintain.
 
@@ -264,7 +264,7 @@ Build Phase 3 only (Section 8, Section 2):
    build producing both outputs, not two separate things to maintain — the artifact that
    ships on day one is the same one the fleet update-checks against later over OTA.
 
-3. **LUKS full-disk encryption**, applied as standard on every image build, not optional.
+3. **LUKS encryption of the data partition**, applied as standard on every image build, not optional — with the unlock keyfile sealed into the TPM, never stored on the same drive.
 
 4. **First-boot provisioning script**, wired into the Phase 1 enrollment flow already
    built: on first boot, the device generates its keypair (TPM-2.0-sealed if the board has

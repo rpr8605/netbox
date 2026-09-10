@@ -103,6 +103,71 @@ def main() -> int:
     check("3b. token is HMAC-SHA256 length (64 hex)", len(tok1) == 64)
     check("3c. same device is deterministic (not random)", t_dev1.tokenize(ident) == tok1)
 
+    # ---- 3d. per-MESSAGE uniqueness: two different ADT messages of the SAME
+    # type/direction must produce different correlation tokens (MSH-10 differs).
+    # This is the property that proves a specific message across hops, not just
+    # the message type.
+    MSG_A = SYNTHETIC_HL7
+    MSG_B = SYNTHETIC_HL7.replace("MSG00001", "MSG00002")  # same type, different MSH-10
+    mA = extract_metadata(MSG_A.encode(), direction="inbound", ack_status="ACK",
+                          latency_ms=1, tokenizer=t_dev1, phi_mode=False)
+    mB = extract_metadata(MSG_B.encode(), direction="inbound", ack_status="ACK",
+                          latency_ms=1, tokenizer=t_dev1, phi_mode=False)
+    check("3d. same device, same type, different MSH-10 -> different tokens",
+          mA.correlation_token != mB.correlation_token,
+          f"{mA.correlation_token[:12]}… vs {mB.correlation_token[:12]}…")
+    check("3e. same message re-tokenized -> same token (stable correlation)",
+          extract_metadata(MSG_A.encode(), direction="inbound", ack_status="ACK",
+                           latency_ms=1, tokenizer=t_dev1, phi_mode=False).correlation_token
+          == mA.correlation_token)
+
+    # ---- 4. the passive listener actually taps a live MLLP feed -------------
+    # Prove run_passive_listener receives a real socket frame and emits
+    # metadata, while NEVER writing anything back to the sender (read-only tap).
+    import socket as _socket
+    import threading as _threading
+    from sidecar.mllp_tap import run_passive_listener
+
+    captured = []
+    listener_tok = CorrelationTokenizer(b"listener-device")
+    srv = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    srv.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", 0))
+    listen_port = srv.getsockname()[1]
+    srv.close()
+
+    t = _threading.Thread(
+        target=run_passive_listener,
+        args=("127.0.0.1", listen_port, captured.append),
+        kwargs={"tokenizer": listener_tok},
+        daemon=True,
+    )
+    t.start()
+    # give the listener a moment to bind+accept
+    import time as _time
+    _time.sleep(0.3)
+
+    sender = _socket.create_connection(("127.0.0.1", listen_port), timeout=3)
+    frame = b"\x0b" + SYNTHETIC_HL7.encode() + b"\x1c\x0d"
+    sender.sendall(frame)
+    # The tap must NOT write back: set a short timeout and confirm recv gets
+    # nothing (a real MLLP endpoint would get an ACK; a passive tap sends none).
+    sender.settimeout(0.5)
+    try:
+        echo = sender.recv(65536)
+        tap_wrote_back = len(echo) > 0
+    except _socket.timeout:
+        tap_wrote_back = False
+    sender.close()
+    _time.sleep(0.3)
+
+    check("4a. passive listener captured a frame from a live feed", len(captured) == 1)
+    check("4b. captured metadata has the right message_type",
+          len(captured) == 1 and captured[0].message_type == "ADT")
+    check("4c. tap never wrote back to the message path", tap_wrote_back is False)
+    check("4d. captured frame's raw body not in captured metadata",
+          len(captured) == 1 and "SYNTH-MRN-998877" not in repr(captured[0].__dict__))
+
     failed = [r for r in results if not r[1]]
     print(f"\n{len(results) - len(failed)}/{len(results)} sidecar security checks passed")
     return 1 if failed else 0

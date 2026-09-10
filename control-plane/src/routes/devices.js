@@ -10,6 +10,8 @@
 // RBAC'd one) must confirm, and the device must have presented a valid
 // step-ca-issued cert at least once (last_seen_at set by the mTLS gate).
 import { getDevice, listDevices, listEvents, upsertDevice } from '../db.js';
+import { requirePerm } from '../rbac.js';
+import { appendAudit } from '../db.js';
 
 export default async function deviceRoutes(app) {
   app.get('/api/devices', async () => listDevices());
@@ -20,7 +22,9 @@ export default async function deviceRoutes(app) {
     return { ...d, recent_events: listEvents(d.device_id, 20) };
   });
 
-  app.post('/api/devices/:id/confirm', async (req, reply) => {
+  // confirm flips quarantine -> active: a WRITE to the device registry, so it
+  // requires devices:write. Wired (was unauthenticated before the RBAC pass).
+  app.post('/api/devices/:id/confirm', { preHandler: requirePerm('devices:write', appendAudit) }, async (req, reply) => {
     const d = getDevice(req.params.id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
     if (d.state === 'revoked') return reply.code(409).send({ error: 'device revoked' });

@@ -17,9 +17,13 @@ echo "flash: source sha256=$LOG_SHA"
 dd if="$IMG" of="$TARGET" bs=4M conv=fsync status=progress
 sync
 
-# Verify the write by hashing the target back. dd-into-file on Windows-host
-# loop shares the same content path so this catches transport/echo corruption.
-ACTUAL_SHA=$(dd if="$TARGET" bs=4M status=none | sha256sum | awk '{print $1}')
+# Verify the write by hashing back EXACTLY the written region. Without a count,
+# dd reads the WHOLE target — on any drive larger than the image that hashes
+# garbage past the end and falsely reports a mismatch (or worse, a false match
+# is impossible to distinguish). Compute blocks from the image's real size.
+IMG_BYTES=$(stat -c %s "$IMG" 2>/dev/null || stat -f %z "$IMG")
+BLOCKS=$(( (IMG_BYTES + 4194303) / 4194304 ))  # ceil(bytes / 4M)
+ACTUAL_SHA=$(dd if="$TARGET" bs=4M count="$BLOCKS" status=none | sha256sum | awk '{print $1}')
 if [ "$ACTUAL_SHA" != "$LOG_SHA" ]; then
   echo "flash: VERIFY FAILED source=$LOG_SHA target=$ACTUAL_SHA" >&2
   exit 1
