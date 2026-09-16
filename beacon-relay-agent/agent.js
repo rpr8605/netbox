@@ -94,9 +94,11 @@ function api(method, url, body, tlsOpts = {}) {
 
 // TLS identity key is separate from the pinned retrust key: renewal re-keys
 // the TLS identity into /data/tls_key.pem and the enrollment-pinned
-// device_key.pem is never touched after provisioning. In TPM mode there is no
-// on-disk PEM at all — the TLS identity key is always a fresh file, and PoP
-// signing uses the TPM (see signPop).
+// device_key.pem is never touched after provisioning. In TPM mode the
+// long-term key has no on-disk PEM (PoP signing uses the TPM, see signPop);
+// the TLS identity is always an on-disk file — first written by provision.js
+// from a separate keypair (the sealed long-term key never touches disk), then
+// re-keyed each renewal.
 function tlsKeyPem() {
   return fs.existsSync('/data/tls_key.pem')
     ? fs.readFileSync('/data/tls_key.pem', 'utf8')

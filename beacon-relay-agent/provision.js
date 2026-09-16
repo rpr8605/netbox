@@ -109,8 +109,22 @@ async function main() {
     process.exit(1);
   }
 
-  const certPem = await issueCert({ caUrl: CA, ott, commonName: deviceId, keys: { privateKeyPem: privPem } });
+  // TLS identity: the keypair the daemon's mTLS client auth actually uses.
+  // In TPM mode the long-term key is TPM-sealed (its plain PEM never lands on
+  // disk, by design above), so a SEPARATE on-disk TLS identity is established
+  // here — the same shape the renewal flow writes (/data/tls_key.pem +
+  // /data/device.crt; see agent.js renewViaRetrust). Without this file the
+  // daemon's mtls() has no client key on first boot and every heartbeat 401s
+  // ("valid client certificate required") until renewal — which itself needs
+  // a working heartbeat, so the device never recovers (proven in vm-harness).
+  // In LUKS mode the on-disk device_key.pem already serves both roles, so no
+  // separate file is needed (agent.js tlsKeyPem falls back to it).
+  const tlsPrivPem = isTpm
+    ? execSync('openssl genrsa 2048', { encoding: 'utf8' })
+    : privPem;
+  const certPem = await issueCert({ caUrl: CA, ott, commonName: deviceId, keys: { privateKeyPem: tlsPrivPem } });
   fs.writeFileSync('/data/device.crt', certPem, { mode: 0o444 });
+  if (isTpm) fs.writeFileSync('/data/tls_key.pem', tlsPrivPem, { mode: 0o400 });
   fs.writeFileSync('/data/site_id', siteId, { mode: 0o444 });
   fs.writeFileSync('/data/device_id', deviceId, { mode: 0o444 });
 
@@ -118,7 +132,7 @@ async function main() {
   const hb = await api('POST', `${CP}/api/heartbeat`, null, {
     ca: rootsPem,
     cert: certPem,
-    key: privPem,
+    key: tlsPrivPem,
   });
   if (hb.status !== 200 || hb.body?.state !== 'quarantine') {
     dbg(`heartbeat after cert issue not quarantine: ${JSON.stringify(hb.body)}`);
