@@ -25,7 +25,7 @@ import { loadProfile } from './lib/ehr_check.js';
 import { runNetCheck } from './lib/net_checks.js';
 import { runFhirCheck } from './lib/fhir_r4.js';
 import { runMirthCheck } from './lib/mirth_admin.js';
-import { runUpdateCycle } from './lib/update.js';
+import { runUpdateCycle, markGood } from './lib/update.js';
 
 const DEFAULTS = { renew_fraction: 0.55, heartbeat_ms: 10_000 };
 
@@ -67,6 +67,10 @@ let certPem = fs.readFileSync('/data/device.crt', 'utf8');
 
 function api(method, url, body, tlsOpts = {}) {
   const u = new URL(url);
+  // binary:true — return the raw response bytes as a Buffer (the RAUC bundle
+  // download). The default path utf8-decodes and JSON-parses, which would
+  // silently corrupt binary payloads (UTF-8 replacement chars + quoting).
+  const { binary = false, ...tls } = tlsOpts;
   const opts = {
     method,
     hostname: u.hostname,
@@ -74,10 +78,16 @@ function api(method, url, body, tlsOpts = {}) {
     path: u.pathname + u.search,
     headers: body ? { 'content-type': 'application/json' } : undefined,
     rejectUnauthorized: false,
-    ...tlsOpts,
+    ...tls,
   };
   return new Promise(resolve => {
     const req = https.request(opts, res => {
+      if (binary) {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+        return;
+      }
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
@@ -86,7 +96,7 @@ function api(method, url, body, tlsOpts = {}) {
         resolve({ status: res.statusCode, body: parsed ?? data });
       });
     });
-    req.on('error', e => resolve({ status: 0, body: { error: String(e.message ?? e) } }));
+    req.on('error', e => resolve({ status: 0, body: binary ? Buffer.alloc(0) : { error: String(e.message ?? e) } }));
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
@@ -134,6 +144,17 @@ async function heartbeat() {
   if (hb.status === 200) {
     lastHeartbeatOkAt = Date.now(); // feed the self-monitor's silence detector
     console.log(`agent: heartbeat ok (state=${hb.body.state})`);
+    // Post-boot slot confirmation (RAUC A/B): the first successful heartbeat
+    // of a boot is the health signal that clears this slot's TRY flag in
+    // grubenv and keeps it as the boot default. Until markGood runs, grub
+    // treats this slot as a one-shot attempt and falls back to the previous
+    // known-good slot on the next boot (see ESP grub.cfg's TRY accounting).
+    // Once per boot; idempotent on RAUC's side.
+    if (!slotMarkedGood) {
+      slotMarkedGood = true;
+      const ok = markGood();
+      console.log(`agent: rauc mark-good after healthy boot: ${ok ? 'ok' : 'FAILED (non-fatal)'}`);
+    }
     return hb.body.state;
   }
   console.log(`agent: heartbeat failed status=${hb.status} body=${JSON.stringify(hb.body)}`);
@@ -189,6 +210,8 @@ async function tick() {
 // heartbeat emitter (the "monitor that stopped working" failure mode).
 // Declared before the loop starts so tick()'s first beat never hits a TDZ.
 let lastHeartbeatOkAt = Date.now();
+// One-shot-per-boot flag for the RAUC mark-good call in heartbeat().
+let slotMarkedGood = false;
 
 setInterval(tick, CFG.heartbeat_ms);
 tick();
@@ -238,13 +261,25 @@ async function updateTick() {
       { cpBase: CP, currentVersion: CURRENT_VERSION },
       {
         fetchJson: async (url) => (await api('GET', url, null, mtls())).body,
-        fetchBytes: async (url) => Buffer.from(JSON.stringify((await api('GET', url, null, mtls())).body)),
+        // binary mode: the bundle is raw octet-stream bytes, not JSON —
+        // the previous JSON.stringify(utf8-body) path corrupted every byte
+        // stream and could never have produced an installable bundle.
+        fetchBytes: async (url) => (await api('GET', url, null, { ...mtls(), binary: true })).body,
       },
     );
     if (r.action !== 'none') console.log(`agent: update ${r.action} ${r.version ?? ''} ${r.reason ?? ''}`.trim());
+    if (r.action === 'installed') {
+      // The verified bundle is in the inactive slot and RAUC has pointed
+      // grubenv at it — the only way to run the new slot is to boot it. The
+      // post-reboot health gate is the markGood call in heartbeat() above.
+      // (Staged dev/test/pilot rollout timing is the separate §8.7 work.)
+      console.log('agent: update installed; rebooting into new slot');
+      try { execSync('systemctl reboot', { stdio: 'pipe' }); }
+      catch (e) { console.log(`agent: reboot request failed (non-fatal): ${e.message}`); }
+    }
   } catch (e) { console.log(`agent: update check failed (non-fatal): ${e.message}`); }
 }
 setInterval(updateTick, CFG.update_interval_ms ?? 300_000);
 updateTick();
 
-console.log(`agent: daemon running; heartbeat=${CFG.heartbeat_ms}ms; tpm=${isTpm}; renew@${CFG.renew_fraction}`);
+console.log(`agent: daemon running; version=${CURRENT_VERSION}; heartbeat=${CFG.heartbeat_ms}ms; tpm=${isTpm}; renew@${CFG.renew_fraction}`);

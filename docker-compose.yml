@@ -37,8 +37,12 @@ services:
       PROVISIONER_NAME: ${PROVISIONER_NAME:-beacon-relay-device}
       PROVISIONER_PRIVATE_JWK_PATH: /run/secrets/provisioner_private_jwk
       DB_PATH: /data/beacon-relay.db
+      # The OTA release surface (routes/releases.js) reads the build's out/
+      # tree for the latest-version pointer and the signed bundle bytes.
+      RELEASES_DIR: /out
     volumes:
       - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
+      - ./out:/out:ro
       - cp-data:/data
     ports:
       - "9100:9100"

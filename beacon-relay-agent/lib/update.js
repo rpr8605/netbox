@@ -53,13 +53,15 @@ export function verifyBundle(bundlePath, keyringPath = '/etc/beacon-relay-releas
 
 // applyBundle — install the verified bundle to the INACTIVE slot. RAUC handles
 // slot selection; we only mark the new slot good after a post-update boot +
-// health check (markGood). Returns the rauc install exit status.
+// health check (markGood). Returns { ok, out } — rauc's own output is kept
+// because an install failure with no captured reason is undebuggable on a
+// headless appliance.
 export function applyBundle(bundlePath) {
   try {
-    execSync(`rauc install ${bundlePath}`, { encoding: 'utf8', stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
+    const out = execSync(`rauc install ${bundlePath} 2>&1`, { encoding: 'utf8' });
+    return { ok: true, out };
+  } catch (e) {
+    return { ok: false, out: String(e.stdout ?? e.message ?? e) };
   }
 }
 
@@ -84,7 +86,7 @@ export async function runUpdateCycle(ctx, { fetchJson, fetchBytes } = {}) {
   }
   const applied = applyBundle(bundlePath);
   fs.rmSync(bundlePath, { force: true });
-  return applied
+  return applied.ok
     ? { action: 'installed', version: latestVersion, note: 'mark-good pending post-boot health check' }
-    : { action: 'install-failed', version: latestVersion };
+    : { action: 'install-failed', version: latestVersion, reason: (applied.out ?? '').trim().slice(-400) };
 }

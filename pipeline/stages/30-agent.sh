@@ -103,7 +103,10 @@ ExecStart=/bin/sh -c '\
   else \
     echo "decrypt: already open"; \
   fi; \
-  mount /dev/mapper/beacon-relay-data /data && echo "decrypt: /data mounted"'
+  mount /dev/mapper/beacon-relay-data /data && echo "decrypt: /data mounted"; \
+  echo "decrypt: mounting ESP at /boot/efi (RAUC grubenv access)"; \
+  mkdir -p /boot/efi; \
+  mount -o rw /dev/sda1 /boot/efi || echo "decrypt: ESP mount failed (OTA slot-switching unavailable; non-fatal)"'
 RemainAfterExit=yes
 
 [Install]
@@ -163,7 +166,7 @@ EOF
 chroot "$TARGET" apt-get update
 chroot "$TARGET" apt-get install -y --no-install-recommends \
   systemd-sysv nodejs cryptsetup ca-certificates \
-  linux-image-amd64 grub-efi-amd64-bin tpm2-tools openssl rauc
+  linux-image-amd64 grub-efi-amd64-bin grub-common tpm2-tools openssl rauc
 # Triggered once: previous builds installed _some_ bundles but never
 # /usr/sbin/init, and an unsquashfs probe showed the missing binary. Make
 # this an explicit gate so sub-package resolution can't silently slip in.
@@ -171,6 +174,16 @@ if ! chroot "$TARGET" test -f /usr/sbin/init; then
   echo "systemd-sysv install did not produce /usr/sbin/init" >&2
   exit 1
 fi
+# grub-editenv (grub-common) is how RAUC's grub backend writes boot state
+# on-device — without it an update installs but the slot can never be marked
+# good, so rollback accounting silently never happens. Gate like init above.
+if ! chroot "$TARGET" test -f /usr/bin/grub-editenv; then
+  echo "grub-common install did not produce /usr/bin/grub-editenv" >&2
+  exit 1
+fi
+# The agent's update client compares this against the CP's latest-release
+# pointer (lib/update.js); it must be the release being built, not a default.
+echo "${RELEASE_VERSION:-0.1.0}" > "$TARGET/etc/beacon-relay-version"
 cat > "$TARGET/usr/local/bin/node" <<'EOF'
 #!/bin/sh
 exec /usr/bin/node "$@"

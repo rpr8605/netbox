@@ -68,16 +68,21 @@ for i in $(seq 0 $((N-1))); do
     # grub's ext2 driver rejects ext4 metadata_csum -> every kernel path
     # failed before this. Disable checksum on RAID slots (+DATA too: same
     # journey if spec ever mounts from grub).
-    ext4)  [ "$ROLE" != "luks-data" ] && OPT="-O ^metadata_csum" || OPT=
-           mkfs.ext4 -q $OPT -L "$LABEL" -F "$dev" ;;
+    ext4)  if [ "$ROLE" = "rauc-slot-rootfs.0" ]; then
+             : # slot A is populated by dd from the payload image below, not mkfs
+           else
+             [ "$ROLE" != "luks-data" ] && OPT="-O ^metadata_csum" || OPT=
+             mkfs.ext4 -q $OPT -L "$LABEL" -F "$dev"
+           fi ;;
   esac
   if [ "$ROLE" = "rauc-slot-rootfs.0" ]; then
+    # Populate slot A by raw-writing the REAL ext4 payload image — the same
+    # bytes RAUC writes into slot B on update, so both slots are the same kind
+    # of artifact (the old unsquashfs path only worked because the payload was
+    # a squashfs, which could never have booted as a RAUC-installed ext4 slot).
+    dd if="/out/$VERSION/payload/rootfs.ext4" of="$dev" bs=4M status=none
     TMP=$(mktemp -d)
     mount "$dev" "$TMP"
-    # Extract directly into the slot root. Earlier -d "$TMP/root" nested the
-    # rootfs one level deep, and initramfs reported /sbin/init missing (found
-    # at p3/root/sbin instead), which then cascaded to PXE fallback silently.
-    unsquashfs -f -d "$TMP" "/out/$VERSION/payload/rootfs.ext4" >/dev/null
 
     # Bootloader install ONTO THE ESP (non-RAUC partition). Kernel/initramfs
     # inside the rootfs slot; EFI shell entry 'BOOTX64' executes grubx64.efi,
@@ -101,22 +106,93 @@ for i in $(seq 0 $((N-1))); do
     # and the cfg reads FROM ESP — no ext driver chain in the bootlin path.
     cp "$TMP/boot/vmlinuz-6.1.0-50-amd64" "$ESP/"
     cp "$TMP/boot/initrd.img-6.1.0-50-amd64" "$ESP/"
+    # A/B slot-selecting grub.cfg. The variable protocol is RAUC's own grub
+    # backend's, verified against RAUC src/bootloaders/grub.c and its
+    # reference contrib/grub.conf — do not invent a parallel scheme:
+    #   ORDER           space-separated bootnames to try, best first
+    #   <bootname>_OK   1 = confirmed good (rauc status mark-good sets this)
+    #   <bootname>_TRY  1 = boot attempted but not yet confirmed good
+    # First ORDER slot with OK=1 && TRY=0 boots; the chosen slot's TRY is set
+    # to 1 until the OS marks it good. A slot never marked good is tried once
+    # and then skipped — that is the rollback guarantee, in grubenv, not in
+    # anything we hand-rolled. rauc.slot= tells RAUC which slot booted.
     cat > "$ESP/grub/grub.cfg" <<'EOF'
 set default=0
 set timeout=2
+
+set ORDER="A B"
+set A_OK=1
+set A_TRY=0
+set B_OK=0
+set B_TRY=0
+load_env
+
+set CHOSEN=
+for SLOT in $ORDER; do
+    if [ "$SLOT" == "A" ]; then
+        if [ "$A_OK" -eq 1 -a "$A_TRY" -eq 0 ]; then
+            CHOSEN=A
+            A_TRY=1
+            break
+        fi
+    fi
+    if [ "$SLOT" == "B" ]; then
+        if [ "$B_OK" -eq 1 -a "$B_TRY" -eq 0 ]; then
+            CHOSEN=B
+            B_TRY=1
+            break
+        fi
+    fi
+done
+
+# No confirmed-good-and-untried slot: fall back to slot A and re-arm the TRY
+# flags of any OK slot (contrib/grub.conf's rescue-path reset), so a healthy
+# boot can re-establish a good state instead of wedging with nothing to boot.
+if [ -z "$CHOSEN" ]; then
+    CHOSEN=A
+    if [ "$A_OK" -eq 1 -a "$A_TRY" -eq 1 ]; then
+        A_TRY=0
+    fi
+    if [ "$B_OK" -eq 1 -a "$B_TRY" -eq 1 ]; then
+        B_TRY=0
+    fi
+fi
+
+save_env A_TRY A_OK B_TRY B_OK ORDER
+
 set root=(hd0,gpt1)
-linux /vmlinuz-6.1.0-50-amd64 root=LABEL=ROOTFS_A ro console=ttyS0 init=/lib/systemd/systemd
-initrd /initrd.img-6.1.0-50-amd64
+if [ "$CHOSEN" = "B" ]; then
+    echo "beacon-relay: booting slot B (root=/dev/sda4)"
+    linux /vmlinuz-6.1.0-50-amd64 root=/dev/sda4 ro console=ttyS0 init=/lib/systemd/systemd rauc.slot=B
+    initrd /initrd.img-6.1.0-50-amd64
+else
+    echo "beacon-relay: booting slot A (root=/dev/sda3)"
+    linux /vmlinuz-6.1.0-50-amd64 root=/dev/sda3 ro console=ttyS0 init=/lib/systemd/systemd rauc.slot=A
+    initrd /initrd.img-6.1.0-50-amd64
+fi
 boot
 EOF
+    # grubenv: RAUC's grub-backend state file, read by grub at $prefix/grubenv
+    # and written on-device by RAUC via grub-editenv. Baked with slot A as the
+    # sole known-good slot (fresh image = factory A). Must exist and be exactly
+    # the env-block format or grub's load_env/save_env misbehave.
+    command -v grub-editenv >/dev/null || { echo "grub-editenv missing in assemble container" >&2; exit 1; }
+    grub-editenv "$ESP/grub/grubenv" create
+    grub-editenv "$ESP/grub/grubenv" set ORDER="A B" A_OK=1 A_TRY=0 B_OK=0 B_TRY=0
     cat > /tmp/grub.embed.cfg <<'EOF'
 echo BEACON_RELAY_EMBED_START
 ls (hd0,gpt1)/grub/
 echo BEACON_RELAY_EMBED_END
 configfile (hd0,gpt1)/grub/grub.cfg
 EOF
+    # Module list MUST include `test` (the [ ] command) and `echo`: the A/B
+    # grub.cfg's slot selection uses [ ... ] string/numeric tests and echo
+    # lines. Without `test`, string comparisons evaluate TRUE unconditionally
+    # (probed live: [ "A" = "B" ] -> true), which made the slot dispatcher
+    # boot the wrong slot on every boot — an invisible failure because grub's
+    # console output never reaches the serial log.
     grub-mkimage -O x86_64-efi -c /tmp/grub.embed.cfg -p "(hd0,gpt1)/grub" -o /tmp/grubx64.efi \
-      part_gpt fat ext2 linux normal configfile search search_label
+      part_gpt fat ext2 linux normal configfile search search_label test echo
     cp /tmp/grubx64.efi "$ESP/EFI/BOOT/BOOTX64.EFI"
     cmp /tmp/grubx64.efi "$ESP/EFI/BOOT/BOOTX64.EFI"
     ls -lR "$ESP"

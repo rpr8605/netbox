@@ -3,8 +3,8 @@
   "partitions": [
     { "label": "EFI",      "size": "128MiB", "type": "fat32",  "role": "boot" },
     { "label": "BOOT",     "size": "256MiB", "type": "ext2",   "role": "boot-keyfile" },
-    { "label": "ROOTFS_A", "size": "2GiB",   "type": "ext4",   "role": "rauc-slot-rootfs.0" },
-    { "label": "ROOTFS_B", "size": "2GiB",   "type": "ext4",   "role": "rauc-slot-rootfs.1" },
+    { "label": "ROOTFS_A", "size": "2GiB",   "type": "ext4",  "role": "rauc-slot-rootfs.0", "bootname": "A" },
+    { "label": "ROOTFS_B", "size": "2GiB",   "type": "ext4",  "role": "rauc-slot-rootfs.1", "bootname": "B" },
     { "label": "DATA",     "size": "grow",   "type": "ext4",   "role": "luks-data" }
   ]
 }
