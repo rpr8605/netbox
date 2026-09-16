@@ -81,7 +81,11 @@ log "qemu started; waiting for provisioning"
 
 for i in $(seq 1 90); do
   if grep -q "enrolled and quarantined" "$SERIAL" 2>/dev/null; then break; fi
-  if grep -q "FAILED" "$SERIAL" 2>/dev/null; then break; fi
+  # Break early ONLY on this flow's own failure markers. A bare "FAILED"
+  # substring also matches unrelated systemd units that routinely fail-and-
+  # retry on a minimal image (e.g. systemd-logind), which produced a false
+  # ACCEPTANCE_FAIL here before provisioning had even finished.
+  if grep -qE "decrypt: .*FAILED|provision: (crashed|redeem failed|CA fingerprint mismatch|no enrollment token|not quarantine|unset)" "$SERIAL" 2>/dev/null; then break; fi
   sleep 2
 done
 
@@ -93,12 +97,22 @@ grep -q "enrolled and quarantined" "$SERIAL" || fail "provisioning did not reach
 log "quarantine entered against the real control plane"
 
 # --- 5. confirm out of quarantine --------------------------------------------
-CONF=$(curl -sk -X POST "$CP/api/devices/$DEVICE_ID/confirm")
+# The confirm route is RBAC-gated (devices:write): the caller must present a
+# role that holds it. operations-manager is the fleet-ops role that carries
+# devices:write in rbac.js — the same role an operator uses in the console.
+CONF=$(curl -sk -X POST "$CP/api/devices/$DEVICE_ID/confirm?role=operations-manager")
 log "confirm response: $CONF"
 echo "$CONF" | jq -e '.state=="active"' >/dev/null || fail "confirm did not activate device"
 
 # --- 6. agent daemon heartbeat as active -------------------------------------
-sleep 15
+# Poll for the state=active marker instead of a fixed wall-clock sleep: under
+# emulation (TCG, no /dev/kvm) guest time runs slower than wall time, so a
+# fixed sleep can end before the next 10s-cadence heartbeat lands — the same
+# false-negative class as the old "FAILED" substring match.
+for i in $(seq 1 60); do
+  if grep -q "state=active" "$SERIAL" 2>/dev/null; then break; fi
+  sleep 2
+done
 # `|| true` on the greps: an empty match is a DATA point asserted below, not a
 # script-killing pipefail exit that swallows the fail() message.
 tr '\r' '\n' < "$SERIAL" | grep -E "agent:" | tail -5 || true
