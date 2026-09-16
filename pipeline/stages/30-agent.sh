@@ -53,12 +53,13 @@ StandardOutput=journal+console
 StandardError=journal+console
 ExecStartPre=/usr/bin/udevadm settle --timeout=30
 # ── THREAT-MODEL BOUNDARY ───────────────────────────────────────────────
-# The LUKS unlock key is SEALED INTO THE TPM (persistent handle 0x81010002),
-# not stored as a plaintext keyfile on /boot. The sealed blob lives on /data
-# (itself ciphertext at rest). An attacker who removes the SSD gets only the
-# sealed blob, which no other machine can unseal — TPM unseal requires this
-# device. There is no passphrase fallback; do not add one without re-reading
-# this boundary (a fallback re-opens the same physical attack this closes).
+# The LUKS unlock key is SEALED INTO THE TPM. The sealed BLOB (encrypted to
+# this device's TPM, useless without it) lives on /boot — /boot is plaintext,
+# but the blob is ciphertext to anyone without the TPM, so a stolen SSD yields
+# nothing an attacker can unseal. The plaintext key is generated in /run
+# (tmpfs), used once for luksFormat, then shredded — never written to disk.
+# There is no passphrase fallback; do not add one without re-reading this
+# boundary (a fallback re-opens the same physical attack this closes).
 # Availability tradeoff (kept): no network unlock server, so a WAN outage can
 # never block local boot; the cost is that a failed TPM = lost /data, which is
 # the correct call for a field appliance whose /data holds only regenerable
@@ -67,26 +68,31 @@ ExecStartPre=/usr/bin/udevadm settle --timeout=30
 ExecStart=/bin/sh -c '\
   echo "decrypt: TPM-sealed unlock path"; \
   mkdir -p /data; \
+  mkdir -p /boot; mount -o rw /dev/sda2 /boot || { echo "decrypt: MOUNT FAILED"; exit 1; }; \
   if [ ! -e /dev/mapper/beacon-relay-data ]; then \
-    if ! blkid /dev/sda5 2>/dev/null | grep -q crypto_LUKS; then \
+    if [ ! -f /boot/luks.sealed.priv ]; then \
       echo "decrypt: first boot — generating + TPM-sealing LUKS key"; \
-      # 256 bytes, not 512: TPM2 sealed-data objects cap at 256 bytes of input
-      # for an RSA2048 primary. A 512-byte key fails tpm2_create with "size is
-      # larger than buffer". 256 bytes of /dev/urandom is ample entropy for a
-      # LUKS keyfile.
-      dd if=/dev/urandom of=/run/luks.key.plain bs=256 count=1 status=none; \
+      # 128 bytes: a TPM2 sealed-data object's sensitive buffer (data + auth
+      # overhead) overflows at 256 ("structure is the wrong size", verified in
+      # the guest). 128 bytes is comfortably under the limit and ample entropy
+      # for a LUKS keyfile.
+      dd if=/dev/urandom of=/run/luks.key.plain bs=128 count=1 status=none; \
       chmod 0400 /run/luks.key.plain; \
       cryptsetup luksFormat --batch-mode /dev/sda5 /run/luks.key.plain || { echo "decrypt: LUKSFORMAT FAILED"; exit 1; }; \
       umask 077; mkdir -p /run/tpm; \
       tpm2_createprimary -C o -g sha256 -G rsa -c /run/tpm/luks.primary.ctx; \
-      tpm2_create -g sha256 -u /run/tpm/luks.pub -r /run/tpm/luks.priv -C /run/tpm/luks.primary.ctx -i /run/luks.key.plain; \
-      tpm2_load -C /run/tpm/luks.primary.ctx -u /run/tpm/luks.pub -r /run/tpm/luks.priv -c /run/tpm/luks.ctx; \
-      tpm2_evictcontrol -C o -c /run/tpm/luks.ctx 0x81010002; \
-      shred -u /run/luks.key.plain; rm -rf /run/tpm; \
-      echo "decrypt: key sealed to TPM 0x81010002, plaintext shredded"; \
+      tpm2_create -g sha256 -u /boot/luks.sealed.pub -r /boot/luks.sealed.priv -C /run/tpm/luks.primary.ctx -i /run/luks.key.plain; \
+      tpm2_flushcontext -t; \
+      shred -u /run/luks.key.plain; \
+      echo "decrypt: key sealed to TPM; encrypted blob on /boot (useless off-device)"; \
     fi; \
-    echo "decrypt: unsealing key from TPM and opening LUKS"; \
-    tpm2_unseal -c 0x81010002 | cryptsetup open --key-file - /dev/sda5 beacon-relay-data || { echo "decrypt: TPM unseal/open FAILED"; exit 1; }; \
+    echo "decrypt: loading sealed blob + unsealing via TPM"; \
+    mkdir -p /run/tpm; \
+    tpm2_createprimary -C o -g sha256 -G rsa -c /run/tpm/luks.primary.ctx; \
+    tpm2_flushcontext -t; \
+    tpm2_load -C /run/tpm/luks.primary.ctx -u /boot/luks.sealed.pub -r /boot/luks.sealed.priv -n /run/tpm/luks.name -c /run/tpm/luks.ctx; \
+    tpm2_unseal -c /run/tpm/luks.ctx | cryptsetup open --key-file - /dev/sda5 beacon-relay-data || { echo "decrypt: TPM unseal/open FAILED"; exit 1; }; \
+    rm -rf /run/tpm; \
     echo "decrypt: opened"; \
     if ! blkid /dev/mapper/beacon-relay-data >/dev/null 2>&1; then \
       echo "decrypt: no filesystem on data partition; mkfs.ext4"; \

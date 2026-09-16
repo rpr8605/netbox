@@ -34,8 +34,14 @@ export function tpmPresent() {
 // Seal the device private key into the TPM at persistent handle 0x81010001
 // (owner hierarchy, RSA2048 under a fresh storage-primary). A FIXED handle is
 // used so the agent references the key across reboots without re-creating or
-// re-enumerating TPM objects. tpm2_clear runs first so a half-provisioned TPM
-// from a prior failed boot can't wedge re-provisioning. The caller keeps ONLY
+// re-enumerating TPM objects. A stale object at that handle from a prior
+// failed provisioning is evicted first so it can't wedge re-provisioning —
+// but NEVER wipe the whole TPM here: tpm2_clear rotates the storage-hierarchy
+// seed, and every sealed object / primary derived from the old seed becomes
+// permanently unloadable (tpm2_load 0x1DF "integrity check failed" on the
+// next boot). decrypt-data.service seals the LUKS unlock blob under the same
+// hierarchy EARLIER in this same boot, so a clear here bricks /data at the
+// device's first reboot — verified in the QEMU harness. The caller keeps ONLY
 // the handle — the security property being bought here is that the key is
 // unusable off this machine, and copying the PEM out would silently void it.
 // The plaintext PEM is deliberately NEVER written to disk: writing it to
@@ -52,7 +58,12 @@ export function sealPrivateKey(plainPem) {
 set -e
 umask 077
 mkdir -p /data/tpm
-tpm2_clear
+# Evict ONLY this function's own stale handle (re-provisioning after a prior
+# failed attempt). Do NOT substitute tpm2_clear: TPM2_Clear rotates the
+# storage seed and orphans the LUKS sealed blob decrypt-data.service created
+# under the same hierarchy minutes earlier — the device then bricks on its
+# first reboot (0x1DF integrity failure, proven in vm-harness).
+tpm2_evictcontrol -C o -c 0x81010001 2>/dev/null || true
 tpm2_createprimary -C o -g sha256 -G rsa -c /data/tpm/primary.ctx
 tpm2_create -g sha256 -G rsa2048 -u /data/tpm/key.pub -r /data/tpm/key.priv \
   -C /data/tpm/primary.ctx
