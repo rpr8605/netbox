@@ -158,6 +158,51 @@ StandardError=journal+console
 WantedBy=multi-user.target
 EOF
 
+# --- RAUC daemon unit --------------------------------------------------------
+# Debian bookworm's `rauc` package ships ONLY /usr/bin/rauc (verified with
+# dpkg-deb): no D-Bus service file, no systemd unit. Without a daemon,
+# `rauc status` / `rauc install` / `rauc status mark-good` all fail with a
+# D-Bus service-not-found error — which is exactly why markGood() failed
+# (non-fatally) on every boot. This unit runs the daemon; ordering waits for
+# decrypt-data.service so the ESP (grubenv) is already mounted when RAUC
+# starts.
+cat > "$TARGET/etc/systemd/system/rauc.service" <<'EOF'
+[Unit]
+Description=RAUC update daemon (install/status/mark-good over D-Bus)
+After=decrypt-data.service
+
+[Service]
+StandardOutput=journal+console
+StandardError=journal+console
+ExecStart=/usr/bin/rauc service
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+# D-Bus name-ownership policy for the RAUC daemon. This file is verbatim
+# upstream RAUC (data/de.pengutronix.rauc.conf): Debian's package omits it,
+# and this image's dbus system.conf has <deny own="*"/> with no root own-
+# allow, so without it the daemon dies in a restart loop with "Failed to
+# obtain name de.pengutronix.rauc on system bus" (verified on-device).
+mkdir -p "$TARGET/usr/share/dbus-1/system.d"
+cat > "$TARGET/usr/share/dbus-1/system.d/de.pengutronix.rauc.conf" <<'EOF'
+<!DOCTYPE busconfig PUBLIC
+ "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <!-- This config allows anyone to control rauc -->
+  <!-- It is usually installed to /usr/share/dbus-1/system.d -->
+
+  <policy context="default">
+    <allow send_destination="de.pengutronix.rauc"/>
+  </policy>
+
+  <policy user="root">
+    <allow own="de.pengutronix.rauc"/>
+  </policy>
+</busconfig>
+EOF
 # --- binaries the rootfs needs but debootstrap leaves out -----------------
 # rauc is the OTA update client (spec §3: poll CP for signed bundle, verify
 # before touching disk, apply to inactive slot, mark good after boot). It was
@@ -193,9 +238,11 @@ chmod +x "$TARGET/usr/local/bin/node"
 # systemd-networkd must be explicitly enabled — the wired DHCP config in
 # 10-configure.sh is inert without it, and an appliance that boots with no IP
 # can never enroll (provision.js saw ENETUNREACH/0.0.0.0 before this was on).
+# rauc.service is enabled alongside: the agent's update/mark-good path calls
+# into it via D-Bus (see the unit comment above).
 systemd-nspawn --directory="$TARGET" --quiet /bin/systemctl enable \
-  systemd-networkd decrypt-data.service beacon-relay-firstboot.service beacon-relay-agent.service \
+  systemd-networkd decrypt-data.service beacon-relay-firstboot.service beacon-relay-agent.service rauc.service \
   2>/dev/null || \
 chroot "$TARGET" /bin/sh -c \
-  'systemctl enable systemd-networkd decrypt-data.service beacon-relay-firstboot.service beacon-relay-agent.service'
+  'systemctl enable systemd-networkd decrypt-data.service beacon-relay-firstboot.service beacon-relay-agent.service rauc.service'
 
