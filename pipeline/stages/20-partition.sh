@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# pipeline/stages/20-partition.sh Ã¢â‚¬â€ read the declarative partition map and emit
-# /tmp/partition.env (LABEL -> index assignments) consumed by 40-rauc.sh when it
-# writes the on-image /etc/rauc/system.conf. Staying declarative here is what
-# keeps the RAUC slot labels and the actual GPT labels from drifting apart.
+# pipeline/stages/20-partition.sh — partition-map validation stage.
+# Previously emitted /tmp/partition.env for 40-rauc.sh, but that file was never
+# actually consumed (40-rauc.sh reads the same JSON map directly). Kept as a
+# named stage hook so the executor ordering stays stable; the partition map is
+# the single source of truth in pipeline/manifests/beacon-relay-partition-map.json.
 set -euo pipefail
 TARGET=$1
 MAP=/work/pipeline/manifests/beacon-relay-partition-map.json
-jq -r '.partitions | to_entries[] | "PART_\(.key+1)_\(.value.role | gsub("[^A-Za-z0-9]";"_") | ascii_upcase)=\(.value.label)"' \
-  "$MAP" > /tmp/partition.env
-echo "partition map staged:"
-cat /tmp/partition.env
+# Validate the map is readable JSON; downstream stages depend on it.
+jq -e '.partitions' "$MAP" >/dev/null
+echo "partition map validated"
+
 

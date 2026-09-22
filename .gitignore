@@ -26,7 +26,6 @@ out/**/*.ext4
 out/**/SHA256SUMS
 out/**/*.png
 out/manifest.json
-out/**/sfdisk.script
 out/**/manifest/manifest.raucm
 *.log
 data/

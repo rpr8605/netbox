@@ -8,7 +8,6 @@
 #       never enters the image; keyring carries only the public cert.
 set -euo pipefail
 TARGET=$1
-source /tmp/partition.env
 VERSION=${RELEASE_VERSION:-0.1.0}
 
 # --- (a) on-image rauc system.conf ------------------------------------------

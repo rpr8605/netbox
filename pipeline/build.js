@@ -78,7 +78,6 @@ execFileSync('docker', ['compose',
   'image-build', `/work/pipeline/verify_bundle.sh`, version], { stdio: 'inherit' });
 
 // 5) Partition map → flashable disk assembly (privileged; full-rootfs embed).
-execFileSync('node', ['pipeline/gen_sfdisk.js', version], { stdio: 'inherit' });
 execFileSync('docker', ['compose',
   '-f', 'pipeline/compose.assemble.yml',
   '--project-name', 'beacon-relay-image',
