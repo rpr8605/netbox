@@ -11,3 +11,7 @@ Container `beacon-relay-step-ca` is healthy after restart.
 ## Host port 9100 unavailable on Windows — RESOLVED via remap
 
 `docker-compose.yml` now publishes host port `10443` -> container port `9100`. Host-side tests and `seed_demo_sites.js` default to `https://localhost:10443`. The container port remains `9100` for `device-sim` and `vm-harness` compose-internal access.
+
+## QEMU acceptance x3 — BLOCKED by missing KVM in Docker Desktop
+
+Two acceptance runs failed identically with `Could not access KVM kernel module: No such file or directory`. Docker Desktop on Windows does not expose `/dev/kvm` to containers, and `vm-harness/acceptance.sh` hardcodes `-enable-kvm`. Anti-loop rule applied: stopped after 2 failures. See `.agent/attempts.md` for options.

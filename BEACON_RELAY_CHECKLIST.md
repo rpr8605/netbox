@@ -20,7 +20,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
-| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT YET RE-RUN** — queued |
+| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
 Prereq for the acceptance suite: a built image at `out/0.1.0/` (via `node pipeline/build.js`).
@@ -225,7 +225,7 @@ Small, unblocked, worth doing first:
 
 ## Audit scope limitations this pass
 
-The only claim not re-run live in this pass is the **Phase-3 QEMU acceptance harness** (`vm-harness/acceptance.sh`). It is queued for the next block.
+The **Phase-3 QEMU acceptance harness** (`vm-harness/acceptance.sh`) was not re-run live. Two attempts failed identically because Docker Desktop on Windows does not expose `/dev/kvm` and the harness hardcodes `-enable-kvm`. See `.agent/attempts.md`.
 
 All other suites listed in the test-evidence table were re-run fresh, including the Docker-dependent E2E and RBAC suites after the host port was remapped to `10443`.
 

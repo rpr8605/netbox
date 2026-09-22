@@ -127,7 +127,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
-| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — queued for next block |
+| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.
 The QEMU acceptance run (`vm-harness/acceptance.sh`) is the Phase-3 proof and needs the
@@ -166,6 +166,7 @@ built image plus the harness container.
   decision (per the AWS doc) is untested.
 - **`git push` history was rewritten** — see the note at the top. Clones need fetch+reset.
 - **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** Worked around by remapping the published host port to `10443` in `docker-compose.yml` and updating host-side test/seed defaults. The container port remains `9100` for compose-internal services.
+- **QEMU acceptance cannot run in Docker Desktop on Windows because `/dev/kvm` is unavailable.** `vm-harness/acceptance.sh` hardcodes `-enable-kvm`; two attempts failed identically. Options: run on a Linux host with KVM, modify the harness to fall back to TCG with longer timeouts, or use a WSL2/Docker setup that exposes KVM. See `.agent/attempts.md`.
 - A handful of test/harness scripts write state to `os.tmpdir()` on the host (monitor
   state, downtime cache, the tamper-test DB). They clean up, but a killed process can leave
   a temp file; harmless, and they're all gitignored paths or temp dirs.

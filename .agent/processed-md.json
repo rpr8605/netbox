@@ -15,9 +15,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                       "sha256":  "8c51a750276696e1d11c8748c951e131b98c13f5f3798f6ba2b80288f48d6904",
+                                       "sha256":  "d48888515e347bc8f12fd35d6a3f904de68990fdda4b65cd2b9e5856e523e08b",
                                        "status":  "reference",
-                                       "note":  "status doc; updated with KF3 DONE, E2E 23/23 and RBAC 33/33 fresh re-runs",
+                                       "note":  "status doc; updated with KF3 DONE, E2E/RBAC re-runs, acceptance blocked by KVM",
                                        "commits":  [
                                                        "107ac2f",
                                                        "a68b0f5",
@@ -86,9 +86,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                    "sha256":  "b8a8ed875fed67cc3bc6e3926a485e7b6bc5ab5db57abfb46954f8db2ceec9cf",
+                                    "sha256":  "bc333075e723334ac39128ab4fdcb33444a8a159072d434783ce96e45e1faf3",
                                     "status":  "reference",
-                                    "note":  "status doc; updated with KF3 DONE, E2E 23/23 and RBAC 33/33 fresh re-runs",
+                                    "note":  "status doc; updated with KF3 DONE, E2E/RBAC re-runs, acceptance blocked by KVM",
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
@@ -181,12 +181,20 @@
                                               ]
                               },
     ".agent/open-questions.md":  {
-                                     "sha256":  "30886b7f2063b0a3f69e7c9f5e5199a5310ca933e7f4f6c5611dd1c8014c5a62",
+                                     "sha256":  "70b4c53b73f44a3312ea63d268c35de1cf9a9cc5fe62af362f207e36586ff4838",
                                      "status":  "reference",
-                                     "note":  "session open questions; KF3 and port-9100 resolved",
+                                     "note":  "session open questions; KF3 and port-9100 resolved; acceptance blocked by KVM",
                                      "commits":  [
                                                      "fea0d33",
                                                      "c975e84"
                                                  ]
-                                 }
+                                 },
+    ".agent/attempts.md":  {
+                                "sha256":  "86c0495530a0645a2380c1aa73278c1aa01aab6eb22aeb0f0a290540d6d9dab9",
+                                "status":  "reference",
+                                "note":  "anti-loop attempts log; created for QEMU acceptance KVM failure",
+                                "commits":  [
+
+                                            ]
+                            }
 }
