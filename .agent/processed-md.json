@@ -1,0 +1,153 @@
+﻿{
+    "AGENTS.md":  {
+                      "sha256":  "73bb146bf6ac777173d45dec0c5909fd946656ee703256730f83cd3852c56062",
+                      "status":  "reference",
+                      "commits":  [
+
+                                  ]
+                  },
+    "BEACON_RELAY_BUILD_SPEC.md":  {
+                                       "sha256":  "df948461f308ce0bfafa7759f83ce5c2559c8d89392b4bdc3ff2553b99ddb0ef",
+                                       "status":  "reference",
+                                       "note":  "tracked; phases 1-5 built+green per STATUS.md; later phases deliberately deferred",
+                                       "commits":  [
+
+                                                   ]
+                                   },
+    "BEACON_RELAY_CHECKLIST.md":  {
+                                      "sha256":  "aab13874ea66d099f6edb6df3aa0efc1fad91f21be5e159d84340a9f40f816ac",
+                                      "status":  "reference",
+                                      "note":  "status doc; will be EDITED by audit-doc work with fresh test evidence",
+                                      "commits":  [
+
+                                                  ]
+                                  },
+    "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
+                                                   "sha256":  "2d7ebee753bf20d5fbbdeb5bb1375b17640c7f736761dd61fb502bb09d51711a",
+                                                   "status":  "reference",
+                                                   "note":  "AWS hosting; not started per STATUS.md; deferred",
+                                                   "commits":  [
+
+                                                               ]
+                                               },
+    "BEACON_RELAY_CONTROLS_AND_IDENTITY.md":  {
+                                                  "sha256":  "1365936b8c7925ddfe954bfb374f3dd077987104d56df6bb9c384dbb0ceffd5f",
+                                                  "status":  "reference",
+                                                  "note":  "network controls phase; not started per STATUS.md; deferred",
+                                                  "commits":  [
+
+                                                              ]
+                                              },
+    "BEACON_RELAY_EHR_INTEGRATIONS.md":  {
+                                             "sha256":  "c7006da6cf2fc13a10bc122cac85e14950f8c05a9e1ffe4143cf4a71c030fe1c",
+                                             "status":  "reference",
+                                             "note":  "adapters built; remaining vendor profiles deferred",
+                                             "commits":  [
+
+                                                         ]
+                                         },
+    "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
+                                                "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
+                                                "status":  "partial",
+                                                "note":  "items 3-6 DONE (f840531); items 1,2,1b,7 + Priority 3 re-verification remaining",
+                                                "commits":  [
+                                                                "f840531"
+                                                            ]
+                                            },
+    "BEACON_RELAY_KIMI_FIXES.md":  {
+                                       "sha256":  "3db9667040a3e3b6da77e4afd3a64f6fd5f59ec6b7a5157860e7b1888a542eea",
+                                       "status":  "in-progress",
+                                       "note":  "partially stale; only verifiably-open items being worked (KF3,KF6,KF7,KF8)",
+                                       "commits":  [
+
+                                                   ]
+                                   },
+    "BEACON_RELAY_SPEC_INDEX.md":  {
+                                       "sha256":  "c30da334183b9ed2ad7017a0e1f9c9fdd8464b25b184cf719b5abff0780d52b1",
+                                       "status":  "reference",
+                                       "commits":  [
+
+                                                   ]
+                                   },
+    "BEACON_RELAY_STATUS.md":  {
+                                   "sha256":  "468d68c1ecebf0a9c9ddcadec5779103d0274c5bb0ea26000f864e55f465d2e0",
+                                   "status":  "reference",
+                                   "commits":  [
+
+                                               ]
+                               },
+    "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
+                                                                "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
+                                                                "status":  "reference",
+                                                                "note":  "fleet map/troubleshooting memory/ticketing not started; deferred",
+                                                                "commits":  [
+
+                                                                            ]
+                                                            },
+    "README(2).md":  {
+                         "sha256":  "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
+                         "status":  "reference",
+                         "note":  "byte-identical duplicate of models/README.md",
+                         "commits":  [
+
+                                     ]
+                     },
+    "README.md":  {
+                      "sha256":  "03c4fb4f1a1d55b6e49660a5a8257ce98beb302da546c4f3e848869a1589fb27",
+                      "status":  "reference",
+                      "commits":  [
+
+                                  ]
+                  },
+    "models/AGENTS-routing.md":  {
+                                     "sha256":  "a0561fe7c5391f58d5460f6a22d35cce9ad08df56dc7ef3a1fb36e022d32c5b7",
+                                     "status":  "reference",
+                                     "commits":  [
+
+                                                 ]
+                                 },
+    "models/model-trial.md":  {
+                                  "sha256":  "0e7fd9c457c8a8ff4ccc79ad4bef500f46304a965fb32bdd472a5fdfb13727ce",
+                                  "status":  "reference",
+                                  "commits":  [
+
+                                              ]
+                              },
+    "models/README.md":  {
+                             "sha256":  "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
+                             "status":  "reference",
+                             "commits":  [
+
+                                         ]
+                         },
+    "models/opencode.json":  {
+                                 "sha256":  "69181821a7936a4cbd5bd460ad85faae72ce0950fed5da5a01a8e76713693018",
+                                 "status":  "reference",
+                                 "note":  "snapshot of opencode.json at time of model comparison; live config is repo-root opencode.json",
+                                 "commits":  [
+
+                                             ]
+                             },
+    "opencode.json":  {
+                          "sha256":  "7e21e036e7438210dd44937bb82eaec04be3054d54d67552250515cbc77ad710",
+                          "status":  "reference",
+                          "note":  "live OpenCode routing config; drives @scout/@reviewer/@architect model assignment",
+                          "commits":  [
+
+                                      ]
+                      },
+    "models/cost-calc.py":  {
+                                "sha256":  "582d00b059ad7ecd4dd832472417484d44a1a624dc06575b149802495274fe0c",
+                                "status":  "reference",
+                                "commits":  [
+
+                                            ]
+                            },
+    "models/pricing.csv":  {
+                               "sha256":  "6fbd16020724fc9c7253a8a71d9662591a24e5c3bd2bd5e3af28e1030bea234f",
+                               "status":  "reference",
+                               "commits":  [
+
+                                           ]
+                           }
+}
