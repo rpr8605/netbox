@@ -66,17 +66,25 @@ async function routeAdapterbad(ev) {
 
 async function runGraphCase() {
   console.log('--- C. Graph mock: admin create & after-hours sign-in ---');
-  async function mockFetch(method, url) {
+  // The Graph adapter gates on tenant credentials; set them so the path runs.
+  process.env.MS_TENANT_ID = 'mock-tenant';
+  process.env.MS_CLIENT_ID = 'mock-client';
+  process.env.MS_CLIENT_SECRET = 'mock-secret';
+  async function mockFetch(method, url, _body, headers) {
     if (method === 'POST' && /login\.microsoftonline\.com/.test(url)) return { access_token: 'mock' };
-    if (method === 'GET' && /directoryAudits/.test(url)) return {
-      value: [{ activityDisplayName: 'Add user',
-                targetResources: [{ userPrincipalName: 'admin@hosp' }],
-                activityDateTime: new Date(Date.now() - 3600e3).toISOString() }]
-    };
-    if (method === 'GET' && /signIns/.test(url)) return {
-      value: [{ createdDateTime: '2026-08-31T23:10:00Z',
-                userPrincipalName: 'late@hosp', appDisplayName: 'VPN' }]
-    };
+    if (method === 'GET') {
+      const auth = headers?.headers?.authorization ?? '';
+      if (!auth.startsWith('Bearer ')) throw new Error(`Graph GET missing Bearer prefix: ${auth}`);
+      if (/directoryAudits/.test(url)) return {
+        value: [{ activityDisplayName: 'Add user',
+                  targetResources: [{ userPrincipalName: 'admin@hosp' }],
+                  activityDateTime: new Date(Date.now() - 3600e3).toISOString() }]
+      };
+      if (/signIns/.test(url)) return {
+        value: [{ createdDateTime: '2026-08-31T23:10:00Z',
+                  userPrincipalName: 'late@hosp', appDisplayName: 'VPN' }]
+      };
+    }
     return {};
   }
   // Pull a token + pull each of the two tails, then emit via our mockPost.

@@ -18,8 +18,7 @@ async function graph(token_url, fetcher) {
     `client_id=${process.env.MS_CLIENT_ID}&client_secret=${process.env.MS_CLIENT_SECRET}&scope=https://graph.microsoft.com/.default&grant_type=client_credentials`
   );
   return {
-    authorization: `Bearer ${token.access_token}`,
-    get: async (path) => fetcher('GET', `https://graph.microsoft.com/v1.0${path}`, null, { headers: { authorization: `${token.access_token}` } }),
+    get: async (path) => fetcher('GET', `https://graph.microsoft.com/v1.0${path}`, null, { headers: { authorization: `Bearer ${token.access_token}` } }),
   };
 }
 
