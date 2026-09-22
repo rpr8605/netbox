@@ -81,6 +81,15 @@ The adapters to build, in priority order:
    covers ADT/ORU/ORM visibility for the large majority of target hospitals, because
    almost every one of the systems in Section 5 below still speaks HL7v2 for real-time
    clinical messaging even where it also offers a newer API.
+   **Network prerequisite, stated plainly:** the tap code creates and verifies *nothing*
+   on the network side. Before it receives a single byte, the site's switch must be
+   configured with a mirror/SPAN session (or an equivalent capture forwarder must connect
+   to the tap's port) — that is site network engineering, not something this code does.
+   "The tap is read-only" means it cannot affect the message path; it does **not** mean it
+   is already receiving traffic. Its `ack_status` is always measured, never assumed:
+   `ACK`/`NACK` only when the matching response frame is observed on the feed, `TIMEOUT`
+   when none arrives in time, `UNKNOWN` when the feed ends first — so on a topology where
+   the return path isn't mirrored, expect `UNKNOWN`/`TIMEOUT`, not a fabricated ACK.
 2. **FHIR R4 read-only polling client.** A generic client that does an authenticated
    (SMART on FHIR / OAuth2 client-credentials or backend-services flow) read against a
    small, fixed set of low-risk endpoints — enough to prove the connection is live and

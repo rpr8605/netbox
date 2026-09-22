@@ -19,6 +19,23 @@ A plain hash would be reversible against a small guessable identifier space
 (MRN farming); a per-device key means two devices tokenizing the same MRN
 produce different tokens, so cross-device correlation is impossible without
 the key.
+
+NETWORK BOUNDARY (what "passive tap" does NOT do): this code never sets up or
+verifies the feed that delivers traffic to it. A switch mirror/SPAN session —
+or an equivalent capture forwarder connecting to this port — must exist on the
+hospital network BEFORE anything arrives here. "The tap is read-only" means it
+cannot affect the message path; it does NOT mean it is already receiving
+traffic. That boundary is operational (site network engineering), not code.
+
+ACK SEMANTICS, MEASURED NOT ASSUMED: on a feed that carries both directions,
+each response frame is correlated to its request by MSA-2 == the request's
+MSH-10 control ID. ack_status is only ever a measured value:
+  "ACK"/"NACK" — the matching response frame was actually observed;
+  "TIMEOUT"    — no response observed within ack_timeout of the request;
+  "UNKNOWN"    — the feed ended (or the frame had no MSH-10) before any answer
+                 could be observed.
+On a topology where the return path is not mirrored, expect UNKNOWN/TIMEOUT —
+never a fabricated ACK.
 """
 from __future__ import annotations
 
@@ -86,6 +103,40 @@ def _parse_msh_fields(msg: bytes) -> dict:
     return {"message_type": message_type, "message_control_id": message_control_id}
 
 
+def _parse_msa_fields(msg: bytes) -> dict:
+    """Classify a frame as request/response and pull ACK correlation fields.
+
+    A frame carrying an MSA segment is a RESPONSE (HL7 ACK messages always
+    carry MSA); anything else is a request. MSA-1 is the acknowledgment code —
+    AA/CA -> "ACK", AE/AR/CE/CR -> "NACK" — and MSA-2 echoes the MSH-10 of the
+    message being answered, which is the correlation key back to the held
+    request. Header segments only; no PID content is read here either.
+    """
+    text = msg.decode("utf-8", errors="replace")
+    lines = [l for l in text.split("\r") if l]
+    msa = next((l for l in lines if l.startswith("MSA")), "")
+    if not msa:
+        return {"is_response": False, "ack_code": None, "original_control_id": ""}
+    # MSA alone does NOT make a frame an acknowledgment: data-bearing messages
+    # (e.g. RSP query responses) legitimately carry MSA too. Only MSH-9 == ACK
+    # is a pure acknowledgment; anything else is a request in its own right
+    # (it expects its own ACK downstream and gets its own record).
+    msh = next((l for l in lines if l.startswith("MSH")), "")
+    msh_parts = msh.split("|")
+    msh_type = (msh_parts[8] if len(msh_parts) > 8 else "").split("^")[0]
+    if msh_type != "ACK":
+        return {"is_response": False, "ack_code": None, "original_control_id": ""}
+    parts = msa.split("|")
+    raw_code = parts[1] if len(parts) > 1 else ""
+    ack_code = (
+        "ACK" if raw_code in ("AA", "CA")
+        else "NACK" if raw_code in ("AE", "AR", "CE", "CR")
+        else None  # unrecognized code: emit UNKNOWN rather than guess
+    )
+    original_control_id = parts[2] if len(parts) > 2 else ""
+    return {"is_response": True, "ack_code": ack_code, "original_control_id": original_control_id}
+
+
 def extract_metadata(
     raw_frame: bytes,
     *,
@@ -140,6 +191,60 @@ def parse_mllp_stream(buf: bytes) -> tuple[list[bytes], bytes]:
         buf = buf[end + len(EB_CR):]
 
 
+class PendingMessages:
+    """Request frames observed on the feed, held until their answer arrives.
+
+    Stores ONLY Hl7Metadata objects (the one thing the tap is allowed to keep)
+    plus the monotonic observation time — never raw frames, so holding a
+    message for correlation does not extend the lifetime of any PHI bytes.
+    Keyed by MSH-10 control ID (the same per-message identifier the
+    correlation token binds to). Bounded two ways so a one-way mirror (return
+    path not visible) cannot grow memory without limit: a per-entry TTL
+    (ack_timeout) and a hard cap (max_pending, oldest evicted).
+    """
+
+    def __init__(self, ack_timeout: float = 60.0, max_pending: int = 10_000):
+        self.ack_timeout = ack_timeout
+        self.max_pending = max_pending
+        # insertion-ordered dict: control_id -> (metadata, t_observed_monotonic)
+        self._pending: dict[str, tuple[Hl7Metadata, float]] = {}
+
+    def add(self, control_id: str, t_observed: float, meta: Hl7Metadata) -> list[tuple[Hl7Metadata, float]]:
+        """Insert an entry; return any displaced/evicted ones for the caller to
+        emit as UNKNOWN. A request that leaves the table without an answer must
+        still produce a record — silent loss is exactly the failure mode this
+        bug fix exists to remove."""
+        displaced: list[tuple[Hl7Metadata, float]] = []
+        old = self._pending.pop(control_id, None)
+        if old is not None:
+            # A reused control ID displaces the older request; senders are
+            # expected to make MSH-10 unique, but the displaced entry is
+            # returned (and recorded), not dropped silently.
+            displaced.append(old)
+        self._pending[control_id] = (meta, t_observed)
+        while len(self._pending) > self.max_pending:
+            displaced.append(self._pending.pop(next(iter(self._pending))))  # oldest (FIFO)
+        return displaced
+
+    def pop_match(self, control_id: str):
+        """Remove and return (meta, t_observed) for control_id, or None."""
+        return self._pending.pop(control_id, None)
+
+    def expire(self, now: float) -> list[tuple[Hl7Metadata, float]]:
+        """Remove and return all entries older than ack_timeout."""
+        expired = [(cid, v) for cid, v in self._pending.items()
+                   if now - v[1] >= self.ack_timeout]
+        for cid, _ in expired:
+            del self._pending[cid]
+        return [v for _, v in expired]
+
+    def flush(self) -> list[tuple[Hl7Metadata, float]]:
+        """Remove and return every remaining entry (feed ended)."""
+        remaining = list(self._pending.values())
+        self._pending.clear()
+        return remaining
+
+
 # --- Passive listener --------------------------------------------------------
 # The tap is READ-ONLY: it accepts a mirror/SPAN feed (or a read-only copy of
 # MLLP traffic) and never writes to the socket — no ACKs, no responses, nothing
@@ -153,37 +258,112 @@ def run_passive_listener(
     *,
     tokenizer: CorrelationTokenizer,
     direction: str = "inbound",
+    ack_timeout: float = 60.0,
+    max_pending: int = 10_000,
+    stop_event=None,
 ) -> None:
-    """Listen on host:port for MLLP frames and emit metadata for each.
+    """Listen on host:port for MLLP frames and emit metadata per REQUEST frame.
 
     Read-only by construction: the socket is only ever read from, never written
-    to. on_metadata(Hl7Metadata) is called per complete frame. Runs until the
-    connection closes or the process is signalled.
+    to. Runs indefinitely — a dropped feed connection is accepted again, never
+    fatal (a 24/7 monitor must not need a manual restart after a switch
+    hiccup). stop_event (threading.Event, optional) lets tests shut it down
+    deterministically.
+
+    Emission model (see header "ACK SEMANTICS"): request frames are HELD in a
+    PendingMessages table and emitted exactly once — with the real measured
+    outcome (ACK/NACK + wire latency) when the response frame arrives, as
+    TIMEOUT when ack_timeout elapses unanswered, or as UNKNOWN when the feed
+    ends first. Response frames themselves never emit records.
     """
     import socket
+
+    pending = PendingMessages(ack_timeout=ack_timeout, max_pending=max_pending)
+
+    def _emit_timed(meta: Hl7Metadata, t_observed: float, status: str, now: float) -> None:
+        # latency is measured from when the request was OBSERVED on the wire to
+        # when its answer (or the give-up point) was observed — never the parse
+        # time of the Python code, which was the old always-~0ms bug.
+        meta.ack_status = status
+        meta.latency_ms = int((now - t_observed) * 1000)
+        try:
+            on_metadata(meta)
+        except Exception as e:  # a failing consumer must never kill a 24/7 tap
+            print(f"mllp_tap: on_metadata callback raised (record dropped): {e}", file=sys.stderr)
+
+    def _sweep_expired() -> None:
+        now = time.monotonic()
+        for meta, t_obs in pending.expire(now):
+            _emit_timed(meta, t_obs, "TIMEOUT", now)
+
+    def _flush_remaining() -> None:
+        now = time.monotonic()
+        for meta, t_obs in pending.flush():
+            _emit_timed(meta, t_obs, "UNKNOWN", now)
+
+    def _stopped() -> bool:
+        return stop_event is not None and stop_event.is_set()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind((host, port))
         srv.listen(1)
-        conn, _addr = srv.accept()
-        with conn:
-            buf = b""
-            while True:
-                chunk = conn.recv(65536)
-                if not chunk:
-                    break
-                buf += chunk
-                frames, buf = parse_mllp_stream(buf)
-                for frame in frames:
-                    started = time.time()
-                    meta = extract_metadata(
-                        frame,
-                        direction=direction,
-                        ack_status="ACK",
-                        latency_ms=0,
-                        tokenizer=tokenizer,
-                        phi_mode=False,
-                    )
-                    meta.latency_ms = int((time.time() - started) * 1000)
-                    on_metadata(meta)
+        srv.settimeout(1.0)  # wake periodically so stop_event is honored pre-connection
+        while not _stopped():
+            try:
+                conn, _addr = srv.accept()
+            except socket.timeout:
+                continue
+            with conn:
+                conn.settimeout(1.0)  # sweep for expired requests on a quiet feed
+                buf = b""
+                while not _stopped():
+                    try:
+                        chunk = conn.recv(65536)
+                    except socket.timeout:
+                        _sweep_expired()
+                        continue
+                    if not chunk:
+                        break  # peer closed the feed connection
+                    buf += chunk
+                    # Unbounded-garbage guard: a misconfigured feed streaming
+                    # non-MLLP bytes would otherwise grow buf forever. 1 MiB is
+                    # far past any legitimate HL7 frame.
+                    if len(buf) > 1_000_000:
+                        buf = b""
+                    frames, buf = parse_mllp_stream(buf)
+                    for frame in frames:
+                        observed = time.monotonic()
+                        try:
+                            resp = _parse_msa_fields(frame)
+                            if resp["is_response"]:
+                                match = pending.pop_match(resp["original_control_id"])
+                                if match is not None:
+                                    meta, t_obs = match
+                                    _emit_timed(meta, t_obs, resp["ack_code"] or "UNKNOWN", observed)
+                                # Unmatched responses emit nothing: without the
+                                # request half there is no honest metadata to record.
+                                continue
+                            meta = extract_metadata(
+                                frame,
+                                direction=direction,
+                                ack_status="UNKNOWN",  # placeholder; set for real at emission
+                                latency_ms=0,
+                                tokenizer=tokenizer,
+                                phi_mode=False,
+                            )
+                            control_id = _parse_msh_fields(frame)["message_control_id"]
+                            if control_id:
+                                for old_meta, old_t in pending.add(control_id, observed, meta):
+                                    _emit_timed(old_meta, old_t, "UNKNOWN", observed)
+                            else:
+                                # No MSH-10 -> correlation is impossible; emit now as
+                                # UNKNOWN rather than hold an unmatchable entry.
+                                _emit_timed(meta, observed, "UNKNOWN", observed)
+                        except Exception as e:
+                            # Pathological input must never kill the listener:
+                            # log and move to the next frame.
+                            print(f"mllp_tap: frame processing error (frame skipped): {e}", file=sys.stderr)
+                # This feed connection ended: anything still pending can never
+                # be answered on it — flush as UNKNOWN, then accept the next one.
+                _flush_remaining()
