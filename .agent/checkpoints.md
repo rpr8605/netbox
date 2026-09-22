@@ -43,3 +43,14 @@
 - **CHECKLIST/STATUS updated** with current commit `2b1d01d`, fresh evidence, KF6/7/8/3 status, and environment blockers. Committed as `fea0d33`.
 - **Ledger finalized:** `.agent/processed-md.json` updated with `fea0d33` references and new `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md` entry. Committed as `156f9ea`.
 - **Agent usage this block:** none successfully invoked (helpers still misconfigured). Manual reviews: 4 (opencode.json, KF6, KF7, KF8, 1c9f91d).
+
+## Checkpoint #4 | Block: $2.14 | Total: $4.96 | Cost/commit: $1.65
+
+- **Done:**
+  - `c975e84` fix(control-plane): make bind address and host publish configurable (KF3) — source `BEACON_RELAY_KIMI_FIXES.md` item 3
+  - `5615c10` docs: update CHECKLIST/STATUS with KF3 DONE and fresh E2E/RBAC results — source `BEACON_RELAY_CHECKLIST.md` / `BEACON_RELAY_STATUS.md`
+- **Tests:** E2E 23/23, alerting/RBAC 33/33, doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, sidecar security 24/24, topology 6/6, Step 1 signals Graph path emits 2 signals
+- **Next:** QEMU acceptance x3 (needs fresh image build) after "continue"
+- **Blocked:** none; KF3 and port-9100 blocker resolved
+- **Repeat check:** none
+- **Progress:** KF6/7/8/3 complete; E2E/RBAC re-verified; ~85% of MD-sync work done, acceptance and next-priority spec items remain
