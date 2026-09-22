@@ -1,4 +1,4 @@
-﻿{
+{
     "AGENTS.md":  {
                       "sha256":  "73bb146bf6ac777173d45dec0c5909fd946656ee703256730f83cd3852c56062",
                       "status":  "reference",
@@ -15,17 +15,19 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                       "sha256":  "d48888515e347bc8f12fd35d6a3f904de68990fdda4b65cd2b9e5856e523e08b",
-                                       "status":  "reference",
-                                       "note":  "status doc; updated with KF3 DONE, E2E/RBAC re-runs, acceptance blocked by KVM",
-                                       "commits":  [
-                                                       "107ac2f",
-                                                       "a68b0f5",
-                                                       "2b1d01d",
-                                                       "fea0d33",
-                                                       "c975e84"
-                                                   ]
-                                   },
+                                        "sha256":  "bc86bb18c41d6bbfd44194bd03c110d3c566db28f74f77e88077563c8ff8c7c3",
+                                        "status":  "reference",
+                                        "note":  "status doc; channel registry source/destination marked DONE; EHR unit 17/17",
+                                        "commits":  [
+                                                        "107ac2f",
+                                                        "a68b0f5",
+                                                        "2b1d01d",
+                                                        "fea0d33",
+                                                        "c975e84",
+                                                        "bb00146",
+                                                        "32aad48"
+                                                    ]
+                                    },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
                                                    "sha256":  "2d7ebee753bf20d5fbbdeb5bb1375b17640c7f736761dd61fb502bb09d51711a",
                                                    "status":  "reference",
@@ -43,13 +45,14 @@
                                                               ]
                                               },
     "BEACON_RELAY_EHR_INTEGRATIONS.md":  {
-                                              "sha256":  "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
-                                              "status":  "reference",
-                                              "note":  "adapters built; remaining vendor profiles deferred; hash updated for CRLF on-disk representation",
-                                              "commits":  [
-                                                              "f840531"
-                                                          ]
-                                          },
+                                               "sha256":  "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
+                                               "status":  "reference",
+                                               "note":  "adapters built; §11/§12 channel registry source/destination implemented; remaining vendor profiles deferred",
+                                               "commits":  [
+                                                               "f840531",
+                                                               "32aad48"
+                                                           ]
+                                           },
     "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
                                                 "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
                                                 "status":  "partial",
@@ -86,15 +89,17 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                    "sha256":  "bc333075e723334ac39128ab4fdcb33444a8a159072d434783ce96e45e1faf3",
+                                    "sha256":  "8606f81b9f3ab1df081d13386168024ce6337667815a9921edd5934d4876080c",
                                     "status":  "reference",
-                                    "note":  "status doc; updated with KF3 DONE, E2E/RBAC re-runs, acceptance blocked by KVM",
+                                    "note":  "status doc; channel registry source/destination graph endpoints DONE; EHR unit 17/17",
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
                                                     "2b1d01d",
                                                     "fea0d33",
-                                                    "c975e84"
+                                                    "c975e84",
+                                                    "bb00146",
+                                                    "32aad48"
                                                 ]
                                 },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -172,21 +177,23 @@
                                            ]
                            },
     ".agent/checkpoints.md":  {
-                                  "sha256":  "27c44b8aba3f41880ad130a23909b09a06a9c175bf146d69a34b23bc237e981f",
-                                  "status":  "reference",
-                                  "note":  "session checkpoint log; updated this pass",
-                                  "commits":  [
-                                                  "fea0d33",
-                                                  "c975e84"
-                                              ]
-                              },
+                                   "sha256":  "cbe123d61775dd1f4a59418a3b82f6165543e11178242850b8b7fe1e142cfaa5",
+                                   "status":  "reference",
+                                   "note":  "session checkpoint log; added checkpoint #5 (channel registry source/destination)",
+                                   "commits":  [
+                                                   "fea0d33",
+                                                   "c975e84",
+                                                   "32aad48"
+                                               ]
+                               },
     ".agent/open-questions.md":  {
                                      "sha256":  "70b4c53b73f44a3312ea63d268c35de1cf9a9cc5fe62af362f207e36586ff4838",
                                      "status":  "reference",
                                      "note":  "session open questions; KF3 and port-9100 resolved; acceptance blocked by KVM",
                                      "commits":  [
                                                      "fea0d33",
-                                                     "c975e84"
+                                                     "c975e84",
+                                                     "bb00146"
                                                  ]
                                  },
     ".agent/attempts.md":  {
@@ -194,7 +201,7 @@
                                 "status":  "reference",
                                 "note":  "anti-loop attempts log; created for QEMU acceptance KVM failure",
                                 "commits":  [
-
+                                                "bb00146"
                                             ]
                             }
 }
