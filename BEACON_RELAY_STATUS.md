@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `2b1d01d` (pushed to `origin/main`, in sync).
+**Current commit on `main`:** `c975e84` (agent/md-sync-2026-09-22, in sync with origin).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -88,7 +88,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 - **KF6 — Graph Authorization header** (`107ac2f`). Fixed `beacon-relay-agent/lib/graph.js` so GET requests to Microsoft Graph send `authorization: Bearer <token>` instead of the raw token. Removed the dead `authorization` property on the returned client object. Added an assertion in `scripts/test_step1_signals.js` and set mock tenant credentials so the Graph path actually executes in the test.
 - **KF7 — Dead `enroll.js` / node-forge** (`a68b0f5`). Removed `beacon-relay-agent/lib/enroll.js` (unused, imported `node-forge` which is not on-device) and removed it from the required-files lists in `pipeline/build.js` and `pipeline/stages/30-agent.sh`.
 - **KF8 — Dead `sfdisk.script` / `partition.env` flows** (`2b1d01d`). Deleted `pipeline/gen_sfdisk.js` and its call in `pipeline/build.js`; removed `source /tmp/partition.env` from `pipeline/stages/40-rauc.sh`; converted `pipeline/stages/20-partition.sh` to a partition-map validation stage; removed the `out/**/sfdisk.script` line from `.gitignore`.
-- **KF3 — Control-plane host bind/publish** — **not implemented this pass**. The literal fix in `BEACON_RELAY_KIMI_FIXES.md` (bind `app.listen` to `127.0.0.1` + drop `9100:9100` host publish) breaks the current dev/test topology: host-side tests reach `localhost:9100`, `vm-harness` reaches `control-plane:9100`, and `device-sim` reaches `control-plane:9100`. Decision logged in `.agent/open-questions.md` pending Ryan's pick.
+- **KF3 — Control-plane host bind/publish** (`c975e84`). `BIND_HOST` env var controls the listen address (safe default `127.0.0.1` in code); `docker-compose.yml` sets `BIND_HOST=0.0.0.0` for compose-internal reachability. `CONTROL_PLANE_HOST_PORT` env var configures the host-side published port; default remapped from `9100` to `10443` because Windows reserves `9100` in excluded range `9035-9134`. Host-side tests/seed default to `localhost:10443`. Verified with E2E 23/23 and alerting/RBAC 33/33.
 
 ### Speced but NOT started (do not assume any of this exists)
 
@@ -125,11 +125,11 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
-| EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | **not re-run this pass** — host port 9100 blocked by Windows excluded range 9035-9134 |
-| Alerting / RBAC / audit / support broker | `node scripts/test_alerting_rbac_audit_support.js` | **not re-run this pass** — same port-9100 blocker |
-| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — same port-9100 blocker; no fresh image built |
+| EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
+| Alerting / RBAC / audit / support broker | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
+| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — queued for next block |
 
-Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is currently healthy; the control-plane host port publish on 9100 is blocked by a Windows/Hyper-V excluded port range.
+Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.
 The QEMU acceptance run (`vm-harness/acceptance.sh`) is the Phase-3 proof and needs the
 built image plus the harness container.
 
@@ -165,7 +165,7 @@ built image plus the harness container.
   migration is a driver swap, but the swap has not been done and the RDS/TimescaleDB
   decision (per the AWS doc) is untested.
 - **`git push` history was rewritten** — see the note at the top. Clones need fetch+reset.
-- **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** This blocks `docker-compose.yml` from publishing `9100:9100` and therefore blocks host-side E2E/RBAC tests and QEMU acceptance runs in this environment. `step-ca` itself is healthy; the blocker is host port availability, not the CA or the code. See `.agent/open-questions.md`.
+- **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** Worked around by remapping the published host port to `10443` in `docker-compose.yml` and updating host-side test/seed defaults. The container port remains `9100` for compose-internal services.
 - A handful of test/harness scripts write state to `os.tmpdir()` on the host (monitor
   state, downtime cache, the tamper-test DB). They clean up, but a killed process can leave
   a temp file; harmless, and they're all gitignored paths or temp dirs.

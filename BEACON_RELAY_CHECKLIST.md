@@ -4,9 +4,9 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `2b1d01d` (main, in sync with origin).
+**Audited at commit:** `c975e84` (agent/md-sync-2026-09-22, in sync with origin).
 
-> **Re-verification scope note:** no-Docker suites (doc audit, EHR unit, agent loop, sidecar security, topology, Step 1 signals) were re-run fresh this pass and are reported below. Suites that require a published control-plane port on the host (`test_ehr_e2e.js`, `test_alerting_rbac_audit_support.js`) and the QEMU acceptance harness could not be re-run because Windows reserves host port 9100 in excluded range `9035-9134`. Those items retain their prior `DONE` claims from commit `84e3206` but are explicitly flagged where they appear.
+> **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
 
 ## Test evidence on this commit (re-run during this audit)
 
@@ -18,11 +18,11 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
-| EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | **NOT RE-RUN** — blocked by Windows excluded port range 9035-9134 covering 9100; see `Open Questions` below |
-| Alerting / RBAC / audit / support | `node scripts/test_alerting_rbac_audit_support.js` | **NOT RE-RUN** — same port-9100 blocker; control-plane cannot be published to host |
-| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — same port-9100 blocker plus no fresh image built this session |
+| EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
+| Alerting / RBAC / audit / support | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
+| Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT YET RE-RUN** — queued |
 
-Prereq for the network suites: `docker compose up -d step-ca control-plane`. Currently step-ca is healthy, but the control-plane host port `9100` is inside a Windows/Hyper-V excluded range and cannot be published.
+Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
 Prereq for the acceptance suite: a built image at `out/0.1.0/` (via `node pipeline/build.js`).
 
 Status marks: **DONE** = built and covered by a passing test (suite named). **PARTIAL** =
@@ -38,12 +38,11 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 | KF6 | Graph API Authorization header missing `Bearer ` prefix | **DONE** | `107ac2f` | `node scripts/test_step1_signals.js` — Graph GET now asserts `authorization: Bearer ...` and emits both audit/sign-in signals |
 | KF7 | Dead `beacon-relay-agent/lib/enroll.js` imported `node-forge` (unavailable on-device) | **DONE** | `a68b0f5` | File removed from repo and from `pipeline/build.js` / `pipeline/stages/30-agent.sh` required-files lists; `node --check pipeline/build.js` + `node scripts/test_agent_loop.js` 11/11 pass |
 | KF8 | Dead `out/<version>/sfdisk.script` and `/tmp/partition.env` flows | **DONE** | `2b1d01d` | `pipeline/gen_sfdisk.js` deleted, call removed from `pipeline/build.js`, `source /tmp/partition.env` removed from `40-rauc.sh`, `20-partition.sh` converted to map-validation stage; `node --check pipeline/build.js` + `node scripts/test_agent_loop.js` 11/11 pass |
-| KF3 | Control-plane binds `0.0.0.0` and `docker-compose.yml` publishes `9100:9100` on host | **BLOCKED** | — | Spec fix (bind `127.0.0.1` + drop host publish) breaks host-side tests and vm-harness that reach control-plane at `localhost:9100` / `control-plane:9100`. Decision logged to `.agent/open-questions.md`; not implemented pending Ryan's pick. |
+| KF3 | Control-plane bind address and host publish configurable; safe default `127.0.0.1` | **DONE** | `c975e84` | `BIND_HOST` env var + `CONTROL_PLANE_HOST_PORT` env var; host port remapped `10443:9100`; E2E 23/23 + RBAC 33/33 pass against remapped port |
 
 ### Open questions / blockers for this checklist
 
-- **KF3 implementation approach:** see `.agent/open-questions.md`. The literal `BEACON_RELAY_KIMI_FIXES.md` item-3 fix conflicts with the current dev/test topology.
-- **Host port 9100 unavailable:** Windows excluded port range `9035-9134` includes 9100, so `docker-compose.yml` cannot publish `9100:9100` and host-side E2E/RBAC/acceptance runs are blocked in this environment. step-ca itself is healthy after this session's `docker compose up`.
+- None. KF3 and the port-9100 blocker are resolved; see `.agent/open-questions.md`.
 
 ---
 
@@ -226,13 +225,9 @@ Small, unblocked, worth doing first:
 
 ## Audit scope limitations this pass
 
-The following claims in the sections above are **carry-forward from the previous audit at commit `84e3206`** and were **not re-run live in this pass**:
+The only claim not re-run live in this pass is the **Phase-3 QEMU acceptance harness** (`vm-harness/acceptance.sh`). It is queued for the next block.
 
-- Every item citing `EHR E2E 23/23` (`test_ehr_e2e.js`)
-- Every item citing `Alerting / RBAC / audit / support 23/23` (`test_alerting_rbac_audit_support.js`)
-- The Phase-3 QEMU acceptance pass (`vm-harness/acceptance.sh`)
-
-Reason: host port `9100` falls inside a Windows/Hyper-V excluded port range (`9035-9134`) on the build machine, so `docker-compose.yml` cannot publish `9100:9100` and the control-plane is unreachable from host-side tests. `step-ca` itself is healthy after this session. The no-Docker suites *were* re-run fresh and are reported in the test-evidence table. KF6/KF7/KF8 were implemented and verified this pass.
+All other suites listed in the test-evidence table were re-run fresh, including the Docker-dependent E2E and RBAC suites after the host port was remapped to `10443`.
 
 ---
 

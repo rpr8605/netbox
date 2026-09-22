@@ -15,14 +15,15 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                       "sha256":  "77dd537869000649d5a974bff9661cfcaa3976d920ad0f89b4aba66683b8642a",
+                                       "sha256":  "8c51a750276696e1d11c8748c951e131b98c13f5f3798f6ba2b80288f48d6904",
                                        "status":  "reference",
-                                       "note":  "status doc; updated this pass with fresh no-Docker evidence, KF6/7/8/3 status, and environment blockers",
+                                       "note":  "status doc; updated with KF3 DONE, E2E 23/23 and RBAC 33/33 fresh re-runs",
                                        "commits":  [
                                                        "107ac2f",
                                                        "a68b0f5",
                                                        "2b1d01d",
-                                                       "fea0d33"
+                                                       "fea0d33",
+                                                       "c975e84"
                                                    ]
                                    },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -85,14 +86,15 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                    "sha256":  "ce02c7c2e564be1026a77b376bda0da5a3530e13d9ce6372d11f82426e18f014",
+                                    "sha256":  "b8a8ed875fed67cc3bc6e3926a485e7b6bc5ab5db57abfb46954f8db2ceec9cf",
                                     "status":  "reference",
-                                    "note":  "status doc; updated this pass with KF6/7/8/3 status, fresh no-Docker evidence, and port-9100 blocker",
+                                    "note":  "status doc; updated with KF3 DONE, E2E 23/23 and RBAC 33/33 fresh re-runs",
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
                                                     "2b1d01d",
-                                                    "fea0d33"
+                                                    "fea0d33",
+                                                    "c975e84"
                                                 ]
                                 },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -170,19 +172,21 @@
                                            ]
                            },
     ".agent/checkpoints.md":  {
-                                  "sha256":  "68443d50117c735c3b1663ca66c5c08b85dc9d2c8dcd1f9c791c5be4f1c65bd3",
+                                  "sha256":  "27c44b8aba3f41880ad130a23909b09a06a9c175bf146d69a34b23bc237e981f",
                                   "status":  "reference",
                                   "note":  "session checkpoint log; updated this pass",
                                   "commits":  [
-                                                  "fea0d33"
+                                                  "fea0d33",
+                                                  "c975e84"
                                               ]
                               },
     ".agent/open-questions.md":  {
-                                     "sha256":  "a849565c2d580e65d24315f500cc51830796868bc8856984d8f0d57d26064e12",
+                                     "sha256":  "30886b7f2063b0a3f69e7c9f5e5199a5310ca933e7f4f6c5611dd1c8014c5a62",
                                      "status":  "reference",
-                                     "note":  "session open questions; created this pass for KF3 and port-9100 blockers",
+                                     "note":  "session open questions; KF3 and port-9100 resolved",
                                      "commits":  [
-                                                     "fea0d33"
+                                                     "fea0d33",
+                                                     "c975e84"
                                                  ]
                                  }
 }
