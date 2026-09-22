@@ -40,5 +40,6 @@
 - **KF3 blocked:** literal spec fix (bind `127.0.0.1` + drop host port publish) breaks host-side tests and vm-harness. Logged to `.agent/open-questions.md`; pending Ryan's decision.
 - **Docker-dependent items blocked:** Windows excluded port range `9035-9134` covers host port 9100, so `docker-compose.yml` cannot publish `9100:9100`. Host-side E2E/RBAC/acceptance runs are blocked in this environment.
 - **Fresh no-Docker evidence gathered:** doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, Step 1 signals Graph path emits 2 signals with Bearer assertion, sidecar security 24/24, topology 6/6.
-- **CHECKLIST/STATUS updated** with current commit `2b1d01d`, fresh evidence, KF6/7/8/3 status, and environment blockers.
+- **CHECKLIST/STATUS updated** with current commit `2b1d01d`, fresh evidence, KF6/7/8/3 status, and environment blockers. Committed as `fea0d33`.
+- **Ledger finalized:** `.agent/processed-md.json` updated with `fea0d33` references and new `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md` entry. Committed as `156f9ea`.
 - **Agent usage this block:** none successfully invoked (helpers still misconfigured). Manual reviews: 4 (opencode.json, KF6, KF7, KF8, 1c9f91d).
