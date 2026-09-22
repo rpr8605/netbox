@@ -211,7 +211,8 @@ EOF
 chroot "$TARGET" apt-get update
 chroot "$TARGET" apt-get install -y --no-install-recommends \
   systemd-sysv nodejs cryptsetup ca-certificates \
-  linux-image-amd64 grub-efi-amd64-bin grub-common tpm2-tools openssl rauc
+  linux-image-amd64 grub-efi-amd64-bin grub-common tpm2-tools openssl rauc \
+  squashfs-tools
 # Triggered once: previous builds installed _some_ bundles but never
 # /usr/sbin/init, and an unsquashfs probe showed the missing binary. Make
 # this an explicit gate so sub-package resolution can't silently slip in.
@@ -224,6 +225,14 @@ fi
 # good, so rollback accounting silently never happens. Gate like init above.
 if ! chroot "$TARGET" test -f /usr/bin/grub-editenv; then
   echo "grub-common install did not produce /usr/bin/grub-editenv" >&2
+  exit 1
+fi
+# unsquashfs (squashfs-tools) is required ON-DEVICE for `rauc info --keyring`:
+# RAUC extracts the bundle manifest with it, so without it every update is
+# rejected as "signature verification failed" even when the signature is fine
+# (proven on-device during the A/B end-to-end run).
+if ! chroot "$TARGET" test -f /usr/bin/unsquashfs; then
+  echo "squashfs-tools install did not produce /usr/bin/unsquashfs" >&2
   exit 1
 fi
 # The agent's update client compares this against the CP's latest-release

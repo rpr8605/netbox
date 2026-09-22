@@ -43,10 +43,20 @@ export async function downloadBundle(ctx, version, fetchBytes) {
 // release-signing root. Returns true only if the CMS chain verifies. This MUST
 // run before install; it is the whole point of signing the bundle.
 export function verifyBundle(bundlePath, keyringPath = '/etc/beacon-relay-release-root.crt') {
+  // TMPDIR=/run: rauc extracts the bundle manifest into a g_get_tmp_dir()
+  // scratch dir; the image root (incl. /tmp) is read-only, and /run is the
+  // writable tmpfs already used for RAUC's mountprefix. Without this, rauc
+  // exits 1 AFTER the signature verifies ("Failed to create tmp dir ...
+  // Read-only file system") and every good bundle is rejected.
   try {
-    const out = execSync(`rauc info --keyring ${keyringPath} ${bundlePath} 2>&1`, { encoding: 'utf8' });
-    return /Verified/.test(out);
-  } catch {
+    const out = execSync(`rauc info --keyring ${keyringPath} ${bundlePath} 2>&1`, { encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' } });
+    const verified = /Verified/.test(out);
+    // A rejected gate with no captured reason is undebuggable on a headless
+    // appliance — log rauc's own words, not just the generic label.
+    if (!verified) console.log(`agent: verifyBundle: no 'Verified' line in rauc output: ${out.trim()}`);
+    return verified;
+  } catch (e) {
+    console.log(`agent: verifyBundle: rauc exited ${e.status ?? '?'}: ${String(e.stdout ?? e.message ?? e).trim()}`);
     return false;
   }
 }
@@ -58,7 +68,8 @@ export function verifyBundle(bundlePath, keyringPath = '/etc/beacon-relay-releas
 // headless appliance.
 export function applyBundle(bundlePath) {
   try {
-    const out = execSync(`rauc install ${bundlePath} 2>&1`, { encoding: 'utf8' });
+    // TMPDIR=/run: same read-only-/tmp constraint as verifyBundle above.
+    const out = execSync(`rauc install ${bundlePath} 2>&1`, { encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' } });
     return { ok: true, out };
   } catch (e) {
     return { ok: false, out: String(e.stdout ?? e.message ?? e) };
