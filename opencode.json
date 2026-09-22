@@ -8,26 +8,26 @@
       "description": "Day-to-day builder. Writes code, runs tests, fixes build errors. Delegates reading to scout, hard problems to architect, and diff review to reviewer."
     },
     "plan": {
-      "model": "opencode/claude-opus-5-5",
+      "model": "opencode-go/kimi-k3",
       "description": "Planning and architecture mode. Read-only analysis and design decisions."
     },
     "scout": {
       "mode": "subagent",
-      "model": "opencode-go/deepseek-v4-flash",
+      "model": "opencode-go/qwen3.8-flash",
       "description": "Cheap reader. Use for finding files, listing new or changed Markdown files, reading and summarizing docs or large files, and searching the codebase. Returns short summaries, never edits.",
       "prompt": "You are a fast, cheap research helper. Find and read what you're asked to, then return a SHORT summary: file paths, what each file asks for, and anything unclear. Never edit files. Never guess; say 'not found' or 'unclear' when true. Skip the logs/ folder and node_modules.",
       "tools": { "write": false, "edit": false, "bash": true }
     },
     "reviewer": {
       "mode": "subagent",
-      "model": "opencode/claude-sonnet-5",
+      "model": "opencode-go/kimi-k2.7-code",
       "description": "Reviews a git diff before commit. Use after tests pass and before every commit. Looks at the diff only, not the whole repo.",
       "prompt": "Review ONLY the staged or provided diff. Report: bugs, security issues, PHI or secret leakage, missing tests, and anything that contradicts the spec file it came from. Rank findings by severity. If the diff is fine, say so in one line. Do not rewrite the code.",
       "tools": { "write": false, "edit": false, "bash": true }
     },
     "architect": {
       "mode": "subagent",
-      "model": "opencode/claude-opus-5-5",
+      "model": "opencode-go/kimi-k3",
       "description": "Expensive senior engineer. Use ONLY for: design decisions, security/auth/certificates/PHI boundary/data model work, or when the builder has failed the same fix twice. Give it the error output and relevant file paths, not the whole repo.",
       "prompt": "You are the senior architect. You are expensive, so be decisive and concise. Give a clear plan or fix with exact files and steps. Flag any security or PHI risk. Do not re-read files you were not pointed at unless necessary.",
       "tools": { "write": false, "edit": false, "bash": true }
