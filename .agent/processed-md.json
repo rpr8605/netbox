@@ -15,13 +15,15 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                      "sha256":  "aab13874ea66d099f6edb6df3aa0efc1fad91f21be5e159d84340a9f40f816ac",
-                                      "status":  "reference",
-                                      "note":  "status doc; will be EDITED by audit-doc work with fresh test evidence",
-                                      "commits":  [
-
-                                                  ]
-                                  },
+                                       "sha256":  "77dd537869000649d5a974bff9661cfcaa3976d920ad0f89b4aba66683b8642a",
+                                       "status":  "reference",
+                                       "note":  "status doc; updated this pass with fresh no-Docker evidence, KF6/7/8/3 status, and environment blockers",
+                                       "commits":  [
+                                                       "107ac2f",
+                                                       "a68b0f5",
+                                                       "2b1d01d"
+                                                   ]
+                                   },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
                                                    "sha256":  "2d7ebee753bf20d5fbbdeb5bb1375b17640c7f736761dd61fb502bb09d51711a",
                                                    "status":  "reference",
@@ -55,13 +57,15 @@
                                                             ]
                                             },
     "BEACON_RELAY_KIMI_FIXES.md":  {
-                                       "sha256":  "3db9667040a3e3b6da77e4afd3a64f6fd5f59ec6b7a5157860e7b1888a542eea",
-                                       "status":  "in-progress",
-                                       "note":  "partially stale; only verifiably-open items being worked (KF3,KF6,KF7,KF8)",
-                                       "commits":  [
-
-                                                   ]
-                                   },
+                                        "sha256":  "3db9667040a3e3b6da77e4afd3a64f6fd5f59ec6b7a5157860e7b1888a542eea",
+                                        "status":  "partial",
+                                        "note":  "KF6/KF7/KF8 DONE; KF3 blocked pending decision (see .agent/open-questions.md)",
+                                        "commits":  [
+                                                        "107ac2f",
+                                                        "a68b0f5",
+                                                        "2b1d01d"
+                                                    ]
+                                    },
     "BEACON_RELAY_SPEC_INDEX.md":  {
                                        "sha256":  "c30da334183b9ed2ad7017a0e1f9c9fdd8464b25b184cf719b5abff0780d52b1",
                                        "status":  "reference",
@@ -70,12 +74,15 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                   "sha256":  "468d68c1ecebf0a9c9ddcadec5779103d0274c5bb0ea26000f864e55f465d2e0",
-                                   "status":  "reference",
-                                   "commits":  [
-
-                                               ]
-                               },
+                                    "sha256":  "ce02c7c2e564be1026a77b376bda0da5a3530e13d9ce6372d11f82426e18f014",
+                                    "status":  "reference",
+                                    "note":  "status doc; updated this pass with KF6/7/8/3 status, fresh no-Docker evidence, and port-9100 blocker",
+                                    "commits":  [
+                                                    "107ac2f",
+                                                    "a68b0f5",
+                                                    "2b1d01d"
+                                                ]
+                                },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
                                                                 "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
                                                                 "status":  "reference",
@@ -129,13 +136,13 @@
                                              ]
                              },
     "opencode.json":  {
-                          "sha256":  "7e21e036e7438210dd44937bb82eaec04be3054d54d67552250515cbc77ad710",
-                          "status":  "reference",
-                          "note":  "live OpenCode routing config; drives @scout/@reviewer/@architect model assignment",
-                          "commits":  [
-
-                                      ]
-                      },
+                           "sha256":  "3d2005a11642055b2c65560112a745d79d274186d522da82de521700f211605d",
+                           "status":  "reference",
+                           "note":  "live OpenCode routing config; switched to Go-only models this pass",
+                           "commits":  [
+                                           "19a9062"
+                                       ]
+                       },
     "models/cost-calc.py":  {
                                 "sha256":  "582d00b059ad7ecd4dd832472417484d44a1a624dc06575b149802495274fe0c",
                                 "status":  "reference",
@@ -144,10 +151,26 @@
                                             ]
                             },
     "models/pricing.csv":  {
-                               "sha256":  "6fbd16020724fc9c7253a8a71d9662591a24e5c3bd2bd5e3af28e1030bea234f",
+                               "sha256":  "6fbd16020724fc9c7253a8a71d966259a24e5c3bd2bd5e3af28e1030bea234f",
                                "status":  "reference",
                                "commits":  [
 
                                            ]
-                           }
+                           },
+    ".agent/checkpoints.md":  {
+                                  "sha256":  "68443d50117c735c3b1663ca66c5c08b85dc9d2c8dcd1f9c791c5be4f1c65bd3",
+                                  "status":  "reference",
+                                  "note":  "session checkpoint log; updated this pass",
+                                  "commits":  [
+
+                                              ]
+                              },
+    ".agent/open-questions.md":  {
+                                     "sha256":  "a849565c2d580e65d24315f500cc51830796868bc8856984d8f0d57d26064e12",
+                                     "status":  "reference",
+                                     "note":  "session open questions; created this pass for KF3 and port-9100 blockers",
+                                     "commits":  [
+
+                                                 ]
+                                 }
 }
