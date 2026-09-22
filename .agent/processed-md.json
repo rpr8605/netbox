@@ -21,7 +21,8 @@
                                        "commits":  [
                                                        "107ac2f",
                                                        "a68b0f5",
-                                                       "2b1d01d"
+                                                       "2b1d01d",
+                                                       "fea0d33"
                                                    ]
                                    },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -63,9 +64,19 @@
                                         "commits":  [
                                                         "107ac2f",
                                                         "a68b0f5",
-                                                        "2b1d01d"
+                                                        "2b1d01d",
+                                                        "fea0d33"
                                                     ]
                                     },
+    "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
+                                                 "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
+                                                 "status":  "partial",
+                                                 "note":  "items 3-6 DONE (f840531); items 1,2,1b,7 + Priority 3 re-verification remaining; committed as reference doc",
+                                                 "commits":  [
+                                                                 "f840531",
+                                                                 "fea0d33"
+                                                             ]
+                                             },
     "BEACON_RELAY_SPEC_INDEX.md":  {
                                        "sha256":  "c30da334183b9ed2ad7017a0e1f9c9fdd8464b25b184cf719b5abff0780d52b1",
                                        "status":  "reference",
@@ -80,7 +91,8 @@
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
-                                                    "2b1d01d"
+                                                    "2b1d01d",
+                                                    "fea0d33"
                                                 ]
                                 },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -162,7 +174,7 @@
                                   "status":  "reference",
                                   "note":  "session checkpoint log; updated this pass",
                                   "commits":  [
-
+                                                  "fea0d33"
                                               ]
                               },
     ".agent/open-questions.md":  {
@@ -170,7 +182,7 @@
                                      "status":  "reference",
                                      "note":  "session open questions; created this pass for KF3 and port-9100 blockers",
                                      "commits":  [
-
+                                                     "fea0d33"
                                                  ]
                                  }
 }
