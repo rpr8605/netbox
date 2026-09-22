@@ -109,7 +109,10 @@ function startMirthStub() {
     }
     if (u.pathname === '/api/channels' && req.method === 'GET') {
       return res.writeHead(200, { 'content-type': 'application/json' })
-        .end(JSON.stringify([{ id: '1', name: 'adt-to-lab' }, { id: '2', name: 'oru-result' }]));
+        .end(JSON.stringify([
+          { id: '1', name: 'adt-to-lab', source_system: 'ADT', destination_system: 'Lab' },
+          { id: '2', name: 'oru-result', source_system: 'Lab', destination_system: 'Results' },
+        ]));
     }
     const m = u.pathname.match(/^\/api\/channels\/(\d+)\/status$/);
     if (m && req.method === 'GET') {
@@ -202,11 +205,19 @@ async function main() {
   check('FHIR endpoint down -> down', r4.status === 'down', r4.detail);
 
   // ---- Mirth across HTTP ---------------------------------------------------
-  const { runMirthCheck } = await import('../beacon-relay-agent/lib/mirth_admin.js');
+  const { runMirthCheck, mirthChannelStates, mirthLogin, mirthLogout } = await import('../beacon-relay-agent/lib/mirth_admin.js');
   const mirthServer = startMirthStub();
   const mirthPort = await listen(mirthServer);
   const m1 = await runOne('mirth', 'healthy', 'adt', { base_url: `http://127.0.0.1:${mirthPort}/api`, username: 'admin', password: 'adminpass' });
   check('Mirth all channels STARTED -> active/L3', m1.status === 'active', m1.detail);
+
+  // Verify the reader exposes graph endpoints the channel registry can consume.
+  const login = await mirthLogin(`http://127.0.0.1:${mirthPort}/api`, { username: 'admin', password: 'adminpass' });
+  const states = await mirthChannelStates(`http://127.0.0.1:${mirthPort}/api`, login.cookie);
+  await mirthLogout(`http://127.0.0.1:${mirthPort}/api`, login.cookie);
+  check('Mirth reader exposes source_system/destination_system',
+    states.channels.some(c => c.id === '1' && c.source_system === 'ADT' && c.destination_system === 'Lab'),
+    JSON.stringify(states.channels));
 
   mirthMode = 'degraded';
   const m2 = await runOne('mirth', 'one-channel-stopped', 'adt', { base_url: `http://127.0.0.1:${mirthPort}/api`, username: 'admin', password: 'adminpass' });

@@ -60,10 +60,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   profiles for MEDITECH (Expanse, Magic, Client-Server), TruBridge/Evident, Epic Community
   Connect, Oracle Health CommunityWorks, athenahealth, Surescripts connectivity, VA
   (VistA/CPRS), and IHS (RPMS). Tested against a public FHIR R4 sandbox and stubs.
-- **Interface topology visibility** (`EHR_INTEGRATIONS` §11/§12). Channel registry,
-  optional `channel_id` on the canonical schema, per-site topology view, cross-site rollup
-  gated to operations-manager/support-technician. Rule-based detail panel — no AI
-  narration, per the §11 guardrail.
+- **Interface topology visibility** (`EHR_INTEGRATIONS` §11/§12). Channel registry
+  now carries `site_id`, `source_system`, and `destination_system` so channels can be
+  rendered as graph edges; the Mirth/NextGen reader exposes those endpoints; per-site
+  topology view, cross-site rollup gated to operations-manager/support-technician, and
+  full-status detail panel all return them. Rule-based detail panel — no AI narration,
+  per the §11 guardrail.
 - **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
@@ -120,7 +122,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 16/16 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 17/17 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |

@@ -67,11 +67,12 @@ async function postEvents(dev, events) {
   }
 }
 
-// Register the interface-engine channels so the topology shows display names.
+// Register the interface-engine channels so the topology shows display names
+// and graph endpoints (source_system/destination_system).
 async function registerChannels() {
-  await api('POST', '/api/channels', { channel_id: 'adt-to-lab', display_name: 'ADT -> Lab', engine: 'mirth' });
-  await api('POST', '/api/channels', { channel_id: 'oru-result', display_name: 'ORU Result', engine: 'mirth' });
-  await api('POST', '/api/channels', { channel_id: 'meds-to-pharmacy', display_name: 'Meds -> Pharmacy', engine: 'mirth' });
+  await api('POST', '/api/channels', { channel_id: 'adt-to-lab', display_name: 'ADT -> Lab', engine: 'mirth', source_system: 'ADT', destination_system: 'Lab' });
+  await api('POST', '/api/channels', { channel_id: 'oru-result', display_name: 'ORU Result', engine: 'mirth', source_system: 'Lab', destination_system: 'Results' });
+  await api('POST', '/api/channels', { channel_id: 'meds-to-pharmacy', display_name: 'Meds -> Pharmacy', engine: 'mirth', source_system: 'Meds', destination_system: 'Pharmacy' });
 }
 
 async function main() {

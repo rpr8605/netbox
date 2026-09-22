@@ -54,3 +54,13 @@
 - **Blocked:** none; KF3 and port-9100 blocker resolved
 - **Repeat check:** none
 - **Progress:** KF6/7/8/3 complete; E2E/RBAC re-verified; ~85% of MD-sync work done, acceptance and next-priority spec items remain
+
+## Checkpoint #5 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - Channel registry now stores `site_id`, `source_system`, `destination_system`; `mirthChannelStates` exposes graph endpoints; topology/rollup/full-status routes return them; seed data and tests updated.
+  - `BEACON_RELAY_CHECKLIST.md` / `BEACON_RELAY_STATUS.md` updated: channel registry §11/§12 marked DONE, EHR unit count 17/17, removed completed item from "cheapest next wins".
+- **Tests:** topology 6/6, EHR unit 17/17, EHR E2E 23/23, alerting/RBAC 33/33, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** AWS Organization + three accounts (blocked by missing AWS CLI/credentials) OR TLS-cert-expiration critical service
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI)
+- **Progress:** 61 of 99 CHECKLIST items complete (62%), up from 60 of 99 (61%)

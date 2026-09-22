@@ -48,6 +48,9 @@ function toTopology(events) {
       channel_id: chId,
       display_name: reg?.display_name ?? chId,
       engine: reg?.engine ?? 'unregistered',
+      site_id: reg?.site_id ?? null,
+      source_system: reg?.source_system ?? null,
+      destination_system: reg?.destination_system ?? null,
       newest: evs[0],
     });
   }
@@ -60,12 +63,12 @@ export default async function channelRoutes(app) {
   // Register a channel_id -> display name/engine. A WRITE to the registry —
   // requires channels:write (operations-manager). Was unauthenticated before.
   app.post('/api/channels', { preHandler: requirePerm('channels:write', appendAudit) }, async (req, reply) => {
-    const { channel_id, display_name, engine } = req.body ?? {};
+    const { channel_id, display_name, engine, site_id, source_system, destination_system } = req.body ?? {};
     if (!channel_id || !display_name || !engine) {
       return reply.code(400).send({ error: 'channel_id, display_name, engine required' });
     }
-    upsertChannel({ channelId: channel_id, displayName: display_name, engine });
-    return { channel_id, display_name, engine };
+    upsertChannel({ channelId: channel_id, displayName: display_name, engine, siteId: site_id, sourceSystem: source_system, destinationSystem: destination_system });
+    return { channel_id, display_name, engine, site_id: site_id ?? null, source_system: source_system ?? null, destination_system: destination_system ?? null };
   });
   app.get('/api/channels', async () => listChannels());
 

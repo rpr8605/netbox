@@ -13,7 +13,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 16/16 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 17/17 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
@@ -137,7 +137,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Rhapsody / Cloverleaf / Iguana admin-API readers — **NOT STARTED** (opportunistic-by-design; build only where a real deployment exposes the API).
 
 ### §11/§12 — interface topology visibility
-- Channel registry (site/channel/engine/source/destination) — **PARTIAL**. The registry stores channel_id + display_name + engine and is tested, but it does NOT yet carry `source_system`/`destination_system` — the two fields that turn a channel list into a true graph. The console's per-site graph derives edges from a fixed layout, not from those two fields.
+- Channel registry (site/channel/engine/source/destination) — **DONE**. Registry stores `site_id`, `source_system`, `destination_system` alongside `channel_id`/`display_name`/`engine`; `mirthChannelStates` exposes the two graph endpoints; topology + rollup + full-status routes return them. Covered by `node --test scripts/test_topology.js` (6/6) and `node scripts/test_ehr_unit.js`.
 - `channel_id` optional on canonical event — **DONE** (topology 6/6).
 - Per-site topology view — **DONE**.
 - Cross-site rollup (ops-manager/support-technician only) — **DONE** (RBAC-gated).
@@ -216,7 +216,6 @@ No DONE item is *broken* by an unbuilt dependency — the current system is inte
 Small, unblocked, worth doing first:
 
 - **AWS Organization + three accounts** (`CLOUD_ARCHITECTURE_AWS` §6 step 1) — the doc is explicit that nothing else in it should build before this, and it's foundational like step-ca was; zero new device/EHR code.
-- **Channel registry: add `source_system`/`destination_system`** (`EHR_INTEGRATIONS` §11) — two columns + populate from the Mirth reader; turns the channel list into a true graph and unblocks the edge-detail panel's missing fields.
 - **TLS-cert-expiration as a first-class critical service** (`CONTROLS_AND_IDENTITY` §3) — the L2 check already captures expiry on every checked endpoint; surfacing it as a named service is a thin slice over existing code.
 - **Ticketing Tier 0 copy-paste block** (`TOPOLOGY_…_MEMORY` §3) — renders data the incident already carries; no new backend, and it covers every hospital incl. inbox-only sites.
 - **SES email sender alongside SendGrid** (`BUILD_SPEC` §6) — the deliver.js email path is SendGrid-only today; the spec names SES *or* SendGrid, so this is a one-function addition on a proven rail, and closes the "SES not implemented" note.

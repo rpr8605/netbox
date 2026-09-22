@@ -112,7 +112,10 @@ function startMirthStub() {
     if (u.pathname === '/api/sessions/current' && req.method === 'DELETE') return res.writeHead(204).end();
     if (u.pathname === '/api/channels' && req.method === 'GET') {
       return res.writeHead(200, { 'content-type': 'application/json' })
-        .end(JSON.stringify([{ id: '1', name: 'adt-to-lab' }, { id: '2', name: 'oru-result' }]));
+        .end(JSON.stringify([
+          { id: '1', name: 'adt-to-lab', source_system: 'ADT', destination_system: 'Lab' },
+          { id: '2', name: 'oru-result', source_system: 'Lab', destination_system: 'Results' },
+        ]));
     }
     const m = u.pathname.match(/^\/api\/channels\/(\d+)\/status$/);
     if (m && req.method === 'GET') {

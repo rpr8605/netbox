@@ -44,6 +44,11 @@ export async function mirthLogout(base, cookie) {
 // purpose: STOPPED/STARTED plus per-connector CONNECTED/IDLE/ERROR is real,
 // safely-shareable operational signal (no payload). Normalizes heterogeneous
 // Mirth versions under one shape the orchestrator can reason about.
+//
+// source_system/destination_system come from channel metadata when the admin
+// API exposes them (some NextGen builds include them; otherwise a caller can
+// derive them from connector names). These two fields are what turns a flat
+// channel list into a graph edge list for the Fleet Console topology view.
 export async function mirthChannelStates(base, cookie) {
   const list = await httpJson('GET', `${base}/channels`, { headers: { cookie } });
   if (list.status !== 200 || !Array.isArray(list.json)) {
@@ -56,6 +61,8 @@ export async function mirthChannelStates(base, cookie) {
     channels.push({
       id: ch.id,
       name: ch.name ?? null,
+      source_system: ch.source_system ?? null,
+      destination_system: ch.destination_system ?? null,
       state: s.state ?? 'UNKNOWN',
       connectors: (s.connectorStatuses ?? []).map(c => ({ name: c.name ?? null, state: c.state ?? 'UNKNOWN' })),
     });

@@ -17,11 +17,13 @@ export const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// Guarded idempotent migration: channel_id rides in a real column since the
-// topology work; existing dev volumes that predate the column get an ALTER
-// TABLE ADD COLUMN once at startup. Wrapped because an already-migrated DB
-// would throw 'duplicate column name'.
+// Guarded idempotent migrations: columns added after the initial topology work;
+// existing dev volumes get an ALTER TABLE ADD COLUMN once at startup. Wrapped
+// because an already-migrated DB would throw 'duplicate column name'.
 try { db.exec(`ALTER TABLE events ADD COLUMN channel_id TEXT;`); } catch { /* already present */ }
+try { db.exec(`ALTER TABLE channels ADD COLUMN site_id TEXT;`); } catch { /* already present */ }
+try { db.exec(`ALTER TABLE channels ADD COLUMN source_system TEXT;`); } catch { /* already present */ }
+try { db.exec(`ALTER TABLE channels ADD COLUMN destination_system TEXT;`); } catch { /* already present */ }
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS devices (
@@ -72,14 +74,18 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_device_time ON events(device_id, occurred_at DESC);
 
--- Interface channel registry: the stable, operator-controlled mapping from a
--- channel_id (what the agent tags on check_results) to a display name/engine.
--- Read-only lookups here; writes go through routes/channels.js.
+-- Interface channel registry: the stable mapping from a channel_id (what the
+-- agent tags on check_results) to display name, engine, and the two graph
+-- endpoints that turn a channel list into an edge list. Writes go through
+-- routes/channels.js; reads happen here and in topology_view.js.
 CREATE TABLE IF NOT EXISTS channels (
-  channel_id  TEXT PRIMARY KEY,
-  display_name TEXT NOT NULL,
-  engine      TEXT NOT NULL,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  channel_id          TEXT PRIMARY KEY,
+  display_name        TEXT NOT NULL,
+  engine              TEXT NOT NULL,
+  site_id             TEXT,               -- which site this edge belongs to
+  source_system       TEXT,               -- graph node at one end of the edge
+  destination_system  TEXT,               -- graph node at the other end of the edge
+  created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Append-only audit log (spec §5): every login, config change, software
@@ -273,16 +279,22 @@ export function listEventsBySite(siteId, limit = 200) {
 }
 
 // --- channel registry (topology) -------------------------------------------
-// upsertChannel: register (or rename) a channel_id -> readable name/engine.
-// Idempotent — re-registering the same id just updates the display fields.
-export function upsertChannel({ channelId, displayName, engine }) {
+// upsertChannel: register (or rename) a channel_id -> readable name/engine plus
+// graph endpoints. Idempotent — re-registering the same id updates all mutable
+// fields. site_id/source_system/destination_system are optional at insert time
+// so manual operator registration stays simple; the Mirth reader fills them in
+// when it discovers them.
+export function upsertChannel({ channelId, displayName, engine, siteId = null, sourceSystem = null, destinationSystem = null }) {
   db.prepare(
-    `INSERT INTO channels (channel_id, display_name, engine)
-     VALUES (?, ?, ?)
+    `INSERT INTO channels (channel_id, display_name, engine, site_id, source_system, destination_system)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(channel_id) DO UPDATE SET
        display_name = excluded.display_name,
-       engine = excluded.engine`
-  ).run(channelId, displayName, engine);
+       engine = excluded.engine,
+       site_id = excluded.site_id,
+       source_system = excluded.source_system,
+       destination_system = excluded.destination_system`
+  ).run(channelId, displayName, engine, siteId, sourceSystem, destinationSystem);
 }
 
 // getChannel: look up a channel_id; undefined when unregistered. Unregistered

@@ -35,9 +35,12 @@ describe('channel_id optional', () => {
 });
 
 describe('channel registry + topology', () => {
-  it('register + getChannel', () => {
-    upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth' });
-    assert.equal(getChannel('adt-to-lab').display_name, 'ADT -> Lab');
+  it('register + getChannel carries source_system/destination_system', () => {
+    upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
+    const reg = getChannel('adt-to-lab');
+    assert.equal(reg.display_name, 'ADT -> Lab');
+    assert.equal(reg.source_system, 'ADT');
+    assert.equal(reg.destination_system, 'Lab');
   });
   it('topology groups newest-per-channel, unregistered shows raw id', () => {
     const deviceId = crypto.randomUUID(); const siteId = crypto.randomUUID();
@@ -57,10 +60,17 @@ describe('channel registry + topology', () => {
       const reg = getChannel(k);
       const rows = grouped.get(k);
       const p = JSON.parse(rows[0].payload ?? '{}');
-      return { channel_id: k, display_name: reg?.display_name ?? k, engine: reg?.engine ?? 'unregistered', newest_status: p.status ?? 'unknown' };
+      return {
+        channel_id: k,
+        display_name: reg?.display_name ?? k,
+        engine: reg?.engine ?? 'unregistered',
+        source_system: reg?.source_system ?? null,
+        destination_system: reg?.destination_system ?? null,
+        newest_status: p.status ?? 'unknown',
+      };
     });
-    assert.ok(topo.some(t => t.channel_id === 'adt-to-lab' && t.display_name === 'ADT -> Lab'));
-    assert.ok(topo.some(t => t.channel_id === 'oru-result' && t.engine === 'unregistered'));
+    assert.ok(topo.some(t => t.channel_id === 'adt-to-lab' && t.display_name === 'ADT -> Lab' && t.source_system === 'ADT' && t.destination_system === 'Lab'));
+    assert.ok(topo.some(t => t.channel_id === 'oru-result' && t.engine === 'unregistered' && t.source_system === null && t.destination_system === null));
   });
 });
 
