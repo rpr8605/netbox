@@ -29,7 +29,7 @@ fs.cpSync(AGENT_SRC, AGENT_DST, { recursive: true });        // full clean copy
 const REQUIRED_AGENT_FILES = [
   'agent.js', 'provision.js',
   'lib/graph.js', 'lib/post_event.js', 'lib/signal_emit.js', 'lib/backup_risk.js',
-  'lib/enroll.js', 'lib/issue_cert.js', 'lib/tpm.js',
+  'lib/issue_cert.js', 'lib/tpm.js',
   // EHR/EMR integration layer (EHR spec §2 adapters + orchestrator)
   'lib/http_json.js', 'lib/net_checks.js', 'lib/fhir_r4.js', 'lib/mirth_admin.js', 'lib/ehr_check.js',
 ];
