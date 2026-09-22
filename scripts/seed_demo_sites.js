@@ -13,7 +13,9 @@ import crypto from 'node:crypto';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import { request, Agent } from '../control-plane/node_modules/undici/index.js';
 
-const CP = process.env.CONTROL_PLANE_URL ?? 'https://localhost:9100';
+// Default host port matches docker-compose.yml's CONTROL_PLANE_HOST_PORT remap
+// (10443 because Windows/Hyper-V reserves 9100 in excluded range 9035-9134).
+const CP = process.env.CONTROL_PLANE_URL ?? 'https://localhost:10443';
 const CA = process.env.CA_URL ?? 'https://localhost:9000';
 const insecure = new Agent({ connect: { rejectUnauthorized: false } });
 

@@ -42,13 +42,13 @@
                                                               ]
                                               },
     "BEACON_RELAY_EHR_INTEGRATIONS.md":  {
-                                             "sha256":  "c7006da6cf2fc13a10bc122cac85e14950f8c05a9e1ffe4143cf4a71c030fe1c",
-                                             "status":  "reference",
-                                             "note":  "adapters built; remaining vendor profiles deferred",
-                                             "commits":  [
-
-                                                         ]
-                                         },
+                                              "sha256":  "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
+                                              "status":  "reference",
+                                              "note":  "adapters built; remaining vendor profiles deferred; hash updated for CRLF on-disk representation",
+                                              "commits":  [
+                                                              "f840531"
+                                                          ]
+                                          },
     "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
                                                 "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
                                                 "status":  "partial",

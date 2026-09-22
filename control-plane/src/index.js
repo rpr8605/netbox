@@ -33,6 +33,7 @@ import { requirePerm } from './rbac.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 9100);
+const BIND_HOST = process.env.BIND_HOST ?? '127.0.0.1';
 const CA_URL = process.env.CA_URL ?? 'https://localhost:9000';
 
 async function waitForCa(attempts = 30) {
@@ -113,5 +114,5 @@ setInterval(() => {
   sweepSupportSessions();
 }, SWEEP_MS);
 
-await app.listen({ port: PORT, host: '0.0.0.0' });
-app.log.info(`control plane listening on :${PORT}; CA fingerprint ${root.fingerprint}`);
+await app.listen({ port: PORT, host: BIND_HOST });
+app.log.info(`control plane listening on ${BIND_HOST}:${PORT}; CA fingerprint ${root.fingerprint}`);

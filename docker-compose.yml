@@ -32,6 +32,10 @@ services:
     environment:
       NODE_ENV: development
       PORT: 9100
+      # BIND_HOST: safe default in the image is 127.0.0.1 (localhost-only). In the
+      # compose network we bind 0.0.0.0 so device-sim and the vm-harness can reach
+      # the control plane; the host port is still gated by the publish line below.
+      BIND_HOST: ${BIND_HOST:-0.0.0.0}
       CA_URL: https://step-ca:9000
       CA_FINGERPRINT: ${CA_FINGERPRINT:-}
       PROVISIONER_NAME: ${PROVISIONER_NAME:-beacon-relay-device}
@@ -45,7 +49,12 @@ services:
       - ./out:/out:ro
       - cp-data:/data
     ports:
-      - "9100:9100"
+      # Host-side port is configurable. Default is 10443 because Windows/Hyper-V
+      # reserves 9100 in excluded range 9035-9134 on the build machine. To disable
+      # host publish entirely, override this to an empty list in a compose override
+      # file or unset the line (the container port remains 9100 for compose-internal
+      # services like device-sim and the vm-harness).
+      - "${CONTROL_PLANE_HOST_PORT:-10443}:9100"
     depends_on:
       step-ca:
         condition: service_healthy
