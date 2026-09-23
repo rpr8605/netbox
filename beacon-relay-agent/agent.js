@@ -264,7 +264,13 @@ async function updateTick() {
         // binary mode: the bundle is raw octet-stream bytes, not JSON —
         // the previous JSON.stringify(utf8-body) path corrupted every byte
         // stream and could never have produced an installable bundle.
-        fetchBytes: async (url) => (await api('GET', url, null, { ...mtls(), binary: true })).body,
+        // A non-200 response is treated as a failure: an empty or 404 body
+        // must never be written to disk as a bundle (C4).
+        fetchBytes: async (url) => {
+          const r = await api('GET', url, null, { ...mtls(), binary: true });
+          if (r.status !== 200) throw new Error(`bundle download failed: ${r.status}`);
+          return r.body;
+        },
       },
     );
     if (r.action !== 'none') console.log(`agent: update ${r.action} ${r.version ?? ''} ${r.reason ?? ''}`.trim());

@@ -15,6 +15,15 @@ import { requirePerm } from '../rbac.js';
 
 const OUT_ROOT = process.env.RELEASES_DIR ?? 'out';
 
+// Strict version format, shared with the device update client. The device
+// validates the same regex before using the version as a URL segment or file
+// name, so the server must never hand out a value that would be rejected there
+// (C4).
+const VERSION_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/;
+export function isValidReleaseVersion(v) {
+  return typeof v === 'string' && VERSION_RE.test(v);
+}
+
 function readManifest() {
   const p = path.join(OUT_ROOT, 'manifest.json');
   if (!fs.existsSync(p)) return null;
@@ -61,8 +70,11 @@ export default async function releaseRoutes(app) {
   // -------------------------------------------------------------------------
   app.post('/api/releases/rollouts', { preHandler: requirePerm('releases:manage', appendAudit) }, async (req, reply) => {
     const { version, stage, percentage = 100 } = req.body ?? {};
-    if (!version || !stage || !['dev', 'test', 'pilot', 'broad'].includes(stage)) {
-      return reply.code(400).send({ error: 'version and stage (dev|test|pilot|broad) required' });
+    if (!isValidReleaseVersion(version)) {
+      return reply.code(400).send({ error: 'version must be major.minor.patch with optional pre-release label' });
+    }
+    if (!stage || !['dev', 'test', 'pilot', 'broad'].includes(stage)) {
+      return reply.code(400).send({ error: 'stage (dev|test|pilot|broad) required' });
     }
     if (percentage < 0 || percentage > 100) {
       return reply.code(400).send({ error: 'percentage must be 0-100' });

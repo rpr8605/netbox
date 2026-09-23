@@ -14,8 +14,18 @@
 // guarantee comes from RAUC's A/B slots: the new slot is only marked good after
 // a post-update boot + health check; a failed boot leaves the previous slot
 // active.
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+
+// Strict version format: major.minor.patch with an optional pre-release label.
+// This is the only shape the update client will write to disk or pass to rauc.
+// Anything else (shell metacharacters, path traversal, whitespace) is rejected
+// before it can reach the filesystem or any command invocation (C4).
+const VERSION_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/;
+
+export function validateVersion(v) {
+  return typeof v === 'string' && VERSION_RE.test(v);
+}
 
 // checkForUpdate — ask the control plane for the latest release version and
 // compare to the running one. The device_id is included so the staged rollout
@@ -36,7 +46,12 @@ export async function checkForUpdate(ctx, fetchJson) {
 // downloadBundle — fetch the signed bundle to a temp path on /data (the
 // writable partition). Returns the path. No signature check here — that is a
 // separate, mandatory step (verifyBundle) so a bad bundle can't be installed.
+// The version is validated before it is embedded in a URL or filesystem path
+// (C4): a malformed version never reaches the network or disk.
 export async function downloadBundle(ctx, version, fetchBytes) {
+  if (!validateVersion(version)) {
+    throw new Error(`invalid version string: ${String(version).slice(0, 80)}`);
+  }
   const url = `${ctx.cpBase}/api/releases/${version}/bundle`;
   const bytes = await fetchBytes(url);
   const tmp = `/data/.update-${version}.raucb`;
@@ -53,8 +68,14 @@ export function verifyBundle(bundlePath, keyringPath = '/etc/beacon-relay-releas
   // writable tmpfs already used for RAUC's mountprefix. Without this, rauc
   // exits 1 AFTER the signature verifies ("Failed to create tmp dir ...
   // Read-only file system") and every good bundle is rejected.
+  //
+  // execFileSync with an arg array avoids a shell entirely: the bundle path
+  // is passed as a single argv element and cannot be reinterpreted as shell
+  // syntax, even if the version string were somehow malformed (C4).
   try {
-    const out = execSync(`rauc info --keyring ${keyringPath} ${bundlePath} 2>&1`, { encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' } });
+    const out = execFileSync('rauc', ['info', '--keyring', keyringPath, bundlePath], {
+      encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' },
+    });
     const verified = /Verified/.test(out);
     // A rejected gate with no captured reason is undebuggable on a headless
     // appliance — log rauc's own words, not just the generic label.
@@ -74,7 +95,10 @@ export function verifyBundle(bundlePath, keyringPath = '/etc/beacon-relay-releas
 export function applyBundle(bundlePath) {
   try {
     // TMPDIR=/run: same read-only-/tmp constraint as verifyBundle above.
-    const out = execSync(`rauc install ${bundlePath} 2>&1`, { encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' } });
+    // argv array, no shell: the bundle path cannot be split or injected (C4).
+    const out = execFileSync('rauc', ['install', bundlePath], {
+      encoding: 'utf8', env: { ...process.env, TMPDIR: '/run' },
+    });
     return { ok: true, out };
   } catch (e) {
     return { ok: false, out: String(e.stdout ?? e.message ?? e) };
@@ -85,7 +109,7 @@ export function applyBundle(bundlePath) {
 // local health check. Until this runs, RAUC will roll back to the previous
 // known-good slot on the next boot failure. This is the rollback guarantee.
 export function markGood() {
-  try { execSync('rauc status mark-good', { stdio: 'pipe' }); return true; }
+  try { execFileSync('rauc', ['status', 'mark-good'], { stdio: 'pipe' }); return true; }
   catch { return false; }
 }
 
@@ -93,7 +117,7 @@ export function markGood() {
 // current (new) slot bad so the bootloader will revert to the previous
 // known-good slot on the next boot.
 export function rollback() {
-  try { execSync('rauc status mark-bad', { stdio: 'pipe' }); return true; }
+  try { execFileSync('rauc', ['status', 'mark-bad'], { stdio: 'pipe' }); return true; }
   catch { return false; }
 }
 
@@ -129,7 +153,18 @@ export async function runUpdateCycle(ctx, deps = {}) {
   const { updateAvailable, latestVersion } = await checkForUpdate(ctx, fetchJson);
   if (!updateAvailable) return { action: 'none', reason: 'up to date', currentVersion: ctx.currentVersion };
 
-  const bundlePath = await downloadBundle(ctx, latestVersion, fetchBytes);
+  // Defense in depth: validate the version again before it is used as a URL
+  // segment, filesystem path, or command argument (C4).
+  if (!validateVersion(latestVersion)) {
+    return { action: 'rejected', reason: 'invalid version string', version: latestVersion };
+  }
+
+  let bundlePath;
+  try {
+    bundlePath = await downloadBundle(ctx, latestVersion, fetchBytes);
+  } catch (e) {
+    return { action: 'rejected', reason: `download failed: ${e.message}`, version: latestVersion };
+  }
 
   if (!verifyBundleFn(bundlePath)) {
     fs.rmSync(bundlePath, { force: true });

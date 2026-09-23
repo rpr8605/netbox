@@ -14,7 +14,7 @@
 // authPolicy under the standard EK hierarchy via libtss2). The VM harness
 // exercises this through swtpm; nothing in this file assumes hardware vs
 // software TPM.
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 
 // Probe for a usable TPM 2.0 (hardware TPM and the harness's swtpm answer
@@ -26,7 +26,7 @@ import fs from 'node:fs';
 // nothing while claiming hardware backing.
 export function tpmPresent() {
   try {
-    const out = execSync('tpm2_getcap properties-fixed 2>&1 || true').toString();
+    const out = execFileSync('tpm2_getcap', ['properties-fixed'], { encoding: 'utf8' });
     return /TPM2_PT_FAMILY_INDICATOR/.test(out);
   } catch { return false; }
 }
@@ -50,30 +50,27 @@ export function tpmPresent() {
 // public-key read through tpmReadPublicPem() — the private key stays in the TPM.
 export function sealPrivateKey(plainPem) {
   // TPM 2.0 seal: persistent handle 0x81010001 under the storage hierarchy.
-  // tpm2_createpolicyauth/… chain is invoked as a shell pipeline because
-  // step-by-step node bindings for policy are not standardized; treating
-  // libtss2 as a dependency is the documented design choice. The PEM is passed
-  // via env (never a file) purely so tpm2_load can ingest it into the TPM.
-  const script = `
-set -e
-umask 077
-mkdir -p /data/tpm
-# Evict ONLY this function's own stale handle (re-provisioning after a prior
-# failed attempt). Do NOT substitute tpm2_clear: TPM2_Clear rotates the
-# storage seed and orphans the LUKS sealed blob decrypt-data.service created
-# under the same hierarchy minutes earlier — the device then bricks on its
-# first reboot (0x1DF integrity failure, proven in vm-harness).
-tpm2_evictcontrol -C o -c 0x81010001 2>/dev/null || true
-tpm2_createprimary -C o -g sha256 -G rsa -c /data/tpm/primary.ctx
-tpm2_create -g sha256 -G rsa2048 -u /data/tpm/key.pub -r /data/tpm/key.priv \
-  -C /data/tpm/primary.ctx
-tpm2_load -C /data/tpm/primary.ctx -u /data/tpm/key.pub -r /data/tpm/key.priv \
-  -c /data/tpm/key.ctx
-tpm2_evictcontrol -C o -c /data/tpm/key.ctx 0x81010001
-rm -f /data/tpm/key.priv /data/tpm/key.pub /data/tpm/key.ctx /data/tpm/primary.ctx
-`;
-  const env = { ...process.env, BEACON_RELAY_PEM: plainPem };
-  execSync(script, { shell: '/bin/bash', env });
+  // The key is generated INSIDE the TPM via tpm2_create, so the private key
+  // never exists in software (M4). Each command is invoked with an argv array
+  // via execFileSync — no shell, no template strings, no argument injection
+  // (C4).
+  //
+  // Evict ONLY this function's own stale handle (re-provisioning after a prior
+  // failed attempt). Do NOT substitute tpm2_clear: TPM2_Clear rotates the
+  // storage seed and orphans the LUKS sealed blob decrypt-data.service created
+  // under the same hierarchy minutes earlier — the device then bricks on its
+  // first reboot (0x1DF integrity failure, proven in vm-harness).
+  fs.mkdirSync('/data/tpm', { recursive: true, mode: 0o700 });
+  try {
+    execFileSync('tpm2_evictcontrol', ['-C', 'o', '-c', '0x81010001'], { stdio: 'pipe' });
+  } catch { /* stale handle may not exist; ignore */ }
+  execFileSync('tpm2_createprimary', ['-C', 'o', '-g', 'sha256', '-G', 'rsa', '-c', '/data/tpm/primary.ctx'], { stdio: 'pipe' });
+  execFileSync('tpm2_create', ['-g', 'sha256', '-G', 'rsa2048', '-u', '/data/tpm/key.pub', '-r', '/data/tpm/key.priv', '-C', '/data/tpm/primary.ctx'], { stdio: 'pipe' });
+  execFileSync('tpm2_load', ['-C', '/data/tpm/primary.ctx', '-u', '/data/tpm/key.pub', '-r', '/data/tpm/key.priv', '-c', '/data/tpm/key.ctx'], { stdio: 'pipe' });
+  execFileSync('tpm2_evictcontrol', ['-C', 'o', '-c', '/data/tpm/key.ctx', '0x81010001'], { stdio: 'pipe' });
+  for (const f of ['key.priv', 'key.pub', 'key.ctx', 'primary.ctx']) {
+    fs.rmSync(`/data/tpm/${f}`, { force: true });
+  }
   return '0x81010001'; // material sealed; caller keeps ONLY the TPM handle
 }
 
@@ -83,12 +80,14 @@ rm -f /data/tpm/key.priv /data/tpm/key.pub /data/tpm/key.ctx /data/tpm/primary.c
 // private key ever leaving the TPM. Returns base64.
 export function tpmSign(payloadFile) {
   const digest = '/data/.pop.digest';
-  execSync(`openssl dgst -sha256 -binary -out ${digest} ${payloadFile}`, { shell: '/bin/bash' });
-  const out = execSync(
-    `tpm2_sign -c 0x81010001 -g sha256 -d ${digest} -f plain -o /data/.pop.sig && base64 -w0 /data/.pop.sig`,
-    { shell: '/bin/bash', encoding: 'utf8' },
-  );
-  execSync(`rm -f ${digest} /data/.pop.sig`, { shell: '/bin/bash' });
+  // argv arrays, no shell: the payload/digest paths cannot be reinterpreted
+  // as shell syntax (C4).
+  execFileSync('openssl', ['dgst', '-sha256', '-binary', '-out', digest, payloadFile]);
+  execFileSync('tpm2_sign', ['-c', '0x81010001', '-g', 'sha256', '-d', digest, '-f', 'plain', '-o', '/data/.pop.sig']);
+  const out = execFileSync('base64', ['-w0', '/data/.pop.sig'], { encoding: 'utf8' });
+  for (const f of [digest, '/data/.pop.sig']) {
+    fs.rmSync(f, { force: true });
+  }
   return out.trim();
 }
 
@@ -96,10 +95,7 @@ export function tpmSign(payloadFile) {
 // Used by the retrust flow to present the pinned public key. Public-only —
 // this reveals nothing about the private half.
 export function tpmReadPublicPem() {
-  return execSync(
-    'tpm2_readpublic -c 0x81010001 -f pem -o /dev/stdout',
-    { shell: '/bin/bash', encoding: 'utf8' },
-  );
+  return execFileSync('tpm2_readpublic', ['-c', '0x81010001', '-f', 'pem', '-o', '/dev/stdout'], { encoding: 'utf8' });
 }
 
 // Software-key fallback for machines with no TPM (tpmPresent() === false):
