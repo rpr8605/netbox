@@ -11,18 +11,55 @@
 // raw token is useless after redemption (used_at gate in db.js).
 import crypto from 'node:crypto';
 import forge from 'node-forge';
-import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice, setDeviceKeyFp, upsertSite } from '../db.js';
+import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice, setDeviceKeyFp, upsertSite, getDevice } from '../db.js';
 import { mintStepCaToken, caBootstrap } from '../ca.js';
 import { publicKeyFingerprint } from './retrust.js';
+import { requirePerm } from '../rbac.js';
+import { appendAudit } from '../db.js';
+
+// enrollmentTokenPolicy — the C2 safety rules for creating an enrollment token.
+// Exported so the unit test can pin the behavior independently of HTTP transport.
+export function enrollmentTokenPolicy(deviceId, existingDevice, reEnroll) {
+  if (!existingDevice) {
+    // New device: quarantine-by-default until an operator confirms it.
+    return { ok: true, state: 'quarantine', deviceKeyFp: null };
+  }
+  if (!reEnroll) {
+    return { ok: false, code: 409, error: 'device already enrolled; use re_enroll=true for audited re-enrollment' };
+  }
+  if (existingDevice.state === 'active') {
+    return { ok: false, code: 409, error: 'active device cannot be re-enrolled via token; use the replace workflow' };
+  }
+  // Re-enroll of a quarantined/retired-but-not-revoked device: keep the
+  // existing state and NEVER touch the pinned key fingerprint. The cert fields
+  // are left untouched here; redemption or a future cert presentation updates
+  // them through their own paths.
+  return { ok: true, state: existingDevice.state, deviceKeyFp: existingDevice.device_key_fp };
+}
 
 export default async function enrollRoutes(app) {
-  // Operator endpoint. Phase 1: bound to localhost by the server config; Phase 8
-  // puts real RBAC in front of this (spec §5) — do not expose before then.
-  app.post('/api/enroll/tokens', async (req, reply) => {
-    const { device_id, site_id, ttl_minutes = 60, name, lat, lng } = req.body ?? {};
+  // Operator endpoint. Requires an operator role that can mint enrollment tokens
+  // (C2). Phase 1 still uses query-string roles, but the gate is structural so
+  // a real auth layer only has to supply the principal's role.
+  app.post('/api/enroll/tokens', { preHandler: requirePerm('enroll:tokens', appendAudit) }, async (req, reply) => {
+    const { device_id, site_id, ttl_minutes = 60, name, lat, lng, re_enroll = false } = req.body ?? {};
     if (!device_id || !site_id) {
       return reply.code(400).send({ error: 'device_id and site_id required' });
     }
+
+    const existingDevice = await getDevice(device_id);
+    const policy = enrollmentTokenPolicy(device_id, existingDevice, re_enroll === true);
+    if (!policy.ok) {
+      await appendAudit({
+        auditId: crypto.randomUUID(),
+        actor: req.query?.role ?? req.body?.role ?? 'unknown',
+        action: 'enroll.token_denied',
+        target: device_id,
+        detail: policy.error,
+      });
+      return reply.code(policy.code).send({ error: policy.error });
+    }
+
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + ttl_minutes * 60_000)
@@ -30,13 +67,21 @@ export default async function enrollRoutes(app) {
     await createEnrollmentToken({ tokenHash, deviceId: device_id, siteId: site_id, expiresAt });
     // Register the device in quarantine NOW — before any cert exists. A device
     // that shows up with a valid cert but no registry row is refused later;
-    // quarantine-by-default is the safety property (spec §2).
-    await upsertDevice({ deviceId: device_id, siteId: site_id, state: 'quarantine' });
+    // quarantine-by-default is the safety property (spec §2). For re-enroll of
+    // an existing non-active device the policy preserves the prior state.
+    await upsertDevice({ deviceId: device_id, siteId: site_id, state: policy.state });
     // Optional site metadata for the geographic fleet map (TOPOLOGY_…_MEMORY §1).
     // Lat/lng are optional at enrollment time; the console can update them later.
     if (name != null || lat != null || lng != null) {
       await upsertSite({ siteId: site_id, name, lat, lng });
     }
+    await appendAudit({
+      auditId: crypto.randomUUID(),
+      actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
+      action: existingDevice ? 'enroll.token_reenroll' : 'enroll.token_created',
+      target: device_id,
+      detail: `site=${site_id} re_enroll=${re_enroll === true}`,
+    });
     return { device_id, site_id, enrollment_token: token, expires_at: expiresAt };
   });
 

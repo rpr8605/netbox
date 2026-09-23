@@ -26,7 +26,7 @@ export const ROLE_PERMISSIONS = {
   'operations-manager': new Set([
     'devices:read', 'devices:write', 'devices:replace', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write',
-    'releases:manage', 'action_registry:write', 'action_registry:read', 'action_registry:execute',
+    'releases:manage', 'enroll:tokens', 'action_registry:write', 'action_registry:read', 'action_registry:execute',
   ]),
   'security-auditor': new Set([
     'devices:read', 'events:read', 'topology:read', 'audit:read',
