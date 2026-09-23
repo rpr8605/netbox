@@ -168,3 +168,24 @@
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
 - **Next:** AWS Organization + three accounts (`CLOUD_ARCHITECTURE_AWS` ยง6 step 1), now unblocked by Postgres storage. Alternatively, continue with any remaining `BUILD_SPEC` surfaces if AWS access is not ready.
 - **Progress:** 79 of 99 CHECKLIST items complete (80%), up from 78 of 99 (79%).
+
+## Checkpoint #15 | Block: $7.42 | Total: $692.93 | Cost/feature commit: $1.48
+
+- **Done:**
+  - Migration safety (BUILD_SPEC ง5): SQLite-to-Postgres migration now runs exactly once per Postgres database. A marker row in schema_migrations prevents re-runs; after success the SQLite source is renamed to *.migrated. control-plane/test/migrate.once.test.js proves a row deleted in Postgres is NOT resurrected after restart. dfaca41.
+  - Secrets moved out of committed files: .env.example committed, .env gitignored; docker-compose.yml no longer hardcodes CA_PASSWORD, POSTGRES_USER, POSTGRES_PASSWORD, or POSTGRES_DB; scripts/pki_seed.js requires CA_PASSWORD from the environment. 2fce3cd.
+  - PostgreSQL made the default for test suites: .env sets DATABASE_URL to isolated eacon_relay_test; 
+pm run test:db:reset recreates it; root and control-plane/package.json scripts load .env via 
+ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite only for its isolated audit tamper test.  d0e22c.
+  - Readiness audit (no new code): .agent/readiness-audit.md maps 10 areas to DONE/PARTIAL/MISSING with file paths and test names. 2ebd4c7.
+  - DHCP health as a first-class critical service (CONTROLS_AND_IDENTITY ง3): dhcp_health added to schema service enum and critical-service register; unDhcpHealthCheck reads from a hospital-exposed status source and reports erified_ready/degraded/down/unknown. 503e165.
+  - CHECKLIST/STATUS updated with fresh evidence and the new .env/test workflow. dcd8365.
+- **Tests:**
+  - Doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
+  - EHR unit 48/48 (up from 43; +5 DHCP checks), agent loop 11/11, Step 1 signals 4/4, sidecar security 24/24, topology 7/7, device lifecycle 13/13, migration safety 1/1, DB-touching Postgres suite 21/21, EHR E2E 23/23, alerting/RBAC/audit/support/ticketing/SES/fleet-map/troubleshooting-memory/Action Registry 76/76, update client 9/9, OTA rollout 10/10.
+  - All suites re-run fresh this session against Postgres defaults.
+- **Repeat check:** none.
+- **Blocked:** AWS Organization + three accounts (skipped per Ryan's instruction); QEMU acceptance x3 (missing KVM in Docker Desktop); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
+- **Next:** Security gaps from .agent/readiness-audit.md and the independent review (Beacon_Relay_Code_Review_2026-09-23.md): device-side server cert pinning, OTA version validation/no-shell, atomic token consumption, route auth-policy test.
+- **Progress:** 80 of 99 CHECKLIST items complete (81%), up from 79 of 99 (80%).
+
