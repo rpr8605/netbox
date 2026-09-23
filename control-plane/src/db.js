@@ -123,18 +123,24 @@ export async function createEnrollmentToken({ tokenHash, deviceId, siteId, expir
 }
 
 export async function consumeEnrollmentToken(tokenHash) {
-  const row = await get(
-    `SELECT * FROM enrollment_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`,
-    null,
-    [tokenHash]
-  );
-  if (!row) return null;
-  await run(
-    `UPDATE enrollment_tokens SET used_at = datetime('now') WHERE token_hash = ?`,
-    null,
-    [tokenHash]
-  );
-  return row;
+  // Atomic consumption: one UPDATE ... RETURNING statement. No SELECT-then-UPDATE
+  // race window (M3).
+  if (isPg) {
+    const res = await pgPool.query(
+      `UPDATE enrollment_tokens
+       SET used_at = NOW()::TEXT
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()::TEXT
+       RETURNING *`,
+      [tokenHash]
+    );
+    return res.rows[0] ?? null;
+  }
+  return sqliteDb.prepare(
+    `UPDATE enrollment_tokens
+     SET used_at = datetime('now')
+     WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')
+     RETURNING *`
+  ).get(tokenHash) ?? null;
 }
 
 export async function upsertDevice({ deviceId, siteId, state, certSerial, certNotAfter }) {
@@ -284,19 +290,23 @@ export async function createRetrustChallenge({ challengeHash, deviceId }) {
 }
 
 export async function consumeRetrustChallenge(challengeHash, deviceId) {
-  const row = await get(
-    `SELECT * FROM retrust_challenges
-     WHERE challenge_hash = ? AND device_id = ? AND used_at IS NULL AND expires_at > datetime('now')`,
-    null,
-    [challengeHash, deviceId]
-  );
-  if (!row) return null;
-  await run(
-    `UPDATE retrust_challenges SET used_at = datetime('now') WHERE challenge_hash = ?`,
-    null,
-    [challengeHash]
-  );
-  return row;
+  // Atomic consumption: one UPDATE ... RETURNING statement (M3).
+  if (isPg) {
+    const res = await pgPool.query(
+      `UPDATE retrust_challenges
+       SET used_at = NOW()::TEXT
+       WHERE challenge_hash = $1 AND device_id = $2 AND used_at IS NULL AND expires_at > NOW()::TEXT
+       RETURNING *`,
+      [challengeHash, deviceId]
+    );
+    return res.rows[0] ?? null;
+  }
+  return sqliteDb.prepare(
+    `UPDATE retrust_challenges
+     SET used_at = datetime('now')
+     WHERE challenge_hash = ? AND device_id = ? AND used_at IS NULL AND expires_at > datetime('now')
+     RETURNING *`
+  ).get(challengeHash, deviceId) ?? null;
 }
 
 // ---------------------------------------------------------------------------
