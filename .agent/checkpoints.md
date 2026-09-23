@@ -231,4 +231,29 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
   3. Single `npm test` running all JS and Python suites; GitHub Actions workflow (tests, gitleaks, Semgrep, npm audit, pip-audit, Trivy); ESLint + Prettier + ruff configs and auto-fix commit; fix wrong comments and rename package.json scripts.
 - **Progress:** 10 of 15 review code findings closed. No CHECKLIST items added yet.
 
+## Checkpoint #18 | Block: $?.?? | Total: $???.?? | Cost/feature commit: $?.??
+
+- **Done (Batch 3 maintainability from independent review):**
+  - README.md rewritten with quickstart, repo map, test instructions, and honest status (operator auth is a stub, C1 blocked). `56f50b0`.
+  - `docs/ARCHITECTURE.md` created with Mermaid trust-boundary diagram and component breakdown. `56f50b0`.
+  - `docs/SECURITY_MODEL.md` created covering device mTLS, operator-auth stub, CA trust, PHI boundaries, and threat assumptions. `56f50b0`.
+  - Docs reorganized: product specs moved to `docs/specs/`; AI-process files (`BEACON_RELAY_KIMI_FIXES.md`, `models/`, `KIMI_ENGINE_READERS_PROMPT.md`) moved to `.agent/`; deleted superseded `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md`; updated all internal references and `AGENTS.md`. `c7f1117`.
+  - Unified `npm test` running JS unit + Python suites; added `test:unit`, `test:integration`, `test:python`, `test:sqlite` tiers; renamed purpose-based scripts (`build:image` replacing `phase3:build-image`, etc.). `9469f7d`.
+  - GitHub Actions CI workflow at `.github/workflows/ci.yml` runs `test:unit` and `test:python` on Ubuntu. `9469f7d`.
+  - ESLint (flat config), Prettier, and ruff configs added; fixed real lint errors in `provision.js`, `phi_guard.js`, `action_registry.js`, and `sidecar/mllp_tap.py`; added `.venv/` and `*.pyc` to `.gitignore`. `d0ea22c`.
+  - Fixed stale/wrong comments: `events.js` TLS gate now accurately describes `requestCert:true` + `rejectUnauthorized:false` with per-route enforcement; `STATUS.md` fleet-map description now says "operator-auth stub" instead of "RBAC"; removed last source-code "Phase N" label. `b734435`.
+- **Tests:**
+  - `npm test` passes: unit suite 30/30 (12 suites), Python sidecar 38/38 (24 security + 14 correlation).
+  - `npm run lint` passes (ESLint warnings only for pre-existing unused vars; ruff clean).
+- **Repeat check:** none.
+- **Blocked:** C1 real operator auth (pending Ryan's IdP decision); M4 TPM/provision key-fp mismatch; M6 native Postgres timestamps / SQLite removal; QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant; live Mirth 3.x validation; PHI-mode design review.
+- **Open questions:** M4 and M6 remain logged in `.agent/open-questions.md`.
+- **Untracked files intentionally not committed:** `BEACON_RELAY_TECH_CONSOLE_SPEC.md` (root and `docs/specs/`), `docs/design/` (configurator + tech-console + screens), `docs/hardware/POWER_BACKUP.md`, `docs/KIMI_PROMPT.md`. These appeared during the session; left for Ryan to decide whether to track, move, or delete.
+- **Next 3:**
+  1. Decide on operator-auth IdP and implement C1.
+  2. Resolve M4 TPM key-fp consistency and M6 Postgres-native timestamps.
+  3. Make repository private (H5) and run Docker-dependent alerting/RBAC/support suite.
+- **Progress:** All 10 maintainability items addressed. 10 of 15 review code findings closed (C1, M4, M6 remain open/deferred; H5 is repo setting).
+
+
 
