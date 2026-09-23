@@ -136,3 +136,18 @@
   2. After approval, implement PHI-mode toggle (schema/API/audit/badge/purge worker).
   3. Then pick the next unblocked priority: PostgreSQL driver swap, AWS account setup, or remaining BUILD_SPEC surfaces.
 - **Progress:** 78 of 99 CHECKLIST items complete (79%), up from 72 of 99 (73%).
+
+## Checkpoint #13 | Block: $4.32 | Total: $685.51 | Cost/feature commit: $2.16
+
+- **Done:**
+  - Device swap security hardening (`BUILD_SPEC` §8.9 / hardware lifecycle): `POST /api/devices/:id/replace` now revokes the old device's certificate in step-ca via JWK provisioner token, records the serial in a local `revoked_serials` registry, and rejects the next mTLS connection attempt with `403 certificate revoked`. `5769c12`.
+  - RBAC lockdown: added `devices:replace` permission granted only to `operations-manager`; support-technician can no longer retire devices. `5769c12`.
+  - Unit + E2E tests for swap revocation: `scripts/test_device_lifecycle.js` extended; new `scripts/test_device_replace_e2e.js` proves old cert rejected and step-ca refuses renewal. `5769c12`.
+  - Demo mode: `npm run demo` / `demo.ps1` one-command orchestrator; `scripts/demo_seed.js` seeds 6 fictional MO/KS critical-access hospitals; `scripts/demo_timeline.js` plays a ~10-min scripted incident timeline (channel stall, TLS cert near expiry, WAN flap/recovery, DNS failure, incident-memory similar-past lookup); `DEMO.md` with start/stop/reset and 5-minute hospital-IT-director click-through; DEMO banner in console pages via `/api/demo`; `device-sim` loops in `DEMO_MODE=1`. `67425ea`.
+  - Demo tests: `scripts/test_demo_seed.js` and `scripts/test_demo_timeline.js` verify seed definitions and timeline coverage. `67425ea`.
+  - `device-sim` confirm call fixed to include `?role=operations-manager` so the Phase 1 test suite passes under current RBAC. `67425ea`.
+- **Tests:** device lifecycle 13/13, device-swap E2E 7/7, EHR E2E 23/23, alerting/RBAC/audit 76/76, EHR unit 43/43, agent loop 11/11, topology 7/7, Step 1 signals 4/4, configurator 8/8, update client 9/9, OTA rollout 10/10, demo seed 5/5, demo timeline 4/4. All fresh this session.
+- **Repeat check:** none.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
+- **Next:** PostgreSQL driver swap per `BUILD_SPEC` §5. Architect plan complete; implementation starts in next block. If it exceeds one checkpoint it will be broken into steps with a checkpoint between.
+- **Progress:** 78 of 99 CHECKLIST items complete (79%).
