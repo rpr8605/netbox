@@ -2,6 +2,10 @@
 // control-plane/migrate.js
 // One-shot migration from the legacy SQLite file to PostgreSQL.
 // Idempotent: rows with the same primary key are skipped (ON CONFLICT DO NOTHING).
+// Guarded by a marker row in Postgres so the migration runs exactly once per
+// database, even if the SQLite file is still present on subsequent boots.
+// After a successful migration the SQLite file is renamed to *.migrated so it
+// cannot be re-imported accidentally.
 // Safe to run before the control-plane starts; it exits cleanly when either the
 // source SQLite file or the target DATABASE_URL is missing.
 import Database from 'better-sqlite3';
@@ -12,6 +16,7 @@ import { PG_SCHEMA, PG_ALTER_COLUMNS } from './src/schema.js';
 const { Client } = pg;
 const DATABASE_URL = process.env.DATABASE_URL;
 const DB_PATH = process.env.DB_PATH ?? '/data/beacon-relay.db';
+const MIGRATION_ID = 'sqlite_to_postgres_v1';
 
 if (!DATABASE_URL) {
   console.log('migrate: DATABASE_URL not set; nothing to migrate.');
@@ -22,6 +27,8 @@ if (!fs.existsSync(DB_PATH)) {
   console.log(`migrate: SQLite source ${DB_PATH} not found; nothing to migrate.`);
   process.exit(0);
 }
+
+const MIGRATED_PATH = `${DB_PATH}.migrated`;
 
 // Tables in an order that respects foreign-key relationships where they exist.
 const TABLES = [
@@ -44,8 +51,6 @@ const TABLES = [
   'revoked_serials',
 ];
 
-const sqlite = new Database(DB_PATH, { readonly: true });
-
 const pgClient = new Client({ connectionString: DATABASE_URL });
 await pgClient.connect();
 
@@ -54,6 +59,20 @@ try {
   // will also ensure this on boot, but migration runs first.
   await pgClient.query(PG_SCHEMA);
   await pgClient.query(PG_ALTER_COLUMNS);
+
+  // Guard: only run the migration once per Postgres database. This is the
+  // primary safety control; the *.migrated rename below is a defense-in-depth
+  // measure on disk.
+  const markerRes = await pgClient.query(
+    'SELECT 1 FROM schema_migrations WHERE migration_id = $1',
+    [MIGRATION_ID]
+  );
+  if (markerRes.rowCount > 0) {
+    console.log(`migrate: marker ${MIGRATION_ID} already present; skipping.`);
+    process.exit(0);
+  }
+
+  const sqlite = new Database(DB_PATH, { readonly: true });
 
   await pgClient.query('BEGIN');
   let total = 0;
@@ -82,13 +101,26 @@ try {
     total += rows.length;
   }
 
+  // Record that the migration completed successfully. This must happen inside
+  // the same transaction as the data copy so a failed commit never records a
+  // false completion.
+  await pgClient.query(
+    'INSERT INTO schema_migrations (migration_id, applied_at) VALUES ($1, NOW()::TEXT)',
+    [MIGRATION_ID]
+  );
+
   await pgClient.query('COMMIT');
-  console.log(`migrate: completed; ${total} rows copied.`);
+  sqlite.close();
+
+  // Defense in depth: after the transaction commits, atomically rename the
+  // source SQLite file so a later process cannot read it back in even if the
+  // marker check were somehow bypassed.
+  fs.renameSync(DB_PATH, MIGRATED_PATH);
+  console.log(`migrate: completed; ${total} rows copied; source renamed to ${MIGRATED_PATH}.`);
 } catch (err) {
-  await pgClient.query('ROLLBACK');
+  try { await pgClient.query('ROLLBACK'); } catch { /* rollback can fail if no transaction */ }
   console.error('migrate: failed:', err.message);
   process.exit(1);
 } finally {
   await pgClient.end();
-  sqlite.close();
 }

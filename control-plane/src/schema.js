@@ -189,6 +189,11 @@ CREATE TABLE IF NOT EXISTS revoked_serials (
   source      TEXT NOT NULL,
   revoked_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  migration_id TEXT PRIMARY KEY,
+  applied_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 export const PG_SCHEMA = `
@@ -383,6 +388,11 @@ CREATE TABLE IF NOT EXISTS revoked_serials (
   device_id   TEXT NOT NULL REFERENCES devices(device_id),
   source      TEXT NOT NULL,
   revoked_at  TEXT NOT NULL DEFAULT NOW()::TEXT
+);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  migration_id TEXT PRIMARY KEY,
+  applied_at   TEXT NOT NULL DEFAULT NOW()::TEXT
 );
 `;
 
