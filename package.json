@@ -14,6 +14,9 @@
     "test:integration": "node --env-file=.env --test scripts/test_agent_loop.js scripts/test_ehr_e2e.js scripts/test_ota_rollout.js scripts/test_device_replace_e2e.js scripts/test_alerting_rbac_audit_support.js",
     "test:python": "python scripts/test_sidecar_security.py && python scripts/test_sidecar_correlation.py",
     "build:image": "node pipeline/build.js",
+    "lint": "eslint . && ruff check scripts sidecar",
+    "lint:fix": "eslint --fix . && ruff check --fix scripts sidecar",
+    "format": "prettier --write \"**/*.{js,cjs,json,md,yml,yaml}\"",
     "demo": "node scripts/demo.js",
     "demo:seed": "node scripts/demo_seed.js",
     "demo:timeline": "node scripts/demo_timeline.js",
@@ -21,5 +24,11 @@
   },
   "dependencies": {
     "jose": "^6.0.10"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.9"
   }
 }

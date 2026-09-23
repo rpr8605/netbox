@@ -31,6 +31,8 @@ out/**/manifest/manifest.raucm
 *.log
 data/
 __pycache__/
+*.pyc
+.venv/
 vm-harness/_*.sh
 
 # GENERATED at build time by pipeline/build.js from repo-root beacon-relay-agent/ —

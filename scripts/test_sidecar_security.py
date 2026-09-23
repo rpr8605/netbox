@@ -126,6 +126,7 @@ def main() -> int:
     # metadata, while NEVER writing anything back to the sender (read-only tap).
     import socket as _socket
     import threading as _threading
+
     from sidecar.mllp_tap import run_passive_listener
 
     captured = []

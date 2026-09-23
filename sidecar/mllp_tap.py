@@ -42,11 +42,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-import os
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # --- MLLP framing bytes ------------------------------------------------------
 SB = b"\x0b"          # start block
@@ -92,8 +90,8 @@ def _parse_msh_fields(msg: bytes) -> dict:
     (patient-identifying) segment content.
     """
     text = msg.decode("utf-8", errors="replace")
-    lines = [l for l in text.split("\r") if l]
-    msh = next((l for l in lines if l.startswith("MSH")), "")
+    lines = [line for line in text.split("\r") if line]
+    msh = next((line for line in lines if line.startswith("MSH")), "")
     parts = msh.split("|")
     # MSH-9 is the message type / trigger event (e.g. ADT^A01, ORU^R01)
     msg_type = parts[8] if len(parts) > 8 else "UNKNOWN"
@@ -114,15 +112,15 @@ def _parse_msa_fields(msg: bytes) -> dict:
     request. Header segments only; no PID content is read here either.
     """
     text = msg.decode("utf-8", errors="replace")
-    lines = [l for l in text.split("\r") if l]
-    msa = next((l for l in lines if l.startswith("MSA")), "")
+    lines = [line for line in text.split("\r") if line]
+    msa = next((line for line in lines if line.startswith("MSA")), "")
     if not msa:
         return {"is_response": False, "ack_code": None, "original_control_id": ""}
     # MSA alone does NOT make a frame an acknowledgment: data-bearing messages
     # (e.g. RSP query responses) legitimately carry MSA too. Only MSH-9 == ACK
     # is a pure acknowledgment; anything else is a request in its own right
     # (it expects its own ACK downstream and gets its own record).
-    msh = next((l for l in lines if l.startswith("MSH")), "")
+    msh = next((line for line in lines if line.startswith("MSH")), "")
     msh_parts = msh.split("|")
     msh_type = (msh_parts[8] if len(msh_parts) > 8 else "").split("^")[0]
     if msh_type != "ACK":

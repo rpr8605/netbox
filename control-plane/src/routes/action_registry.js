@@ -37,7 +37,7 @@ export default async function actionRegistryRoutes(app) {
     if (!action_id || !site_id || !requires_role) {
       return reply.code(400).send({ error: 'action_id, site_id, requires_role required' });
     }
-    if (!ROLE_RANK.hasOwnProperty(requires_role)) {
+    if (!Object.hasOwn(ROLE_RANK, requires_role)) {
       return reply.code(400).send({ error: `unknown role ${requires_role}` });
     }
     await createActionRegistryEntry({ action_id, site_id, requires_role, max_scope });

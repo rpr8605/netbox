@@ -14,8 +14,8 @@ import { tpmPresent, sealPrivateKey, luksSealPrivateKey } from './lib/tpm.js';
 import { issueCert } from './lib/issue_cert.js';
 
 function dbg(msg) {
-  try { fs.appendFileSync('/dev/console', `provision: ${msg}\n`); } catch {}
-  try { console.log(`provision: ${msg}`); } catch {}
+  try { fs.appendFileSync('/dev/console', `provision: ${msg}\n`); } catch { /* console may not exist */ }
+  try { console.log(`provision: ${msg}`); } catch { /* console may not exist */ }
 }
 
 const env = { ...process.env };
@@ -77,9 +77,11 @@ async function main() {
   // seals it into a persistent handle. On non-TPM hardware the PEM goes ONLY
   // to /data (LUKS), never /boot.
   const isTpm = tpmPresent();
-  const keyPath = isTpm
-    ? sealPrivateKey(privPem)
-    : luksSealPrivateKey(privPem, '/data/device_key.pem');
+  if (isTpm) {
+    sealPrivateKey(privPem);
+  } else {
+    luksSealPrivateKey(privPem, '/data/device_key.pem');
+  }
   fs.writeFileSync('/data/device_key.mode', isTpm ? 'tpm' : 'luks', { mode: 0o400 });
   dbg(`long-term key sealed via ${isTpm ? 'TPM' : 'LUKS software key'}`);
 

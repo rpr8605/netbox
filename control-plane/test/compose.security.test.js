@@ -27,7 +27,7 @@ function serviceBlock(raw, name) {
   const rest = raw.slice(start);
   const afterFirstLine = rest.indexOf('\n');
   const searchFrom = afterFirstLine === -1 ? rest.length : afterFirstLine + 1;
-  const next = rest.slice(searchFrom).search(/^  [\w-]+:/m);
+  const next = rest.slice(searchFrom).search(/^ {2}[\w-]+:/m);
   const end = next === -1 ? -1 : searchFrom + next;
   return end === -1 ? rest : rest.slice(0, end);
 }
@@ -39,10 +39,10 @@ function portsList(serviceBlock) {
   const result = [];
   let inPorts = false;
   for (const line of lines) {
-    if (/^    ports:/.test(line)) { inPorts = true; continue; }
+    if (/^ {4}ports:/.test(line)) { inPorts = true; continue; }
     if (inPorts) {
-      if (/^    [\w-]+:/.test(line)) break; // next service-level key
-      if (/^      - /.test(line)) result.push(line.trim());
+      if (/^ {4}[\w-]+:/.test(line)) break; // next service-level key
+      if (/^ {6}- /.test(line)) result.push(line.trim());
     }
   }
   return result;

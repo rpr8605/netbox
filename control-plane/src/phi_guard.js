@@ -23,7 +23,7 @@ const PHI_PATTERNS = [
   },
   {
     type: 'dob',
-    re: /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/,
+    re: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/,
     ui: 'Possible date of birth',
   },
   {
