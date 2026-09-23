@@ -1,0 +1,4 @@
+# sidecar/requirements.txt
+# Beacon Relay HL7/MLLP sidecar dependencies.
+# The sidecar is intentionally standard-library-only; this file exists so
+# pip-audit has a manifest to scan in CI.

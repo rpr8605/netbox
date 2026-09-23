@@ -9,6 +9,44 @@ on:
 jobs:
   unit-and-python:
     runs-on: ubuntu-latest
+    env:
+      # SQLite is used in CI because the control-plane dual-driver layer
+      # already supports it, no service container is required, and the suite
+      # runs faster. Postgres-specific tests (test:migrate) are run locally
+      # against the compose Postgres service.
+      NODE_ENV: test
+      DATABASE_URL: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # --env-file-if-exists requires Node.js >= 22.7.0 / >= 24.3.0.
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          cd control-plane && npm ci && cd ..
+          cd beacon-relay-agent && npm ci && cd ..
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run security tests
+        run: npm run test:security
+
+      - name: Run Python tests
+        run: npm run test:python
+
+  security-scans:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -28,10 +66,45 @@ jobs:
           cd control-plane && npm ci && cd ..
           cd beacon-relay-agent && npm ci && cd ..
 
-      - name: Run unit tests
-        run: npm run test:unit
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
+      - name: Install Python audit tools
+        run: pip install pip-audit
 
-      - name: Run Python tests
-        run: npm run test:python
+      - name: npm audit (root)
+        run: npm audit --audit-level=high
+
+      - name: npm audit (control-plane)
+        run: cd control-plane && npm audit --audit-level=high
+
+      - name: npm audit (beacon-relay-agent)
+        run: cd beacon-relay-agent && npm audit --audit-level=high
+
+      - name: pip-audit (sidecar)
+        run: pip-audit --requirement sidecar/requirements.txt
+
+      - name: gitleaks secret scan
+        run: |
+          curl -sL https://raw.githubusercontent.com/zricethezav/gitleaks/master/scripts/install.sh | bash
+          ./gitleaks detect --source . --verbose --redact
+
+      # Semgrep and Trivy are run for visibility only; existing findings do
+      # not block CI while Ryan reviews them.
+      - name: Semgrep scan (report only)
+        continue-on-error: true
+        run: |
+          pip install semgrep
+          semgrep --config=auto --error --json --output=semgrep-findings.json .
+
+      - name: Trivy filesystem scan (report only)
+        continue-on-error: true
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          ./bin/trivy filesystem --scanners vuln,secret,misconfig --exit-code 0 --format json --output trivy-findings.json .
+
+      - name: Upload optional scan findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-findings
+          path: |
+            semgrep-findings.json
+            trivy-findings.json

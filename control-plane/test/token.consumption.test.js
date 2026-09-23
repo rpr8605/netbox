@@ -6,7 +6,7 @@
 //
 // This test also asserts the implementation issues exactly ONE SQL statement
 // per consumption, proving the SELECT-then-UPDATE race window is gone.
-import { describe, it, before } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {
@@ -17,15 +17,32 @@ import {
 
 describe('M3 — atomic token/challenge consumption', () => {
   let queryCount;
-  let originalQuery;
+  let driverRestore = null;
 
   before(() => {
-    // Patch the active driver's query function so we can count statements.
-    originalQuery = db.query;
-    db.query = async (...args) => {
-      queryCount += 1;
-      return originalQuery.apply(db, args);
-    };
+    // Patch the active driver's statement function so we can count statements.
+    // Postgres exposes `db.query`; SQLite exposes `db.prepare`. Both are async
+    // enough for our purposes (SQLite prepare is synchronous, but the test only
+    // needs to count invocations).
+    if (db.query) {
+      const originalQuery = db.query.bind(db);
+      db.query = async (...args) => {
+        queryCount += 1;
+        return originalQuery(...args);
+      };
+      driverRestore = () => { db.query = originalQuery; };
+    } else if (db.prepare) {
+      const originalPrepare = db.prepare.bind(db);
+      db.prepare = (...args) => {
+        queryCount += 1;
+        return originalPrepare(...args);
+      };
+      driverRestore = () => { db.prepare = originalPrepare; };
+    }
+  });
+
+  after(() => {
+    driverRestore?.();
   });
 
   it('consumes an enrollment token with a single SQL statement', async () => {
