@@ -371,7 +371,7 @@ async function main() {
   });
   check('WAN both circuits down -> down', wanDown.status === 'down', JSON.stringify(wanDown));
 
-  // ---- Microsoft 365 Phase 1 read-only account health ----------------------
+  // ---- Microsoft 365 read-only account health ------------------------------
   const m365Healthy = await runOne('m365', 'm365-healthy', 'm365_account_health', {
     mockData: {
       organization: { id: 'o1', displayName: 'Test Tenant', onPremisesSyncEnabled: false },

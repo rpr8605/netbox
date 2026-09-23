@@ -115,10 +115,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   stores `lat`/`lng`/`name`; enrollment tokens accept optional site metadata;
   `GET /api/fleet/map` returns one pin per site with overall status computed as the
   worst of the site's critical-service statuses (unknown is the baseline, not a
-  downgrade). RBAC mirrors the rollup gate: operations-manager/support-technician
-  see the whole fleet; customer-it-admin must supply their own `site_id` and sees
-  only that pin. `public/fleet.html` renders the pins without external map libraries.
-  Covered by the alerting/RBAC suite.
+  downgrade). The operator-auth stub mirrors the rollup gate: declared
+  operations-manager/support-technician roles see the whole fleet;
+  customer-it-admin must supply their own `site_id` and sees only that pin. Real
+  RBAC (principal -> role) is pending the operator-auth decision in C1.
+  `public/fleet.html` renders the pins without external map libraries. Covered by
+  the alerting/RBAC suite.
 - **Troubleshooting memory + similar-past-incidents panel** (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md`
   §2). `incident_signature` is captured automatically when an alert opens, from
   recorded events only (status transition, tier, co-occurring degraded/down signals,

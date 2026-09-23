@@ -41,7 +41,7 @@ Review written against commit `2176207`; current branch `agent/md-sync-2026-09-2
 | 6 | Dual DB drivers | `control-plane/src/db.js` supports both `better-sqlite3` and `pg` via hand-written `pgize()` translation. |
 | 7 | Auth scattered route-by-route | Some routes use `requirePerm`, some inline query-role checks, some mTLS checks, some no gate. No central route registry. |
 | 8 | No linting/formatting | No ESLint, Prettier, or ruff configs. |
-| 9 | Phase N script names | `package.json:10-11` `phase1:test`, `phase3:build-image`. |
+| 9 | Phase N script names | Was: `package.json:10-11` `phase1:test`, `phase3:build-image`. Fixed: renamed to purpose-based names (`compose:up`, `build:image`, `test:unit`, `test:integration`, `test:python`, `test`). |
 | 10 | No architecture/trust-boundary diagram | No `docs/ARCHITECTURE.md` or `docs/SECURITY_MODEL.md`. |
 
 ---

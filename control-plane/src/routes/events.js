@@ -2,9 +2,10 @@
 // Responsibility: mTLS-gated device endpoints — heartbeat + event ingestion.
 //
 // Gate order (deliberate, docs/specs/BEACON_RELAY_BUILD_SPEC.md §2 quarantine):
-//   1. TLS layer must have verified the client cert against the step-ca root
-//      (server.js sets rejectUnauthorized — an invalid/self-signed cert never
-//      reaches this code).
+//   1. The HTTPS socket is configured with requestCert:true and rejectUnauthorized:false
+//      so the same port can serve pre-cert enrollment routes AND post-cert device
+//      routes. Per-route enforcement here checks req.socket.authorized; an
+//      invalid/self-signed cert never proceeds past this gate.
 //   2. The cert's CN must match a registered device_id (a valid cert for an
 //      unknown device is still refused — cert + registry row, both required).
 //   3. Quarantined devices may heartbeat ONLY; event ingestion is refused with

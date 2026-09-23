@@ -19,7 +19,7 @@ cp .env.example .env
 
 # 2. Seed the local CA and build a release bundle.
 npm run pki-seed
-npm run phase3:build-image
+npm run build:image
 
 # 3. Start the local stack (step-ca + Postgres + control-plane + device simulator).
 npm run compose:up
