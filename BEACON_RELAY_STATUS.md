@@ -137,6 +137,13 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   to the session. Unregistered actions and under-privileged roles are refused before any
   session is created. `action_registry.created` and `action_registry.executed` are written
   to the audit log. Covered by `scripts/test_alerting_rbac_audit_support.js`.
+- **Microsoft 365 Phase 1 read-only account health** (`CONTROLS_AND_IDENTITY` §4). New
+  `m365_account_health` critical service and `m365` adapter. Uses the four read-only scopes
+  (`User.Read.All`, `AuditLog.Read.All`, `Organization.Read.All`, `Reports.Read.All`) to
+  surface AD Connect sync health, sign-in failure spikes, and MFA-registration gaps as
+  metadata-only `check_result` events. Built and tested against mocks; live Entra ID test
+  tenant required for real-world validation (logged in `.agent/open-questions.md`).
+  Covered by `scripts/test_ehr_unit.js`.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -155,11 +162,10 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   three accounts, IoT Core CA registration, RDS Multi-AZ + Cognito groups, ECS Fargate
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
-- **Network controls + Microsoft Graph Phase 1** (`CONTROLS_AND_IDENTITY` §6): wireless/VPN,
-  backup/EDR status reads, and the read-only M365 account-health adapter. The existing
-  `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph security-signal work,
-  not this phase. TLS certificate expiration, firewall, DNS, WAN/ISP health, and the Action
-  Registry are now built separately.
+- **Network controls + remaining identity-provider work** (`CONTROLS_AND_IDENTITY` §6):
+  wireless/VPN and backup/EDR status reads. TLS certificate expiration, firewall, DNS,
+  WAN/ISP health, the Action Registry, and the M365 Phase 1 read-only account-health
+  adapter are now built separately.
 - **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
   Not started — explicitly deferred until a real customer names a specific system.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
@@ -174,7 +180,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 27/27 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 32/32 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |

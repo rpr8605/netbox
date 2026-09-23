@@ -13,7 +13,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 27/27 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 32/32 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
@@ -163,7 +163,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Per-site whitelist of approved action types + session-gating + audit — **DONE**. `action_registry` table stores approved `action_id`/`site_id` pairs with `requires_role`; `/api/action-registry/execute` refuses unregistered or under-privileged requests and issues a remote-support session bound to `action_id`. Every registration/execution is audit-logged. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 
 ### §4 — Microsoft 365 / Entra ID
-- Phase 1 read-only account-health visibility (User/AuditLog/Organization/Reports .Read.All) — **NOT STARTED**. (`beacon-relay-agent/lib/graph.js` is the *earlier* Step-1 Graph security-signal work — admin-create + after-hours sign-in — not this phase's account-health surface.)
+- Phase 1 read-only account-health visibility (User/AuditLog/Organization/Reports .Read.All) — **DONE against mocks**. `m365_account_health` added to the schema service enum and critical-service register; the `m365` adapter reads organization sync health, sign-in failure counts, and MFA-registration gaps and emits metadata-only `check_result` events. Live validation requires a real Entra ID test tenant with admin consent (logged in `.agent/open-questions.md`). Covered by `node scripts/test_ehr_unit.js`.
 - Phase 2 gated non-admin password reset — **NOT STARTED** (explicitly deferred by the doc).
 - Okta / Google Workspace providers — **NOT STARTED** (explicitly "don't build ahead of demand").
 

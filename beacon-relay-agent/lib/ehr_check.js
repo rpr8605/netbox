@@ -19,11 +19,12 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { runNetCheck, dnsCheck, runWanCheck } from './net_checks.js';
+import { runM365AccountHealthCheck } from './m365_account_health.js';
 import { runFhirCheck } from './fhir_r4.js';
 import { runMirthCheck } from './mirth_admin.js';
 import { postEvent } from './post_event.js';
 
-const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck, dns: dnsCheck, wan: runWanCheck };
+const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck, dns: dnsCheck, wan: runWanCheck, m365: runM365AccountHealthCheck };
 
 // loadProfile — parse + validate one config profile document. Throws on ANY
 // structural violation rather than skipping entries: a profile is site

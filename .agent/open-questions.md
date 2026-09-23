@@ -12,6 +12,10 @@ Container `beacon-relay-step-ca` is healthy after restart.
 
 `docker-compose.yml` now publishes host port `10443` -> container port `9100`. Host-side tests and `seed_demo_sites.js` default to `https://localhost:10443`. The container port remains `9100` for `device-sim` and `vm-harness` compose-internal access.
 
+## Microsoft 365 / Entra ID Phase 1 — real tenant credentials needed for live validation
+
+The `m365_account_health` adapter (`beacon-relay-agent/lib/m365_account_health.js`) is built and tested against mocks only. It uses the four read-only scopes the spec requires (`User.Read.All`, `AuditLog.Read.All`, `Organization.Read.All`, `Reports.Read.All`) and emits metadata-only `check_result` events. A real Entra ID test tenant with admin consent for those scopes is required to prove the Graph calls and response shapes against production endpoints. No real hospital tenant should be used.
+
 ## QEMU acceptance x3 — BLOCKED by missing KVM in Docker Desktop
 
 Two acceptance runs failed identically with `Could not access KVM kernel module: No such file or directory`. Docker Desktop on Windows does not expose `/dev/kvm` to containers, and `vm-harness/acceptance.sh` hardcodes `-enable-kvm`. Anti-loop rule applied: stopped after 2 failures. See `.agent/attempts.md` for options.

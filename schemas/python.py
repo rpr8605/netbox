@@ -27,7 +27,7 @@ class BeaconRelayEvent(TypedDict, total=False):
     occurred_at: str  # ISO 8601 date-time, UTC
     kind: Literal["check_result", "hl7_metadata", "heartbeat", "update_event", "security_signal"]
     service: Literal[
-        "ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom", "cert_expiration", "firewall", "dns", "wan"
+        "ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom", "cert_expiration", "firewall", "dns", "wan", "m365_account_health"
     ]
     tier_observed: Optional[Literal["L0", "L1", "L2", "L3", "L4"]]
     status: Optional[Literal["reachable", "verified_ready", "active", "degraded", "down", "unknown"]]

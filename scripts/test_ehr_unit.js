@@ -334,6 +334,40 @@ async function main() {
   });
   check('WAN both circuits down -> down', wanDown.status === 'down', JSON.stringify(wanDown));
 
+  // ---- Microsoft 365 Phase 1 read-only account health ----------------------
+  const m365Healthy = await runOne('m365', 'm365-healthy', 'm365_account_health', {
+    mockData: {
+      organization: { id: 'o1', displayName: 'Test Tenant', onPremisesSyncEnabled: false },
+      signIns: [{ status: { errorCode: 0 } }, { status: { errorCode: 0 } }],
+      registrationDetails: [
+        { isMfaRegistered: true }, { isMfaRegistered: true }, { isMfaRegistered: true }, { isMfaRegistered: false },
+      ],
+    },
+  });
+  check('M365 account health healthy -> verified_ready', m365Healthy.status === 'verified_ready', JSON.stringify(m365Healthy));
+  check('M365 metadata-only observed (no raw users/payloads)', m365Healthy.observed && m365Healthy.observed.mfa_gap_percent === 25 && !m365Healthy.observed.raw, JSON.stringify(m365Healthy.observed));
+
+  const m365SyncStale = await runOne('m365', 'm365-sync-stale', 'm365_account_health', {
+    mockData: {
+      organization: { id: 'o2', displayName: 'Hybrid Tenant', onPremisesSyncEnabled: true, onPremisesLastSyncDateTime: new Date(Date.now() - 48 * 3600e3).toISOString() },
+      signIns: [],
+      registrationDetails: [],
+    },
+  });
+  check('M365 stale AD Connect sync -> degraded', m365SyncStale.status === 'degraded', JSON.stringify(m365SyncStale));
+
+  const m365FailSpike = await runOne('m365', 'm365-fail-spike', 'm365_account_health', {
+    mockData: {
+      organization: { id: 'o3', displayName: 'Fail Tenant', onPremisesSyncEnabled: false },
+      signIns: Array.from({ length: 15 }, () => ({ status: { errorCode: 50126 } })),
+      registrationDetails: [],
+    },
+  });
+  check('M365 sign-in failure spike -> degraded', m365FailSpike.status === 'degraded', JSON.stringify(m365FailSpike));
+
+  const m365NoCreds = await runOne('m365', 'm365-unconfigured', 'm365_account_health', {});
+  check('M365 unconfigured -> unknown (not down)', m365NoCreds.status === 'unknown', JSON.stringify(m365NoCreds));
+
   // ---- loader negative cases ----------------------------------------------
   try { loadProfile({ profile_id: 'x', vendor: 'y', checks: [] }); check('loader rejects empty checks', false); }
   catch { check('loader rejects empty checks', true); }
