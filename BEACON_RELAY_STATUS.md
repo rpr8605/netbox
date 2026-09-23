@@ -231,6 +231,10 @@ built image plus the harness container.
   enforcement, and audit logging are real and tested; the actual tunneled data path is a
   session record, not an SSH/websocket forwarder. The real transport is meant to be AWS IoT
   Secure Tunneling per `CLOUD_ARCHITECTURE_AWS` §1 — that substitution is by design, not a gap.
+- **React frontend is deferred.** The vanilla-HTML Fleet Console covers every functional
+  surface built so far (per-device status, per-site topology with detail panel, alerting,
+  fleet map, ticketing Tier 0, Action Registry). A React rewrite is explicitly deferred
+  until those surfaces are stable and the PHI-mode badge/admin UI are in place.
 - **Alert delivery is wired but unauthenticated to real SaaS in this repo** — Twilio,
   SendGrid, SES (via `@aws-sdk/client-sesv2`), and webhook senders are real code, but run
   against no live credentials in tests; the delivery path is proven by shape/skip behavior,

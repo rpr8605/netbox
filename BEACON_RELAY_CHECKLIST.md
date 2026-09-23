@@ -101,7 +101,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Per-site interface topology view (graph, status colors, click detail) — **DONE** (`public/topology.html`; topology 6/6).
 - Cross-site rollup view, ops-manager/support-technician only — **DONE** (RBAC-gated; suite 23/23).
 - Rule-based detail panel (failed check + raw detail, tier meaning, time-in-state, co-occurring signals w/o causation) — **DONE** (topology.html panel; deterministic, no AI).
-- React frontend (spec asks React) — **PARTIAL**. The console is hand-written HTML/vanilla JS served by Fastify static, not a React app. It works and is tested, but it's not the React frontend the spec names.
+- React frontend (spec asks React) — **DEFERRED**. The console is hand-written HTML/vanilla JS served by Fastify static; it works and is tested. A React rewrite is explicitly deferred until the functional surfaces (fleet map, topology, alerting, ticketing, Action Registry, PHI-mode badge) are complete and stable.
 - Remote-support session broker (outbound-only, JIT token, time-limited, audit-logged) — **PARTIAL**. The broker, JIT token, TTL enforcement, and audit logging are real and tested (suite 23/23), but the "tunnel" is a session record, not a real byte pipe — the actual transport is meant to be AWS IoT Secure Tunneling per the AWS doc (not built).
 
 ### §8.7 — Signed OTA updates
