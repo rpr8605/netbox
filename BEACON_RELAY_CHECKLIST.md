@@ -4,7 +4,7 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `7672410` (agent/md-sync-2026-09-22, in sync with origin).
+**Audited at commit:** `c0f2a6f` (agent/md-sync-2026-09-22, in sync with origin).
 
 > **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
 

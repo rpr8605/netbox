@@ -32,7 +32,8 @@
                                                         "01910a6",
                                                         "831f71d",
                                                         "75c5ee9",
-                                                        "e3c864a"
+                                                        "e3c864a",
+                                                        "c0f2a6f"
                                                     ]
                                     },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -114,7 +115,8 @@
                                                      "01910a6",
                                                      "831f71d",
                                                      "75c5ee9",
-                                                     "e3c864a"
+                                                     "e3c864a",
+                                                     "c0f2a6f"
                                                  ]
                                  },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -123,7 +125,8 @@
                                                                   "note":  "geographic fleet map, troubleshooting memory, and Tier-0 copy-paste+email built; Tier-1 ticketing deferred",
                                                                   "commits":  [
                                                                                   "831f71d",
-                                                                                  "e3c864a"
+                                                                                  "e3c864a",
+                                                                                  "c0f2a6f"
                                                                               ]
                                                               },
     "README(2).md":  {
@@ -205,7 +208,8 @@
                                                     "01910a6",
                                                     "831f71d",
                                                     "75c5ee9",
-                                                    "e3c864a"
+                                                    "e3c864a",
+                                                    "c0f2a6f"
                                                 ]
                                 },
     ".agent/open-questions.md":  {
