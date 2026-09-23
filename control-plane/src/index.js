@@ -26,6 +26,7 @@ import alertRoutes from './routes/alerts.js';
 import supportRoutes, { sweepSupportSessions } from './routes/support.js';
 import topologyViewRoutes from './routes/topology_view.js';
 import releaseRoutes from './routes/releases.js';
+import actionRegistryRoutes from './routes/action_registry.js';
 import { sweepEscalations } from './alerting.js';
 import { deliver } from './deliver.js';
 import { appendAudit, listAudit } from './db.js';
@@ -105,6 +106,7 @@ await app.register(alertRoutes);
 await app.register(supportRoutes);
 await app.register(topologyViewRoutes);
 await app.register(releaseRoutes);
+await app.register(actionRegistryRoutes);
 
 // Audit log read — security-auditor and operations-manager only. Read-only by
 // design: there is no route that mutates audit_log, and the db triggers make

@@ -17,6 +17,7 @@ export const ROLE_PERMISSIONS = {
   'support-technician': new Set([
     'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:ack', 'alerts:close', 'support:request', 'support:open',
+    'action_registry:read', 'action_registry:execute',
   ]),
   'customer-it-admin': new Set([
     'devices:read', 'events:read', 'topology:read',
@@ -25,7 +26,7 @@ export const ROLE_PERMISSIONS = {
   'operations-manager': new Set([
     'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write',
-    'releases:manage',
+    'releases:manage', 'action_registry:write', 'action_registry:read', 'action_registry:execute',
   ]),
   'security-auditor': new Set([
     'devices:read', 'events:read', 'topology:read', 'audit:read',

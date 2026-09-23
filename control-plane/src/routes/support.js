@@ -50,7 +50,7 @@ export default async function supportRoutes(app) {
     const rows = (await import('../db.js')).db
       .prepare(`SELECT * FROM support_sessions WHERE device_id = ? AND state = 'pending' AND expires_at > datetime('now')`)
       .all(req.params.deviceId);
-    return rows.map(r => ({ session_id: r.session_id, expires_at: r.expires_at }));
+    return rows.map(r => ({ session_id: r.session_id, expires_at: r.expires_at, action_id: r.action_id ?? null }));
   });
 
   // Device opens its tunnel: the JIT token is consumed exactly once, the

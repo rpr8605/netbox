@@ -25,6 +25,7 @@ try { db.exec(`ALTER TABLE events ADD COLUMN channel_id TEXT;`); } catch { /* al
 try { db.exec(`ALTER TABLE channels ADD COLUMN site_id TEXT;`); } catch { /* already present */ }
 try { db.exec(`ALTER TABLE channels ADD COLUMN source_system TEXT;`); } catch { /* already present */ }
 try { db.exec(`ALTER TABLE channels ADD COLUMN destination_system TEXT;`); } catch { /* already present */ }
+try { db.exec(`ALTER TABLE support_sessions ADD COLUMN action_id TEXT;`); } catch { /* already present */ }
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS devices (
@@ -189,14 +190,31 @@ CREATE TABLE IF NOT EXISTS rollouts (
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Action Registry (CONTROLS_AND_IDENTITY §2): per-site whitelist of approved
+-- action types. Each execution requires a live human-initiated session issued
+-- through the remote-support session broker below.
+CREATE TABLE IF NOT EXISTS action_registry (
+  action_id     TEXT NOT NULL,
+  site_id       TEXT NOT NULL,
+  requires_role TEXT NOT NULL,
+  requires_session INTEGER NOT NULL DEFAULT 1,
+  max_scope     TEXT,
+  enabled       INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (action_id, site_id)
+);
+
 -- Remote-support session broker (spec §7): outbound-only, JIT token, every
 -- session audit-logged. No standing SSH port, no shared credential.
+-- action_id links a session to an Action Registry entry when the session was
+-- issued for a specific approved action.
 CREATE TABLE IF NOT EXISTS support_sessions (
   session_id  TEXT PRIMARY KEY,
   device_id   TEXT NOT NULL,
   requested_by TEXT NOT NULL,
   token_hash  TEXT NOT NULL,
   expires_at  TEXT NOT NULL,
+  action_id   TEXT,
   opened_at   TEXT,
   closed_at   TEXT,
   state       TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','open','closed','expired')),
@@ -608,13 +626,34 @@ export function offeredVersion(deviceId, latestVersion) {
   return null;
 }
 
+// --- Action Registry --------------------------------------------------------
+// createActionRegistryEntry: whitelist an action type for a site.
+export function createActionRegistryEntry(e) {
+  db.prepare(
+    `INSERT INTO action_registry (action_id, site_id, requires_role, requires_session, max_scope, enabled)
+     VALUES (@action_id, @site_id, @requires_role, @requires_session, @max_scope, 1)`
+  ).run({ requires_session: 1, max_scope: null, ...e });
+}
+// listActionRegistryEntries: all approved actions for a site.
+export function listActionRegistryEntries(siteId) {
+  return db.prepare(`SELECT * FROM action_registry WHERE site_id = ? ORDER BY action_id`).all(siteId);
+}
+// getActionRegistryEntry: one entry by action+site.
+export function getActionRegistryEntry(actionId, siteId) {
+  return db.prepare(`SELECT * FROM action_registry WHERE action_id = ? AND site_id = ?`).get(actionId, siteId);
+}
+// setActionRegistryEnabled: flip an entry on/off without deleting it.
+export function setActionRegistryEnabled(actionId, siteId, enabled) {
+  return db.prepare(`UPDATE action_registry SET enabled = ? WHERE action_id = ? AND site_id = ?`).run(enabled ? 1 : 0, actionId, siteId).changes;
+}
+
 // --- remote support sessions ------------------------------------------------
 // createSupportSession: register a pending session with its JIT token hash.
 export function createSupportSession(s) {
   db.prepare(
-    `INSERT INTO support_sessions (session_id, device_id, requested_by, token_hash, expires_at, state)
-     VALUES (@session_id, @device_id, @requested_by, @token_hash, @expires_at, 'pending')`
-  ).run(s);
+    `INSERT INTO support_sessions (session_id, device_id, requested_by, token_hash, expires_at, action_id, state)
+     VALUES (@session_id, @device_id, @requested_by, @token_hash, @expires_at, @action_id, 'pending')`
+  ).run({ action_id: null, ...s });
 }
 // getSupportSession: one session by id.
 export function getSupportSession(sessionId) {

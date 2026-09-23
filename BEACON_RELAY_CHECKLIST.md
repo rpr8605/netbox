@@ -19,7 +19,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
 | OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
@@ -160,7 +160,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - AV/EDR agent check-in — **NOT STARTED**.
 
 ### §2 — Action Registry
-- Per-site whitelist of approved action types + session-gating + audit — **NOT STARTED** (the remote-support session broker it builds on exists; the registry itself does not).
+- Per-site whitelist of approved action types + session-gating + audit — **DONE**. `action_registry` table stores approved `action_id`/`site_id` pairs with `requires_role`; `/api/action-registry/execute` refuses unregistered or under-privileged requests and issues a remote-support session bound to `action_id`. Every registration/execution is audit-logged. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 
 ### §4 — Microsoft 365 / Entra ID
 - Phase 1 read-only account-health visibility (User/AuditLog/Organization/Reports .Read.All) — **NOT STARTED**. (`beacon-relay-agent/lib/graph.js` is the *earlier* Step-1 Graph security-signal work — admin-create + after-hours sign-in — not this phase's account-health surface.)

@@ -131,6 +131,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   back (RAUC `mark-bad`) when the check fails; passing the check calls `mark-good`.
   Every rollout action is audit-logged. Covered by `scripts/test_update_client.js` and
   `scripts/test_ota_rollout.js`.
+- **Action Registry** (`CONTROLS_AND_IDENTITY` §2). Per-site whitelist of approved
+  action types (`action_registry` table). Each execution requires a live human-initiated
+  session issued through the existing remote-support broker, with the `action_id` bound
+  to the session. Unregistered actions and under-privileged roles are refused before any
+  session is created. `action_registry.created` and `action_registry.executed` are written
+  to the audit log. Covered by `scripts/test_alerting_rbac_audit_support.js`.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -149,11 +155,11 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   three accounts, IoT Core CA registration, RDS Multi-AZ + Cognito groups, ECS Fargate
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
-- **Network controls + Action Registry + Microsoft Graph Phase 1** (`CONTROLS_AND_IDENTITY`
-  §6): wireless/VPN, backup/EDR status reads, the Action Registry whitelist mechanism, and
-  the read-only M365 account-health adapter. The existing `beacon-relay-agent/lib/graph.js`
-  is only the earlier Step-1 Graph security-signal work, not this phase. TLS certificate
-  expiration, firewall, DNS, and WAN/ISP health are now built separately.
+- **Network controls + Microsoft Graph Phase 1** (`CONTROLS_AND_IDENTITY` §6): wireless/VPN,
+  backup/EDR status reads, and the read-only M365 account-health adapter. The existing
+  `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph security-signal work,
+  not this phase. TLS certificate expiration, firewall, DNS, WAN/ISP health, and the Action
+  Registry are now built separately.
 - **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
   Not started — explicitly deferred until a real customer names a specific system.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
@@ -174,7 +180,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
 | OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |

@@ -479,6 +479,49 @@ async function partH() {
   check('H10. ticket email blocked when impact statement contains PHI', phiTicketEmail.status === 200 && phiTicketEmail.body?.sent === false && /PHI/.test(phiTicketEmail.body?.reason ?? ''), JSON.stringify(phiTicketEmail.body));
 }
 
+// ------------------------------------------------------- I. Action Registry --
+async function partI() {
+  console.log('--- I. Action Registry: per-site whitelist + session-gating + audit ---');
+  const siteId = crypto.randomUUID();
+
+  // Registration is operations-manager only.
+  const denyReg = await api('POST', '/api/action-registry?role=support-technician', {
+    action_id: 'echo-safe', site_id: siteId, requires_role: 'support-technician', max_scope: 'read-only ping',
+  });
+  check('I1. action registration denied to support-technician', denyReg.status === 403);
+
+  const reg = await api('POST', '/api/action-registry?role=operations-manager', {
+    action_id: 'echo-safe', site_id: siteId, requires_role: 'support-technician', max_scope: 'read-only ping',
+  });
+  check('I2. action registration allowed to operations-manager', reg.status === 200 && reg.body.action_id === 'echo-safe');
+
+  const list = await api('GET', `/api/action-registry/${siteId}?role=support-technician`);
+  check('I3. action list readable by support-technician', list.status === 200 && list.body.actions.some(a => a.action_id === 'echo-safe'));
+
+  // Execution of unregistered action is refused.
+  const unregExec = await api('POST', '/api/action-registry/execute?role=support-technician', {
+    action_id: 'not-registered', site_id: siteId, device_id: crypto.randomUUID(), requested_by: 'tech-1',
+  });
+  check('I4. unregistered action execution denied', unregExec.status === 403);
+
+  // Execution by a role lower than requires_role is refused.
+  const lowExec = await api('POST', '/api/action-registry/execute?role=customer-it-admin', {
+    action_id: 'echo-safe', site_id: siteId, device_id: crypto.randomUUID(), requested_by: 'cust-1',
+  });
+  check('I5. action execution denied to under-privileged role', lowExec.status === 403);
+
+  // Valid execution creates a support session bound to the action.
+  const deviceId = crypto.randomUUID();
+  const exec = await api('POST', '/api/action-registry/execute?role=support-technician', {
+    action_id: 'echo-safe', site_id: siteId, device_id: deviceId, requested_by: 'tech-1',
+  });
+  check('I6. registered action execution creates session', exec.status === 200 && !!exec.body.token && exec.body.action_id === 'echo-safe');
+
+  const audit = await api('GET', '/api/audit?role=security-auditor');
+  check('I7. audit log contains action_registry.created', audit.body.some(e => e.action === 'action_registry.created'));
+  check('I8. audit log contains action_registry.executed', audit.body.some(e => e.action === 'action_registry.executed'));
+}
+
 await partA();
 await partB();
 await partC();
@@ -487,6 +530,7 @@ await partE();
 await partF();
 await partG();
 await partH();
+await partI();
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} alerting/rbac/audit/support checks passed`);
 process.exit(failed.length ? 1 : 0);
