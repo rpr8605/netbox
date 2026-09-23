@@ -96,7 +96,9 @@ async function main() {
   const deviceId = redeem.body.device_id;
   const siteId = redeem.body.site_id;
 
-  // CA fingerprint pin: fetched root must match what CP told us.
+  // CA fingerprint pin: fetched root must match what CP told us. Persist the
+  // pinned root so the daemon can verify the control-plane server cert on
+  // every subsequent call (H1).
   const rootsRes = await api('GET', `${CA}/roots.pem`);
   const rootsPem = rootsRes.body;
   const der = Buffer.from(
@@ -108,6 +110,12 @@ async function main() {
     dbg('CA fingerprint mismatch (pinned != fetched)');
     process.exit(1);
   }
+  fs.writeFileSync('/data/ca-root.pem', rootsPem, { mode: 0o444 });
+  // The step-ca-issued server cert CN is always 'control-plane'; SNI must send
+  // that name even when connecting over localhost.
+  fs.writeFileSync('/data/cp_servername', 'control-plane', { mode: 0o444 });
+  process.env.CP_SERVERNAME = 'control-plane';
+  process.env.CA_ROOT_PEM = rootsPem;
 
   // TLS identity: the keypair the daemon's mTLS client auth actually uses.
   // In TPM mode the long-term key is TPM-sealed (its plain PEM never lands on
@@ -129,8 +137,10 @@ async function main() {
   fs.writeFileSync('/data/device_id', deviceId, { mode: 0o444 });
 
   // Heartbeat with the new cert proves quarantine gate before marking enrolled.
-  const hb = await api('POST', `${CP}/api/heartbeat`, null, {
-    ca: rootsPem,
+  // Use the pinned CA module so this first call also verifies the server cert
+  // (H1); the root was written to /data/ca-root.pem above.
+  const { api: pinnedApi } = await import('./lib/tls_pin.js');
+  const hb = await pinnedApi('POST', `${CP}/api/heartbeat`, null, {
     cert: certPem,
     key: tlsPrivPem,
   });

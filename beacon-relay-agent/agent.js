@@ -15,9 +15,9 @@
 // Image constraint: node:crypto + node:https + openssl CLI only — no npm
 // packages exist in the image, so this file must never import them.
 import fs from 'node:fs';
-import https from 'node:https';
 import { execSync } from 'node:child_process';
 import { tpmPresent, tpmSign, tpmReadPublicPem } from './lib/tpm.js';
+import { api, mtls } from './lib/tls_pin.js';
 import { issueCert } from './lib/issue_cert.js';
 import { startMonitorLoop } from './lib/monitor_loop.js';
 import { startDowntimeServer, refreshDowntimeCache } from './lib/downtime.js';
@@ -65,43 +65,6 @@ const keyPem = isTpm ? null : fs.readFileSync('/data/device_key.pem', 'utf8');
 
 let certPem = fs.readFileSync('/data/device.crt', 'utf8');
 
-function api(method, url, body, tlsOpts = {}) {
-  const u = new URL(url);
-  // binary:true — return the raw response bytes as a Buffer (the RAUC bundle
-  // download). The default path utf8-decodes and JSON-parses, which would
-  // silently corrupt binary payloads (UTF-8 replacement chars + quoting).
-  const { binary = false, ...tls } = tlsOpts;
-  const opts = {
-    method,
-    hostname: u.hostname,
-    port: u.port,
-    path: u.pathname + u.search,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
-    rejectUnauthorized: false,
-    ...tls,
-  };
-  return new Promise(resolve => {
-    const req = https.request(opts, res => {
-      if (binary) {
-        const chunks = [];
-        res.on('data', c => chunks.push(c));
-        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
-        return;
-      }
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        let parsed = null;
-        try { parsed = JSON.parse(data); } catch { /* non-JSON */ }
-        resolve({ status: res.statusCode, body: parsed ?? data });
-      });
-    });
-    req.on('error', e => resolve({ status: 0, body: binary ? Buffer.alloc(0) : { error: String(e.message ?? e) } }));
-    if (body) req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
 // TLS identity key is separate from the pinned retrust key: renewal re-keys
 // the TLS identity into /data/tls_key.pem and the enrollment-pinned
 // device_key.pem is never touched after provisioning. In TPM mode the
@@ -114,7 +77,7 @@ function tlsKeyPem() {
     ? fs.readFileSync('/data/tls_key.pem', 'utf8')
     : keyPem;
 }
-const mtls = () => ({ cert: certPem, key: tlsKeyPem() });
+const mTlsOpts = () => mtls(certPem, tlsKeyPem());
 
 function signPop(payload) {
   // PoP signature over `beacon-relay-retrust-v1\0device_id\0challenge` with the
@@ -140,7 +103,7 @@ function certDates(pem) {
 }
 
 async function heartbeat() {
-  const hb = await api('POST', `${CP}/api/heartbeat`, null, mtls());
+  const hb = await api('POST', `${CP}/api/heartbeat`, null, mTlsOpts());
   if (hb.status === 200) {
     lastHeartbeatOkAt = Date.now(); // feed the self-monitor's silence detector
     console.log(`agent: heartbeat ok (state=${hb.body.state})`);
@@ -241,7 +204,7 @@ if (PROFILE_PATH) {
       getLastHeartbeatOkAt: () => lastHeartbeatOkAt },
     {
       intervalMs: CFG.check_interval_ms ?? 15_000,
-      post: async (ev) => api('POST', `${CP}/api/events`, ev, mtls()),
+      post: async (ev) => api('POST', `${CP}/api/events`, ev, mTlsOpts()),
       runAdapter: (check) => ADAPTERS[check.adapter](check.params),
       profile,
       log: (m) => console.log(m),
@@ -260,14 +223,14 @@ async function updateTick() {
     const r = await runUpdateCycle(
       { cpBase: CP, currentVersion: CURRENT_VERSION, deviceId },
       {
-        fetchJson: async (url) => (await api('GET', url, null, mtls())).body,
+        fetchJson: async (url) => (await api('GET', url, null, mTlsOpts())).body,
         // binary mode: the bundle is raw octet-stream bytes, not JSON —
         // the previous JSON.stringify(utf8-body) path corrupted every byte
         // stream and could never have produced an installable bundle.
         // A non-200 response is treated as a failure: an empty or 404 body
         // must never be written to disk as a bundle (C4).
         fetchBytes: async (url) => {
-          const r = await api('GET', url, null, { ...mtls(), binary: true });
+          const r = await api('GET', url, null, { ...mTlsOpts(), binary: true });
           if (r.status !== 200) throw new Error(`bundle download failed: ${r.status}`);
           return r.body;
         },
