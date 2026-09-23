@@ -255,5 +255,26 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
   3. Make repository private (H5) and run Docker-dependent alerting/RBAC/support suite.
 - **Progress:** All 10 maintainability items addressed. 10 of 15 review code findings closed (C1, M4, M6 remain open/deferred; H5 is repo setting).
 
+## Checkpoint #19 | Block: $0.79 | Total: $708.39 | Cost/commit: $0.79
+
+- **Done (Phase 1 — close Batch 3 gaps):**
+  - Added `test:security` script with all 9 independent-review security tests (C2, C3, C4, H1, H2, H3, M1, M3, M5); `npm test` now runs `test:unit && test:security && test:python`.
+  - Switched all Node scripts to `--env-file-if-exists=.env` so CI no longer crashes when `.env` is absent.
+  - Made `test:db:reset` support the SQLite / no-`DATABASE_URL` path; CI uses SQLite (no service container, no secrets, faster). Postgres-specific migration safety moved to `npm run test:migrate`.
+  - Replaced Windows-only `set DATABASE_URL=&&` in `test:sqlite` with cross-platform Node wrapper `scripts/run_sqlite_tests.js`.
+  - Updated `.github/workflows/ci.yml` with a `unit-and-python` job (SQLite) and a `security-scans` job running `npm audit --audit-level=high` (root, control-plane, beacon-relay-agent), `pip-audit` for the sidecar, and `gitleaks`; added non-blocking Semgrep + Trivy jobs that upload findings as artifacts.
+  - Fixed `control-plane/test/token.consumption.test.js` to count statements on both Postgres (`db.query`) and SQLite (`db.prepare`) drivers.
+  - Bumped `@fastify/static` to `^10.1.4` to clear GHSA path-traversal/high advisories; regenerated `control-plane/package-lock.json` and created `beacon-relay-agent/package-lock.json` so `npm audit` works in all three workspaces.
+  - Created `sidecar/requirements.txt` (standard-library-only) so `pip-audit` has a manifest.
+- **Tests:**
+  - `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests.
+  - `npm run test:migrate` passes (1/1) against local Postgres.
+  - `npm run lint` passes (ESLint warnings only, all pre-existing; ruff not installed locally).
+  - `npm audit --audit-level=high` passes in root, control-plane, and beacon-relay-agent.
+- **CI proof:** pushed commit `4f6631c` to `agent/md-sync-2026-09-22`. `gh` CLI is not authenticated in this environment, so I cannot read the Actions run result. Ryan should check the Actions tab for this branch.
+- **Repeat check:** none.
+- **Blocked:** cannot read GitHub Actions result locally (no `gh auth`).
+- **Open questions / next:** Phase 2 (untracked files and small doc tasks) ready to start after Ryan approval.
+
 
 
