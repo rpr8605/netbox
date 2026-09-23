@@ -44,6 +44,8 @@ services:
       # The OTA release surface (routes/releases.js) reads the build's out/
       # tree for the latest-version pointer and the signed bundle bytes.
       RELEASES_DIR: /out
+      # DEMO_MODE=1 puts a banner on every console page and seeds synthetic data.
+      DEMO_MODE: ${DEMO_MODE:-0}
     volumes:
       - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
       - ./out:/out:ro
@@ -67,6 +69,9 @@ services:
     environment:
       CONTROL_PLANE_URL: https://control-plane:9100
       CA_URL: https://step-ca:9000
+      # DEMO_MODE=1 keeps the simulator alive, posting periodic heartbeats and
+      # events for the duration of a demo session instead of exiting after tests.
+      DEMO_MODE: ${DEMO_MODE:-0}
     depends_on:
       control-plane:
         condition: service_started

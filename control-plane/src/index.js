@@ -36,6 +36,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 9100);
 const BIND_HOST = process.env.BIND_HOST ?? '127.0.0.1';
 const CA_URL = process.env.CA_URL ?? 'https://localhost:9000';
+const DEMO_MODE = process.env.DEMO_MODE === '1';
 
 async function waitForCa(attempts = 30) {
   for (let i = 0; i < attempts; i++) {
@@ -116,6 +117,11 @@ app.get('/api/audit', { preHandler: requirePerm('audit:read', appendAudit) }, as
 });
 
 app.get('/api/health', async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
+
+// Demo mode flag so the static console can show a prominent DEMO banner and
+// avoid any ambiguity that the data on screen is synthetic. The banner is
+// rendered client-side so this endpoint is the single source of truth.
+app.get('/api/demo', async () => ({ demo: DEMO_MODE }));
 
 // Escalation sweep: any open alert past its ack window escalates to the next
 // tier. Support-session sweep: any session past its expires_at is closed.

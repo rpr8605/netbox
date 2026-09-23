@@ -16,9 +16,12 @@
     .active { color: #1e8449; font-weight: 600; }
     .revoked { color: #b03a2e; font-weight: 600; }
     button { padding: 4px 10px; }
+    #demo-banner { display: none; background: #b26a00; color: #fff; text-align: center; padding: 8px; font-weight: 600; }
+    #demo-banner.visible { display: block; }
   </style>
 </head>
 <body>
+  <div id="demo-banner">DEMO MODE — Synthetic data only. No real hospitals, patients, or PHI.</div>
   <h1>Beacon Relay fleet console <small>(Phase 1/2 minimal)</small></h1>
   <p>Device registry as the control plane sees it. Quarantined devices must be
      confirmed by an operator after their first valid certificate presentation.</p>
@@ -52,6 +55,17 @@
   </form>
   <div id="topo"></div>
   <script>
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      if (params.has('demo')) {
+        document.getElementById('demo-banner').classList.add('visible');
+      } else {
+        try {
+          const r = await fetch('/api/demo');
+          if ((await r.json()).demo) document.getElementById('demo-banner').classList.add('visible');
+        } catch { /* ignore */ }
+      }
+    })();
     async function load() {
       const devices = await (await fetch('/api/devices')).json();
       const tb = document.querySelector('#t tbody');

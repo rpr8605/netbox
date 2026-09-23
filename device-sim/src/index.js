@@ -169,7 +169,7 @@ async function main() {
   check('check_result refused while quarantined', crEv.status === 403);
 
   // 8. Operator confirms identity + config integrity -> active.
-  const confirm = await api('POST', `/api/devices/${DEVICE_ID}/confirm`);
+  const confirm = await api('POST', `/api/devices/${DEVICE_ID}/confirm?role=operations-manager`);
   check('operator confirm clears quarantine', confirm.status === 200 && confirm.body.state === 'active');
 
   const crEv2 = await api('POST', '/api/events', canonicalEvent('check_result'), mtls);
@@ -231,7 +231,28 @@ async function main() {
 
   const failed = results.filter(r => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
-  process.exit(failed.length ? 1 : 0);
+  if (failed.length) process.exit(1);
+
+  // Demo mode: keep the simulated device alive so the Fleet Console shows live
+  // heartbeats and the scripted incident timeline has an active device to
+  // attach events to. Exits only on SIGTERM/SIGINT.
+  if (process.env.DEMO_MODE === '1') {
+    console.log('device-sim entering DEMO loop; press Ctrl-C to stop');
+    const services = ['ehr', 'adt', 'lab', 'pharmacy', 'internet', 'dns'];
+    while (true) {
+      await api('POST', '/api/heartbeat', null, mtls);
+      // Post a harmless periodic check_result so the console stays interesting.
+      const svc = services[Math.floor(Math.random() * services.length)];
+      await api('POST', '/api/events', canonicalEvent('check_result', {
+        service: svc,
+        status: 'active',
+        detail: `demo periodic ${svc} check`,
+      }), mtls);
+      await new Promise(r => setTimeout(r, 30_000));
+    }
+  }
+
+  process.exit(0);
 }
 
 main().catch(e => { console.error('simulator crashed:', e); process.exit(1); });

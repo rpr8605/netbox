@@ -23,9 +23,12 @@
   .st-reachable { fill: #3498db; } .st-verified_ready { fill: #1e8449; } .st-active { fill: #1e8449; }
   .st-degraded { fill: #b26a00; } .st-down { fill: #b03a2e; } .st-unknown { fill: #95a5a6; }
   #panel { margin-top: 1rem; padding: 1rem; background: #fff; border: 1px solid #ccd; border-radius: 8px; max-width: 960px; }
+  #demo-banner { display: none; background: #b26a00; color: #fff; text-align: center; padding: 8px; font-weight: 600; margin-bottom: 1rem; }
+  #demo-banner.visible { display: block; }
 </style>
 </head>
 <body>
+  <div id="demo-banner">DEMO MODE — Synthetic data only. No real hospitals, patients, or PHI.</div>
   <h1>Beacon Relay — Fleet Map</h1>
   <div class="legend">
     <span><span class="dot" style="background:#1e8449"></span>active / verified_ready</span>
@@ -51,6 +54,17 @@
   <div id="panel"><em>Click a pin for site details.</em></div>
 
 <script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  if (params.has('demo')) {
+    document.getElementById('demo-banner').classList.add('visible');
+  } else {
+    try {
+      const r = await fetch('/api/demo');
+      if ((await r.json()).demo) document.getElementById('demo-banner').classList.add('visible');
+    } catch { /* ignore */ }
+  }
+})();
 const $ = s => document.querySelector(s);
 const W = 960, H = 540;
 const mapSvg = $('#map');

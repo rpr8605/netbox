@@ -10,7 +10,11 @@
     "phase1:test": "docker compose up --build --abort-on-container-exit --exit-code-from device-sim",
     "phase3:build-image": "node pipeline/build.js",
     "ehr:unit": "node scripts/test_ehr_unit.js",
-    "ehr:e2e": "node scripts/test_ehr_e2e.js"
+    "ehr:e2e": "node scripts/test_ehr_e2e.js",
+    "demo": "node scripts/demo.js",
+    "demo:seed": "node scripts/demo_seed.js",
+    "demo:timeline": "node scripts/demo_timeline.js",
+    "demo:reset": "node scripts/demo_reset.js"
   },
   "dependencies": {
     "jose": "^6.0.10"
