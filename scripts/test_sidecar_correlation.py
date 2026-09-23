@@ -2,7 +2,7 @@
 """
 scripts/test_sidecar_correlation.py — functional tests for the MLLP tap's
 ACK/NACK correlation, wire-latency measurement, and connection resilience
-(audit items 3-5 in BEACON_RELAY_KIMI_AUDIT_FIXES(1).md).
+(covers ACK/NACK correlation, wire-latency measurement, and connection resilience).
 
 Complements test_sidecar_security.py (which proves the PHI/security boundary;
 this file proves the tap measures real outcomes instead of fabricating them):

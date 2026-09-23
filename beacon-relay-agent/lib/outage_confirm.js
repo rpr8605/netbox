@@ -1,5 +1,5 @@
 // beacon-relay-agent/lib/outage_confirm.js
-// Responsibility: the multi-step outage-confirmation sequence (spec §3 —
+// Responsibility: the multi-step outage-confirmation sequence (docs/specs/BEACON_RELAY_BUILD_SPEC.md §3 —
 // "retry locally, check a second independent dependency, validate the primary
 // WAN path, then fail over to LTE specifically to confirm whether it's a
 // local outage or the control plane itself that's unreachable"). This is the

@@ -1,5 +1,5 @@
 // control-plane/src/routes/action_registry.js
-// Responsibility: the Action Registry (CONTROLS_AND_IDENTITY §2) — a per-site
+// Responsibility: the Action Registry (docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md §2) — a per-site
 // whitelist of approved action types. Each execution requires a live,
 // human-initiated session issued through the existing remote-support session
 // broker. No action type is callable unless it is explicitly registered for

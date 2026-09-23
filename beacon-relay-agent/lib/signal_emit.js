@@ -12,7 +12,7 @@ import { postEvent } from './post_event.js';
 // (see header). The `signal` enum guard fails fast ON THE DEVICE rather than
 // letting a bad value travel upstream and die as a silent ingest rejection.
 // phi_mode is hardcoded false: signal payloads are metadata-only by design
-// (spec §10, metadata-only-by-default), and no caller parameter may flip that.
+// (docs/specs/BEACON_RELAY_BUILD_SPEC.md §10, metadata-only-by-default), and no caller parameter may flip that.
 export async function emitSecuritySignal({ deviceId, siteId, service = 'custom', source,
                                            severity = 'info', observed = {}, basis,
                                            signal = 'advisory', confidence = 'high',

@@ -2,12 +2,12 @@
 
 This is a companion document to the other four Beacon Relay spec files. It does not replace
 anything in them — the canonical event schema, incident records, RBAC, and the Alerting &
-Escalation Engine's runbook concept are still governed by `BEACON_RELAY_BUILD_SPEC.md`. This
+Escalation Engine's runbook concept are still governed by `docs/specs/BEACON_RELAY_BUILD_SPEC.md`. This
 document covers three things Ryan asked for together, in dependency order — each one
 builds on data the previous one produces:
 
 1. Richer Fleet Console visualization — a geographic fleet map, plus confirming/extending
-   the per-site interface topology view already speced in `BEACON_RELAY_EHR_INTEGRATIONS.md`
+   the per-site interface topology view already speced in `docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md`
    Section 11.
 2. A **troubleshooting memory** — deterministic, evidence-linked matching of a new incident
    against past incidents and their recorded resolutions. Explicitly **not** generative AI:
@@ -24,7 +24,7 @@ builds on data the previous one produces:
 ## 1. Fleet Console visualization — three views, not one
 
 Beacon Relay's Fleet Console already has a per-site interface topology view and a cross-site
-rollup list, speced in `BEACON_RELAY_EHR_INTEGRATIONS.md` Section 11. This document adds a third:
+rollup list, speced in `docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` Section 11. This document adds a third:
 
 | View | Scope | Status | Shows |
 |---|---|---|---|
@@ -42,7 +42,7 @@ site's pin; operations manager and support technician see the whole fleet.
 **What this is not:** a physical-network diagram (routers, switches, cabling). That's a
 different, much heavier scope (network discovery, SNMP topology mapping) that isn't asked
 for here and isn't in scope per the existing "no general facilities" boundary in
-`BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §1. This is "where are my sites, and are they healthy" —
+`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §1. This is "where are my sites, and are they healthy" —
 a fleet-management view, not a network-engineering tool.
 
 ---
@@ -51,7 +51,7 @@ a fleet-management view, not a network-engineering tool.
 
 ### 2.1 Why this is case-based reasoning, not AI narration
 
-`BEACON_RELAY_EHR_INTEGRATIONS.md` §11 explicitly rules out "AI-generated explanation of what a
+`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §11 explicitly rules out "AI-generated explanation of what a
 broken interface means" as out of scope for Beacon Relay — that line stands. What's speced here
 is different in kind, not just in degree: no model generates text about an incident. A
 structured comparison runs against a library of past, human-confirmed cases, and the output
@@ -143,7 +143,7 @@ one (or at minimum an IT inbox), and hospital IT staff already live inside it �
 to also check a second system is a real adoption cost, not a neutral addition. Beacon Relay's job
 is to make it trivial to get a well-formed incident record **into** whatever the hospital
 already uses, using the exact same "adapter, not reinvention" philosophy already applied to
-EHRs (`BEACON_RELAY_EHR_INTEGRATIONS.md` §2) and identity providers (`BEACON_RELAY_CONTROLS_AND_IDENTITY.md`
+EHRs (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §2) and identity providers (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md`
 §4). Two tiers, in build order:
 
 **Tier 0 — universal, build first, zero integration risk.** Every incident already carries,
@@ -190,7 +190,7 @@ everything else in `BUILD_SPEC` §5.
    this against a seeded synthetic incident history (at least 15-20 fake past incidents
    across a few sites/vendors/categories) so the ranking logic can actually be exercised
    before there's real fleet history to test against.
-5. Confirm the per-site interface topology view from `BEACON_RELAY_EHR_INTEGRATIONS.md` §11 is
+5. Confirm the per-site interface topology view from `docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §11 is
    still on track separately — this document doesn't change that work, just sits next to it.
 6. Ticketing Tier 0 (Section 3) — the copy-paste block and "Send as email" action. Build
    this once the incident detail view exists (step 4), since it renders the same content
@@ -203,7 +203,7 @@ everything else in `BUILD_SPEC` §5.
 ## 5. Copy-paste prompt for Kimi — fleet map + troubleshooting memory + ticketing export
 
 ```
-You are continuing work on "Beacon Relay." Read BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md in
+You are continuing work on "Beacon Relay." Read docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md in
 full before starting. This adds a geographic fleet map to the Fleet Console and a
 troubleshooting memory feature. The troubleshooting memory is explicitly NOT AI — no LLM
 call, no generated narration, anywhere in this feature. It is a deterministic, hand-tracable

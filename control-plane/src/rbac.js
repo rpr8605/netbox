@@ -1,14 +1,15 @@
 // control-plane/src/rbac.js
-// Responsibility: the complete RBAC role map (spec §5) as ONE source of truth,
+// Responsibility: the complete RBAC role map (docs/specs/BEACON_RELAY_BUILD_SPEC.md §5) as ONE source of truth,
 // plus the gate the routes share. Five roles, each with an explicit boundary:
 //   support-technician  — per-site ops + support sessions; can ack alerts
 //   customer-it-admin   — site-scoped config + reads; no cross-site rollup
 //   operations-manager  — fleet-wide view incl. cross-site rollup + alerting
 //   security-auditor    — read-only, PLUS the audit log (the auditor's lane)
 //   readonly-executive  — read-only dashboards only; no audit log, no actions
-// Phase 2 has no auth yet, so `role` arrives as a request attribute and is
-// validated against this map. The gate is structural (route -> role), so a
-// real Phase-8 auth layer only has to supply the principal's role.
+// The current operator-auth layer has no real identity verification, so `role`
+// arrives as a request attribute and is validated against this map. The gate is
+// structural (route -> role), so a future OIDC/Cognito auth layer only has to
+// supply the principal's role.
 import crypto from 'node:crypto';
 
 // The complete role -> permission map. This is the single source of truth the
@@ -43,7 +44,7 @@ export function can(role, perm) {
 }
 
 // requirePerm — a Fastify preHandler. Reads role from req (query.role here in
-// Phase 2; a bearer principal in Phase 8) and 403s on deny. Audits every DENY
+// the current stub layer; a bearer principal once real auth lands) and 403s on deny. Audits every DENY
 // so attempted privilege use is itself a logged event.
 export function requirePerm(perm, appendAuditFn) {
   return async (req, reply) => {

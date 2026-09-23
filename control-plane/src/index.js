@@ -1,11 +1,11 @@
 // control-plane/src/index.js
-// Responsibility: control-plane entrypoint (spec §1, right side of the line).
+// Responsibility: control-plane entrypoint (docs/specs/BEACON_RELAY_BUILD_SPEC.md §1, right side of the line).
 //   - obtains the step-ca root (retry loop; CA may still be initialising)
 //   - enrols ITSELF as a step-ca client to get its TLS server cert — the
 //     control plane is just another short-lived-cert client of the CA, same
 //     as devices; no long-lived server keys on disk
 //   - serves: enrollment routes (token auth), device registry + console
-//     (Phase 1: localhost-only), and mTLS-gated device endpoints
+//     (localhost-only until real operator auth lands), and mTLS-gated device endpoints
 //
 // TLS posture: requestCert + rejectUnauthorized:false at the socket layer, with
 // per-route enforcement (routes/events.js requires req.socket.authorized).
@@ -87,7 +87,7 @@ const app = Fastify({
 });
 
 // Console pages should not be reachable without at least a declared role, even
-// though Phase 2 has no real identity layer. The Fleet Map page is protected
+// though the current operator-auth layer has no real identity verification. The Fleet Map page is protected
 // here; the data endpoint enforces the same RBAC as the rollup gate.
 app.get('/fleet.html', {
   preHandler: (req, reply, done) => {

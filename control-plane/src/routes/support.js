@@ -1,5 +1,5 @@
 // control-plane/src/routes/support.js
-// Responsibility: the remote-support session broker (spec §7) — NO standing
+// Responsibility: the remote-support session broker (docs/specs/BEACON_RELAY_BUILD_SPEC.md §7) — NO standing
 // SSH port, NO shared credential. An admin REQUESTS a session; the device's
 // existing outbound mTLS connection picks up a time-limited session token and
 // opens an OUTBOUND tunnel for that window only. Every session is an

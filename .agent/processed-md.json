@@ -1,233 +1,190 @@
 {
-    "AGENTS.md":  {
-                      "sha256":  "73bb146bf6ac777173d45dec0c5909fd946656ee703256730f83cd3852c56062",
-                      "status":  "reference",
-                      "note":  "standing operating rules; added cost-reporting block (no $/Total $/per-commit cost in output)",
-                      "commits":  [
-                                      "e3c864a"
-                                  ]
-                  },
-    "BEACON_RELAY_BUILD_SPEC.md":  {
-                                        "sha256":  "df948461f308ce0bfafa7759f83ce5c2559c8d89392b4bdc3ff2553b99ddb0ef",
-                                        "status":  "reference",
-                                        "note":  "tracked; phases 1-5 built+green per STATUS.md; SES delivery rail added per section 6; later phases deliberately deferred",
-                                        "commits":  [
-                                                        "75c5ee9"
-                                                    ]
-                                    },
-    "BEACON_RELAY_CHECKLIST.md":  {
-                                        "sha256":  "f3a98d7dabafe2a618381196f0dd0234a2c3b52ca21d01b970734774b3f3a898",
-                                        "status":  "reference",
-                                        "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory marked DONE/progress; alerting 58/58",
-                                        "commits":  [
-                                                        "107ac2f",
-                                                        "a68b0f5",
-                                                        "2b1d01d",
-                                                        "fea0d33",
-                                                        "c975e84",
-                                                        "bb00146",
-                                                        "32aad48",
-                                                        "4678fc6",
-                                                        "360ec6d",
-                                                        "01910a6",
-                                                        "831f71d",
-                                                        "75c5ee9",
-                                                        "e3c864a",
-                                                        "c0f2a6f"
-                                                    ]
-                                    },
-    "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
-                                                   "sha256":  "2d7ebee753bf20d5fbbdeb5bb1375b17640c7f736761dd61fb502bb09d51711a",
-                                                   "status":  "reference",
-                                                   "note":  "AWS hosting; not started per STATUS.md; deferred",
-                                                   "commits":  [
-
-                                                               ]
-                                               },
-    "BEACON_RELAY_CONTROLS_AND_IDENTITY.md":  {
-                                                     "sha256":  "1365936b8c7925ddfe954bfb374f3dd077987104d56df6bb9c384dbb0ceffd5f",
-                                                     "status":  "reference",
-                                                     "note":  "network controls phase; TLS cert expiration (§3), firewall, and DNS implemented; remaining entries deferred",
-                                                     "commits":  [
-                                                                     "4678fc6",
-                                                                     "360ec6d",
-                                                                     "01910a6"
-                                                                 ]
-                                                 },
-    "BEACON_RELAY_EHR_INTEGRATIONS.md":  {
-                                               "sha256":  "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
-                                               "status":  "reference",
-                                               "note":  "adapters built; Â§11/Â§12 channel registry source/destination implemented; remaining vendor profiles deferred",
-                                               "commits":  [
-                                                               "f840531",
-                                                               "32aad48"
-                                                           ]
-                                           },
-    "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
-                                                "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
-                                                "status":  "partial",
-                                                "note":  "items 3-6 DONE (f840531); items 1,2,1b,7 + Priority 3 re-verification remaining",
-                                                "commits":  [
-                                                                "f840531"
-                                                            ]
-                                            },
-    "BEACON_RELAY_KIMI_FIXES.md":  {
-                                        "sha256":  "3db9667040a3e3b6da77e4afd3a64f6fd5f59ec6b7a5157860e7b1888a542eea",
-                                        "status":  "partial",
-                                        "note":  "KF6/KF7/KF8 DONE; KF3 blocked pending decision (see .agent/open-questions.md)",
-                                        "commits":  [
-                                                        "107ac2f",
-                                                        "a68b0f5",
-                                                        "2b1d01d",
-                                                        "fea0d33"
-                                                    ]
-                                    },
-    "BEACON_RELAY_KIMI_AUDIT_FIXES(1).md":  {
-                                                 "sha256":  "a48ac53001cca0c10f02e199c0f8eb5414bb30dfdf819b6e22297a93260983ee",
-                                                 "status":  "partial",
-                                                 "note":  "items 3-6 DONE (f840531); items 1,2,1b,7 + Priority 3 re-verification remaining; committed as reference doc",
-                                                 "commits":  [
-                                                                 "f840531",
-                                                                 "fea0d33"
-                                                             ]
-                                             },
-    "BEACON_RELAY_SPEC_INDEX.md":  {
-                                       "sha256":  "c30da334183b9ed2ad7017a0e1f9c9fdd8464b25b184cf719b5abff0780d52b1",
-                                       "status":  "reference",
-                                       "commits":  [
-
-                                                   ]
-                                   },
-    "BEACON_RELAY_STATUS.md":  {
-                                     "sha256":  "f3c4b2b1d5ea6c709edd708922f58e74a9467ab105b8178729fcad5c77202463",
-                                     "status":  "reference",
-                                     "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory DONE/progress; alerting 58/58",
-                                     "commits":  [
-                                                     "107ac2f",
-                                                     "a68b0f5",
-                                                     "2b1d01d",
-                                                     "fea0d33",
-                                                     "c975e84",
-                                                     "bb00146",
-                                                     "32aad48",
-                                                     "4678fc6",
-                                                     "360ec6d",
-                                                     "01910a6",
-                                                     "831f71d",
-                                                     "75c5ee9",
-                                                     "e3c864a",
-                                                     "c0f2a6f"
-                                                 ]
-                                 },
-    "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
-                                                                  "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
-                                                                  "status":  "reference",
-                                                                  "note":  "geographic fleet map, troubleshooting memory, and Tier-0 copy-paste+email built; Tier-1 ticketing deferred",
-                                                                  "commits":  [
-                                                                                  "831f71d",
-                                                                                  "e3c864a",
-                                                                                  "c0f2a6f"
-                                                                              ]
-                                                              },
-    "README(2).md":  {
-                         "sha256":  "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
-                         "status":  "reference",
-                         "note":  "byte-identical duplicate of models/README.md",
-                         "commits":  [
-
-                                     ]
-                     },
-    "README.md":  {
-                      "sha256":  "03c4fb4f1a1d55b6e49660a5a8257ce98beb302da546c4f3e848869a1589fb27",
-                      "status":  "reference",
-                      "commits":  [
-
-                                  ]
-                  },
-    "models/AGENTS-routing.md":  {
-                                     "sha256":  "a0561fe7c5391f58d5460f6a22d35cce9ad08df56dc7ef3a1fb36e022d32c5b7",
-                                     "status":  "reference",
-                                     "commits":  [
-
-                                                 ]
-                                 },
-    "models/model-trial.md":  {
-                                  "sha256":  "0e7fd9c457c8a8ff4ccc79ad4bef500f46304a965fb32bdd472a5fdfb13727ce",
-                                  "status":  "reference",
-                                  "commits":  [
-
-                                              ]
-                              },
-    "models/README.md":  {
-                             "sha256":  "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
-                             "status":  "reference",
-                             "commits":  [
-
-                                         ]
-                         },
-    "models/opencode.json":  {
-                                 "sha256":  "69181821a7936a4cbd5bd460ad85faae72ce0950fed5da5a01a8e76713693018",
-                                 "status":  "reference",
-                                 "note":  "snapshot of opencode.json at time of model comparison; live config is repo-root opencode.json",
-                                 "commits":  [
-
-                                             ]
-                             },
-    "opencode.json":  {
-                           "sha256":  "3d2005a11642055b2c65560112a745d79d274186d522da82de521700f211605d",
-                           "status":  "reference",
-                           "note":  "live OpenCode routing config; switched to Go-only models this pass",
-                           "commits":  [
-                                           "19a9062"
-                                       ]
-                       },
-    "models/cost-calc.py":  {
-                                "sha256":  "582d00b059ad7ecd4dd832472417484d44a1a624dc06575b149802495274fe0c",
-                                "status":  "reference",
-                                "commits":  [
-
-                                            ]
-                            },
-    "models/pricing.csv":  {
-                               "sha256":  "6fbd16020724fc9c7253a8a71d966259a24e5c3bd2bd5e3af28e1030bea234f",
-                               "status":  "reference",
-                               "commits":  [
-
-                                           ]
-                           },
-    ".agent/checkpoints.md":  {
-                                    "sha256":  "8dfebb163ff4b34367c8eed93ccdb7f883a71037519951f935b3e6c2b344f5fa",
-                                    "status":  "reference",
-                                    "note":  "session checkpoint log; added checkpoints #5/#6/#7/#8/#9/#10 (channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory)",
-                                    "commits":  [
-                                                    "fea0d33",
-                                                    "c975e84",
-                                                    "32aad48",
-                                                    "4678fc6",
-                                                    "360ec6d",
-                                                    "01910a6",
-                                                    "831f71d",
-                                                    "75c5ee9",
-                                                    "e3c864a",
-                                                    "c0f2a6f"
-                                                ]
-                                },
-    ".agent/open-questions.md":  {
-                                     "sha256":  "70b4c53b73f44a3312ea63d268c35de1cf9a9cc5fe62af362f207e36586ff4838",
-                                     "status":  "reference",
-                                     "note":  "session open questions; KF3 and port-9100 resolved; acceptance blocked by KVM",
-                                     "commits":  [
-                                                     "fea0d33",
-                                                     "c975e84",
-                                                     "bb00146"
-                                                 ]
-                                 },
-    ".agent/attempts.md":  {
-                                "sha256":  "86c0495530a0645a2380c1aa73278c1aa01aab6eb22aeb0f0a290540d6d9dab9",
-                                "status":  "reference",
-                                "note":  "anti-loop attempts log; created for QEMU acceptance KVM failure",
-                                "commits":  [
-                                                "bb00146"
-                                            ]
-                            }
+    "AGENTS.md": {
+        "sha256": "73bb146bf6ac777173d45dec0c5909fd946656ee703256730f83cd3852c56062",
+        "status": "reference",
+        "note": "standing operating rules; added cost-reporting block (no $/Total $/per-commit cost in output)",
+        "commits": [
+            "e3c864a"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_BUILD_SPEC.md": {
+        "sha256": "df948461f308ce0bfafa7759f83ce5c2559c8d89392b4bdc3ff2553b99ddb0ef",
+        "status": "reference",
+        "note": "tracked; phases 1-5 built+green per STATUS.md; SES delivery rail added per section 6; later phases deliberately deferred",
+        "commits": [
+            "75c5ee9"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_CHECKLIST.md": {
+        "sha256": "f3a98d7dabafe2a618381196f0dd0234a2c3b52ca21d01b970734774b3f3a898",
+        "status": "reference",
+        "note": "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory marked DONE/progress; alerting 58/58",
+        "commits": [
+            "107ac2f",
+            "a68b0f5",
+            "2b1d01d",
+            "fea0d33",
+            "c975e84",
+            "bb00146",
+            "32aad48",
+            "4678fc6",
+            "360ec6d",
+            "01910a6",
+            "831f71d",
+            "75c5ee9",
+            "e3c864a",
+            "c0f2a6f"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md": {
+        "sha256": "2d7ebee753bf20d5fbbdeb5bb1375b17640c7f736761dd61fb502bb09d51711a",
+        "status": "reference",
+        "note": "AWS hosting; not started per STATUS.md; deferred",
+        "commits": []
+    },
+    "docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md": {
+        "sha256": "1365936b8c7925ddfe954bfb374f3dd077987104d56df6bb9c384dbb0ceffd5f",
+        "status": "reference",
+        "note": "network controls phase; TLS cert expiration (\u00a73), firewall, and DNS implemented; remaining entries deferred",
+        "commits": [
+            "4678fc6",
+            "360ec6d",
+            "01910a6"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md": {
+        "sha256": "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
+        "status": "reference",
+        "note": "adapters built; \u00c2\u00a711/\u00c2\u00a712 channel registry source/destination implemented; remaining vendor profiles deferred",
+        "commits": [
+            "f840531",
+            "32aad48"
+        ]
+    },
+    ".agent/BEACON_RELAY_KIMI_FIXES.md": {
+        "sha256": "3db9667040a3e3b6da77e4afd3a64f6fd5f59ec6b7a5157860e7b1888a542eea",
+        "status": "partial",
+        "note": "KF6/KF7/KF8 DONE; KF3 blocked pending decision (see .agent/open-questions.md)",
+        "commits": [
+            "107ac2f",
+            "a68b0f5",
+            "2b1d01d",
+            "fea0d33"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_SPEC_INDEX.md": {
+        "sha256": "c30da334183b9ed2ad7017a0e1f9c9fdd8464b25b184cf719b5abff0780d52b1",
+        "status": "reference",
+        "commits": []
+    },
+    "docs/specs/BEACON_RELAY_STATUS.md": {
+        "sha256": "f3c4b2b1d5ea6c709edd708922f58e74a9467ab105b8178729fcad5c77202463",
+        "status": "reference",
+        "note": "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory DONE/progress; alerting 58/58",
+        "commits": [
+            "107ac2f",
+            "a68b0f5",
+            "2b1d01d",
+            "fea0d33",
+            "c975e84",
+            "bb00146",
+            "32aad48",
+            "4678fc6",
+            "360ec6d",
+            "01910a6",
+            "831f71d",
+            "75c5ee9",
+            "e3c864a",
+            "c0f2a6f"
+        ]
+    },
+    "docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md": {
+        "sha256": "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
+        "status": "reference",
+        "note": "geographic fleet map, troubleshooting memory, and Tier-0 copy-paste+email built; Tier-1 ticketing deferred",
+        "commits": [
+            "831f71d",
+            "e3c864a",
+            "c0f2a6f"
+        ]
+    },
+    "README.md": {
+        "sha256": "03c4fb4f1a1d55b6e49660a5a8257ce98beb302da546c4f3e848869a1589fb27",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/models/AGENTS-routing.md": {
+        "sha256": "a0561fe7c5391f58d5460f6a22d35cce9ad08df56dc7ef3a1fb36e022d32c5b7",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/models/model-trial.md": {
+        "sha256": "0e7fd9c457c8a8ff4ccc79ad4bef500f46304a965fb32bdd472a5fdfb13727ce",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/models/README.md": {
+        "sha256": "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/models/opencode.json": {
+        "sha256": "69181821a7936a4cbd5bd460ad85faae72ce0950fed5da5a01a8e76713693018",
+        "status": "reference",
+        "note": "snapshot of opencode.json at time of model comparison; live config is repo-root opencode.json",
+        "commits": []
+    },
+    "opencode.json": {
+        "sha256": "3d2005a11642055b2c65560112a745d79d274186d522da82de521700f211605d",
+        "status": "reference",
+        "note": "live OpenCode routing config; switched to Go-only models this pass",
+        "commits": [
+            "19a9062"
+        ]
+    },
+    ".agent/models/cost-calc.py": {
+        "sha256": "582d00b059ad7ecd4dd832472417484d44a1a624dc06575b149802495274fe0c",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/models/pricing.csv": {
+        "sha256": "6fbd16020724fc9c7253a8a71d966259a24e5c3bd2bd5e3af28e1030bea234f",
+        "status": "reference",
+        "commits": []
+    },
+    ".agent/checkpoints.md": {
+        "sha256": "8dfebb163ff4b34367c8eed93ccdb7f883a71037519951f935b3e6c2b344f5fa",
+        "status": "reference",
+        "note": "session checkpoint log; added checkpoints #5/#6/#7/#8/#9/#10 (channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory)",
+        "commits": [
+            "fea0d33",
+            "c975e84",
+            "32aad48",
+            "4678fc6",
+            "360ec6d",
+            "01910a6",
+            "831f71d",
+            "75c5ee9",
+            "e3c864a",
+            "c0f2a6f"
+        ]
+    },
+    ".agent/open-questions.md": {
+        "sha256": "70b4c53b73f44a3312ea63d268c35de1cf9a9cc5fe62af362f207e36586ff4838",
+        "status": "reference",
+        "note": "session open questions; KF3 and port-9100 resolved; acceptance blocked by KVM",
+        "commits": [
+            "fea0d33",
+            "c975e84",
+            "bb00146"
+        ]
+    },
+    ".agent/attempts.md": {
+        "sha256": "86c0495530a0645a2380c1aa73278c1aa01aab6eb22aeb0f0a290540d6d9dab9",
+        "status": "reference",
+        "note": "anti-loop attempts log; created for QEMU acceptance KVM failure",
+        "commits": [
+            "bb00146"
+        ]
+    }
 }

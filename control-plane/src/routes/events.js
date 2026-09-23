@@ -1,7 +1,7 @@
 // control-plane/src/routes/events.js
 // Responsibility: mTLS-gated device endpoints — heartbeat + event ingestion.
 //
-// Gate order (deliberate, spec §2 quarantine):
+// Gate order (deliberate, docs/specs/BEACON_RELAY_BUILD_SPEC.md §2 quarantine):
 //   1. TLS layer must have verified the client cert against the step-ca root
 //      (server.js sets rejectUnauthorized — an invalid/self-signed cert never
 //      reaches this code).

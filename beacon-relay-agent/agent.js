@@ -84,7 +84,7 @@ function signPop(payload) {
   // pinned long-term key — same scheme the control plane verifies. TPM mode
   // signs inside the TPM (key never leaves the chip); LUKS mode uses the
   // software keyfile via openssl. Temp files live on /data, NOT /tmp: the image
-  // root is read-only (spec §2), so /tmp writes EROFS.
+  // root is read-only (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2), so /tmp writes EROFS.
   fs.writeFileSync('/data/.pop.payload', payload);
   if (isTpm) return tpmSign('/data/.pop.payload');
   fs.writeFileSync('/data/.pop.key', keyPem, { mode: 0o600 });
@@ -213,7 +213,7 @@ if (PROFILE_PATH) {
   console.log(`agent: monitor loop running (profile=${profile.profile_id}, interval=${CFG.check_interval_ms ?? 15000}ms)`);
 }
 
-// --- OTA update client (spec §3) --------------------------------------------
+// --- OTA update client (docs/specs/BEACON_RELAY_BUILD_SPEC.md §3) -----------
 // Polls the control plane for a new signed RAUC bundle on a slow cadence. The
 // signature verify is a hard gate inside runUpdateCycle; a failed verify never
 // touches disk. mark-good/mark-bad run AFTER the reboot, against the booted

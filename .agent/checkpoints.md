@@ -5,7 +5,7 @@
 - **Completed:**
   - MD inventory via @scout (16 files, hashed, classified); ledger `.agent/processed-md.json` created.
   - Preparatory commit `1c9f91d` — prior-session verified rauc fixes (TMPDIR=/run + verify logging; on-device unsquashfs). Not from an MD file; carried forward so MD commits stay clean.
-  - `f840531` — BEACON_RELAY_KIMI_AUDIT_FIXES(1).md items 3-6: sidecar measured ACK/NACK (MSA correlation by MSH-10), real wire latency (monotonic, request→response), resilient accept-loop listener, doc-only network-prerequisite note. New `scripts/test_sidecar_correlation.py`.
+  - `f840531` — BEACON_RELAY_KIMI_AUDIT_FIXES(1).md (since deleted) items 3-6: sidecar measured ACK/NACK (MSA correlation by MSH-10), real wire latency (monotonic, request→response), resilient accept-loop listener, doc-only network-prerequisite note. New `scripts/test_sidecar_correlation.py`.
   - No-Docker suite re-verification (audit Priority 3, partial): sidecar security 24/24, agent loop 11/11, EHR unit 16/16, topology 6/6 — all fresh this session.
 - **Tests/build:** pass — 24/24 security, 14/14 correlation, 11/11 agent loop, 16/16 EHR unit, 6/6 topology. (Note: two suite counts grew since CHECKLIST was written: 18→24, 10→11; both green.)
 - **Currently in progress:** KIMI_FIXES.md verifiably-open items next: KF6 (graph.js missing `Bearer ` prefix, 1-line), KF7 (dead enroll.js imports node-forge), KF8 (dead gen_sfdisk/partition.env flows), KF3 (control-plane host bind/publish). Then Docker-dependent: audit item 1 (acceptance x3), item 1b (EHR E2E re-run + CHECKLIST wording), CHECKLIST updates with fresh evidence.
@@ -41,14 +41,14 @@
 - **Docker-dependent items blocked:** Windows excluded port range `9035-9134` covers host port 9100, so `docker-compose.yml` cannot publish `9100:9100`. Host-side E2E/RBAC/acceptance runs are blocked in this environment.
 - **Fresh no-Docker evidence gathered:** doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, Step 1 signals Graph path emits 2 signals with Bearer assertion, sidecar security 24/24, topology 6/6.
 - **CHECKLIST/STATUS updated** with current commit `2b1d01d`, fresh evidence, KF6/7/8/3 status, and environment blockers. Committed as `fea0d33`.
-- **Ledger finalized:** `.agent/processed-md.json` updated with `fea0d33` references and new `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md` entry. Committed as `156f9ea`.
+- **Ledger finalized:** `.agent/processed-md.json` updated with `fea0d33` references and new `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md (since deleted)` entry. Committed as `156f9ea`.
 - **Agent usage this block:** none successfully invoked (helpers still misconfigured). Manual reviews: 4 (opencode.json, KF6, KF7, KF8, 1c9f91d).
 
 ## Checkpoint #4 | Block: $2.14 | Total: $4.96 | Cost/commit: $1.65
 
 - **Done:**
-  - `c975e84` fix(control-plane): make bind address and host publish configurable (KF3) — source `BEACON_RELAY_KIMI_FIXES.md` item 3
-  - `5615c10` docs: update CHECKLIST/STATUS with KF3 DONE and fresh E2E/RBAC results — source `BEACON_RELAY_CHECKLIST.md` / `BEACON_RELAY_STATUS.md`
+  - `c975e84` fix(control-plane): make bind address and host publish configurable (KF3) — source `.agent/BEACON_RELAY_KIMI_FIXES.md` item 3
+  - `5615c10` docs: update CHECKLIST/STATUS with KF3 DONE and fresh E2E/RBAC results — source `docs/specs/BEACON_RELAY_CHECKLIST.md` / `docs/specs/BEACON_RELAY_STATUS.md`
 - **Tests:** E2E 23/23, alerting/RBAC 33/33, doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, sidecar security 24/24, topology 6/6, Step 1 signals Graph path emits 2 signals
 - **Next:** QEMU acceptance x3 (needs fresh image build) after "continue"
 - **Blocked:** none; KF3 and port-9100 blocker resolved
@@ -59,7 +59,7 @@
 
 - **Done:**
   - Channel registry now stores `site_id`, `source_system`, `destination_system`; `mirthChannelStates` exposes graph endpoints; topology/rollup/full-status routes return them; seed data and tests updated.
-  - `BEACON_RELAY_CHECKLIST.md` / `BEACON_RELAY_STATUS.md` updated: channel registry §11/§12 marked DONE, EHR unit count 17/17, removed completed item from "cheapest next wins".
+  - `docs/specs/BEACON_RELAY_CHECKLIST.md` / `docs/specs/BEACON_RELAY_STATUS.md` updated: channel registry §11/§12 marked DONE, EHR unit count 17/17, removed completed item from "cheapest next wins".
 - **Tests:** topology 6/6, EHR unit 17/17, EHR E2E 23/23, alerting/RBAC 33/33, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
 - **Next:** AWS Organization + three accounts (blocked by missing AWS CLI/credentials) OR TLS-cert-expiration critical service
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI)
@@ -68,25 +68,25 @@
 ## Checkpoint #6 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
-  - TLS certificate expiration as a first-class critical service (`CONTROLS_AND_IDENTITY` §3): `cert_expiration` in schema + critical-service register, metadata-only events emitted from every TLS handshake, status mapping expired/down / soon/degraded / valid/verified_ready, unit tests for all three cases.
+  - TLS certificate expiration as a first-class critical service (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3): `cert_expiration` in schema + critical-service register, metadata-only events emitted from every TLS handshake, status mapping expired/down / soon/degraded / valid/verified_ready, unit tests for all three cases.
 - **Tests:** EHR unit 21/21, E2E 23/23, alerting/RBAC 33/33, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
-- **Next:** Ticketing Tier 0 copy-paste block (`TOPOLOGY_…_MEMORY` §3)
+- **Next:** Ticketing Tier 0 copy-paste block (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §3)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 62 of 99 CHECKLIST items complete (63%), up from 61 of 99 (62%)
 
 ## Checkpoint #7 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
-  - Ticketing Tier 0 (`TOPOLOGY_…_MEMORY` §3): `GET /api/alerts/:id/ticket` and `POST .../ticket/email`, RBAC-gated, metadata-only, SendGrid pipe reused.
+  - Ticketing Tier 0 (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §3): `GET /api/alerts/:id/ticket` and `POST .../ticket/email`, RBAC-gated, metadata-only, SendGrid pipe reused.
 - **Tests:** alerting/RBAC/audit/support/ticketing 39/39, EHR unit 21/21, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
-- **Next:** SES email sender alongside SendGrid (`BUILD_SPEC` §6), then next unblocked CHECKLIST items in spec priority order
+- **Next:** SES email sender alongside SendGrid (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §6), then next unblocked CHECKLIST items in spec priority order
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 63 of 99 CHECKLIST items complete (64%), up from 62 of 99 (63%)
 
 ## Checkpoint #8 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
-  - SES email sender alongside SendGrid (`BUILD_SPEC` §6): `sendSes()` using `@aws-sdk/client-sesv2`, SES-first then SendGrid fallback, ticket email endpoint updated, skip-when-unconfigured test.
+  - SES email sender alongside SendGrid (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §6): `sendSes()` using `@aws-sdk/client-sesv2`, SES-first then SendGrid fallback, ticket email endpoint updated, skip-when-unconfigured test.
 - **Tests:** alerting/RBAC/audit/support/ticketing/SES 40/40, EHR unit 21/21, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
 - **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (geographic fleet map, incident_signature, or remaining network controls)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
@@ -95,7 +95,7 @@
 ## Checkpoint #9 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
-  - Geographic fleet map (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §1): `sites` table with `lat`/`lng`/`name`; enrollment tokens accept optional site metadata; `GET /api/fleet/map` with RBAC (ops/support full fleet, customer-it-admin single site); overall site status = worst of critical-service statuses with unknown as baseline; `public/fleet.html` renders pins.
+  - Geographic fleet map (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §1): `sites` table with `lat`/`lng`/`name`; enrollment tokens accept optional site metadata; `GET /api/fleet/map` with RBAC (ops/support full fleet, customer-it-admin single site); overall site status = worst of critical-service statuses with unknown as baseline; `public/fleet.html` renders pins.
 - **Tests:** alerting/RBAC/audit/support/ticketing/SES/fleet-map 47/47, EHR unit 24/24, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
 - **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (troubleshooting-memory `incident_signature`, WAN/ISP circuit health, Action Registry, or M365 Phase 1 read-only account health)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
@@ -104,7 +104,7 @@
 ## Checkpoint #10 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
-  - Troubleshooting memory (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §2): `incident_signature` captured automatically on alert open; `POST /api/alerts/:id/close` records `resolution_record`; deterministic weighted-overlap matching in `control-plane/src/incident_memory.js`; `GET /api/alerts/:id/similar` returns ranked matches + distributions + cold-start-honest empty state.
+  - Troubleshooting memory (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §2): `incident_signature` captured automatically on alert open; `POST /api/alerts/:id/close` records `resolution_record`; deterministic weighted-overlap matching in `control-plane/src/incident_memory.js`; `GET /api/alerts/:id/similar` returns ranked matches + distributions + cold-start-honest empty state.
 - **Tests:** alerting/RBAC/audit/support/ticketing/SES/fleet-map/troubleshooting-memory 58/58, EHR unit 24/24, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
 - **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (WAN/ISP circuit health, Action Registry, M365 Phase 1 read-only account health, or RAUC OTA staged rollout)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
@@ -113,21 +113,21 @@
 ## Checkpoint #11 | Block: $37.61 | Total: $676.42 | Cost/commit: $37.61
 
 - **Done:**
-  - M365 Phase 1 read-only account health (`CONTROLS_AND_IDENTITY` §4): `m365_account_health` critical service + `m365` adapter, read-only Graph scopes, mock-tested. `e0834e2`.
+  - M365 Phase 1 read-only account health (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §4): `m365_account_health` critical service + `m365` adapter, read-only Graph scopes, mock-tested. `e0834e2`.
 - **Tests:** EHR unit 32/32, alerting/RBAC/audit 76/76, OTA rollout 10/10, control-plane rebuilt with new schema.
-- **Next:** wireless AP health + VPN tunnel health, then backup/DR + AV/EDR read-only status, per `CONTROLS_AND_IDENTITY` §3 build order.
+- **Next:** wireless AP health + VPN tunnel health, then backup/DR + AV/EDR read-only status, per `docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3 build order.
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant for M365 real-world validation.
 - **Progress:** 72 of 99 CHECKLIST items complete (73%), up from 71 of 99 (72%).
 
 ## Checkpoint #12 | Block: $4.77 | Total: $681.19 | Cost/feature commit: $1.59
 
 - **Done:**
-  - Site-level network/endpoint controls (`CONTROLS_AND_IDENTITY` §3): wireless AP, VPN tunnel, backup/DR, AV/EDR read-only adapters (`site_controls.js`). `b998c64`.
-  - Topology detail panel (`EHR_INTEGRATIONS` §11/§12): Mirth reader fetches metadata-only message timestamps and recent error counts; full-status API and Fleet Console render them. `f025efc`.
+  - Site-level network/endpoint controls (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3): wireless AP, VPN tunnel, backup/DR, AV/EDR read-only adapters (`site_controls.js`). `b998c64`.
+  - Topology detail panel (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §11/§12): Mirth reader fetches metadata-only message timestamps and recent error counts; full-status API and Fleet Console render them. `f025efc`.
   - Mirth reader allowlist fix: `pickMessageMeta` drops any content fields the API returns despite `includeContent=false`; new test feeds content-bearing stub and asserts it is dropped. `9332e36`.
   - Hardware lifecycle tooling (no-hardware portion): BOM + alternates (`hardware/bom.json`), golden-image manifest (`hardware/golden_manifest.json`), manifest validator (`scripts/validate_golden_manifest.js`), swap procedure doc, control-plane `POST /api/devices/:id/replace` workflow + CLI (`scripts/swap_device.js`). `36df918`.
-  - PHI-mode toggle design note (`BUILD_SPEC` §8.9): `.agent/phi-mode-design.md` written and under review; no code implemented. `60dd1d3`.
-  - React frontend rewrite logged as deferred in `BEACON_RELAY_STATUS.md` / `BEACON_RELAY_CHECKLIST.md`.
+  - PHI-mode toggle design note (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.9): `.agent/phi-mode-design.md` written and under review; no code implemented. `60dd1d3`.
+  - React frontend rewrite logged as deferred in `docs/specs/BEACON_RELAY_STATUS.md` / `docs/specs/BEACON_RELAY_CHECKLIST.md`.
 - **Tests:** EHR unit 43/43, topology 7/7, device lifecycle 6/6, alerting/RBAC/audit 76/76, OTA rollout 10/10, doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
 - **Repeat check:** none.
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps (secure wipe/TPM clear/alternate qualification/barcode scanning) require real hardware.
@@ -140,7 +140,7 @@
 ## Checkpoint #13 | Block: $4.32 | Total: $685.51 | Cost/feature commit: $2.16
 
 - **Done:**
-  - Device swap security hardening (`BUILD_SPEC` §8.9 / hardware lifecycle): `POST /api/devices/:id/replace` now revokes the old device's certificate in step-ca via JWK provisioner token, records the serial in a local `revoked_serials` registry, and rejects the next mTLS connection attempt with `403 certificate revoked`. `5769c12`.
+  - Device swap security hardening (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.9 / hardware lifecycle): `POST /api/devices/:id/replace` now revokes the old device's certificate in step-ca via JWK provisioner token, records the serial in a local `revoked_serials` registry, and rejects the next mTLS connection attempt with `403 certificate revoked`. `5769c12`.
   - RBAC lockdown: added `devices:replace` permission granted only to `operations-manager`; support-technician can no longer retire devices. `5769c12`.
   - Unit + E2E tests for swap revocation: `scripts/test_device_lifecycle.js` extended; new `scripts/test_device_replace_e2e.js` proves old cert rejected and step-ca refuses renewal. `5769c12`.
   - Demo mode: `npm run demo` / `demo.ps1` one-command orchestrator; `scripts/demo_seed.js` seeds 6 fictional MO/KS critical-access hospitals; `scripts/demo_timeline.js` plays a ~10-min scripted incident timeline (channel stall, TLS cert near expiry, WAN flap/recovery, DNS failure, incident-memory similar-past lookup); `DEMO.md` with start/stop/reset and 5-minute hospital-IT-director click-through; DEMO banner in console pages via `/api/demo`; `device-sim` loops in `DEMO_MODE=1`. `67425ea`.
@@ -149,13 +149,13 @@
 - **Tests:** device lifecycle 13/13, device-swap E2E 7/7, EHR E2E 23/23, alerting/RBAC/audit 76/76, EHR unit 43/43, agent loop 11/11, topology 7/7, Step 1 signals 4/4, configurator 8/8, update client 9/9, OTA rollout 10/10, demo seed 5/5, demo timeline 4/4. All fresh this session.
 - **Repeat check:** none.
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
-- **Next:** PostgreSQL driver swap per `BUILD_SPEC` §5. Architect plan complete; implementation starts in next block. If it exceeds one checkpoint it will be broken into steps with a checkpoint between.
+- **Next:** PostgreSQL driver swap per `docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5. Architect plan complete; implementation starts in next block. If it exceeds one checkpoint it will be broken into steps with a checkpoint between.
 - **Progress:** 78 of 99 CHECKLIST items complete (79%).
 
 ## Checkpoint #14 | Block: $? | Total: $? | Cost/feature commit: $?
 
 - **Done:**
-  - PostgreSQL storage for the control plane (`BUILD_SPEC` §5): `control-plane/src/db.js` rewritten as an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for local dev/tests. All routes, alerting, incident memory, index.js, and RBAC preHandler updated to `await` DB calls. `control-plane/src/schema.js` holds the shared SQLite/Postgres DDL. `65ba54d`.
+  - PostgreSQL storage for the control plane (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5): `control-plane/src/db.js` rewritten as an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for local dev/tests. All routes, alerting, incident memory, index.js, and RBAC preHandler updated to `await` DB calls. `control-plane/src/schema.js` holds the shared SQLite/Postgres DDL. `65ba54d`.
   - SQLite-to-PostgreSQL migration: `control-plane/migrate.js` (and thin launcher `scripts/migrate_sqlite_to_postgres.js`) copies legacy SQLite data idempotently table-by-table with `ON CONFLICT DO NOTHING`. `65ba54d`.
   - Docker composition: `docker-compose.yml` adds a `postgres` service, wires `DATABASE_URL` into the control-plane, and makes the control-plane depend on Postgres health. `control-plane/Dockerfile` uses an entrypoint that runs the migration before starting the server. `65ba54d`.
   - Migration verified in compose: the existing SQLite `cp-data` volume (2023 rows) was copied into the new Postgres service before the control-plane started; full stack came up healthy.
@@ -166,7 +166,7 @@
   - Migration smoke test: seeded SQLite file → `node control-plane/migrate.js` → verified rows in Postgres.
 - **Repeat check:** none.
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
-- **Next:** AWS Organization + three accounts (`CLOUD_ARCHITECTURE_AWS` §6 step 1), now unblocked by Postgres storage. Alternatively, continue with any remaining `BUILD_SPEC` surfaces if AWS access is not ready.
+- **Next:** AWS Organization + three accounts (`CLOUD_ARCHITECTURE_AWS` §6 step 1), now unblocked by Postgres storage. Alternatively, continue with any remaining `docs/specs/BEACON_RELAY_BUILD_SPEC.md` surfaces if AWS access is not ready.
 - **Progress:** 79 of 99 CHECKLIST items complete (80%), up from 78 of 99 (79%).
 
 ## Checkpoint #15 | Block: $7.42 | Total: $692.93 | Cost/feature commit: $1.48

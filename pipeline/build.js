@@ -30,9 +30,9 @@ const REQUIRED_AGENT_FILES = [
   'agent.js', 'provision.js',
   'lib/graph.js', 'lib/post_event.js', 'lib/signal_emit.js', 'lib/backup_risk.js',
   'lib/issue_cert.js', 'lib/tpm.js',
-  // EHR/EMR integration layer (EHR spec §2 adapters + orchestrator)
+  // EHR/EMR integration layer (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §2 adapters + orchestrator)
   'lib/http_json.js', 'lib/net_checks.js', 'lib/fhir_r4.js', 'lib/mirth_admin.js', 'lib/ehr_check.js',
-  // Site network/identity controls (CONTROLS_AND_IDENTITY §3 + §4)
+  // Site network/identity controls (docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md §3 + §4)
   'lib/m365_account_health.js', 'lib/site_controls.js',
 ];
 const missing = REQUIRED_AGENT_FILES.filter(f => !fs.existsSync(path.join(AGENT_DST, f)));

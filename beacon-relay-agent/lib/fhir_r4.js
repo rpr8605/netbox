@@ -1,12 +1,12 @@
 // beacon-relay-agent/lib/fhir_r4.js
 // Responsibility: FHIR R4 read-only polling client — adapter #2 of the EHR/EMR
-// layer (EHR spec §2.2, §7). It does exactly two reads: a capability-statement
+// layer (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §2.2, §7). It does exactly two reads: a capability-statement
 // fetch (GET {base}/metadata) and, when the profile scopes one, a single
 // synthetic-resource read (e.g. Patient/{synthetic-id}). Enough to prove the
 // connection is live and measure latency — never a clinical data pull.
 // Called by: ehr_check.js check dispatch.
 //
-// SAFETY (spec §8 guardrail): the response BODY of the scoped read is never
+// SAFETY (docs/specs/BEACON_RELAY_BUILD_SPEC.md §8 guardrail): the response BODY of the scoped read is never
 // stored, logged, or emitted. The event's observed carries resourceType +
 // status code only. metadata-only-by-default applies to FHIR exactly as it
 // does to HL7v2; do not expand observed to include payload fields.
@@ -19,7 +19,7 @@
 //                        npm tree, and jose would be unavailable)
 // A token failure maps to status 'unknown', NOT 'down': a missing/expired
 // credential grant (e.g. Epic Community Connect without parent-org API access,
-// EHR spec §5) is a config-coverage problem, and the console must not page an
+// docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5) is a config-coverage problem, and the console must not page an
 // on-call human for it.
 import crypto from 'node:crypto';
 import { httpJson } from './http_json.js';

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// configurator/src/index.js — the Configurator CLI (replaces "CLI if faster"
-// ambiguity from §2). Commands:
+// configurator/src/index.js — the Configurator CLI (replaces the earlier
+// "CLI if faster" ambiguity from docs/specs/BEACON_RELAY_BUILD_SPEC.md §2). Commands:
 //   releases        list index/manifest.json entries + artifact SHA256s
 //   flash <version> detect removable drives, require --target=DEVNAME with an
 //                   unmissable confirm prompt, write the disk image with
@@ -120,7 +120,7 @@ async function main() {
 
   if (cmd === 'save') {
     // "Save as standalone install file": export the ALREADY-BUILT artifact —
-    // same image, second path (spec Phase 3 step 5). Does NOT rebuild; it
+    // same image, second path (docs/specs/BEACON_RELAY_BUILD_SPEC.md §8.3 step 5). Does NOT rebuild; it
     // copies out/<version>/beacon-relay-disk.img and verifies the copy's SHA256
     // against the source so the standalone file is provably the same artifact.
     const version = args[0] ?? manifest().version;
@@ -144,7 +144,7 @@ async function main() {
     const target = args.find(a => a.startsWith('--target='))?.slice(9);
     if (!target) { console.error('flash requires --target=DEVICE'); process.exit(1); }
     // Boot-disk exclusion is a HARD REFUSAL, enforced before any confirm prompt
-    // (spec §12 step 5: "refuse to proceed on a drive that looks like the
+    // (docs/specs/BEACON_RELAY_BUILD_SPEC.md §12 step 5: "refuse to proceed on a drive that looks like the
     // machine's own boot disk"). A file target (QEMU/dev path) is exempt — it
     // is not a physical drive and can never be the boot disk.
     const isFile = /\.(raw|img)$/.test(target) || (fs.existsSync(target) && fs.statSync(target).isFile());

@@ -1,7 +1,7 @@
 {
   "profile_id": "athenahealth",
   "vendor": "athenahealth",
-  "vendor_note": "athenaOne cloud-native; API/maturity rows in §5 row 8 hold (per live developer portal docs: 2-legged OAuth token, FHIR on USCDI route plus SMART App Launch 2-legged for certified APIs). FHIR-first 'L0-L4 realistic' without the HL7-only caveat that most other vendors carry. Synthetic endpoints only; per-site values set at onboarding.",
+  "vendor_note": "athenaOne cloud-native; API/maturity rows in docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5 row 8 hold (per live developer portal docs: 2-legged OAuth token, FHIR on USCDI route plus SMART App Launch 2-legged for certified APIs). FHIR-first 'L0-L4 realistic' without the HL7-only caveat that most other vendors carry. Synthetic endpoints only; per-site values set at onboarding.",
   "checks": [
     {
       "name": "ehr-fhir-poll",

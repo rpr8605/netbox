@@ -1,7 +1,7 @@
 # Beacon Relay — Deliverables Checklist (read-only audit)
 
 Audit pass with live re-runs. Every status below was verified against the actual repo and
-by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
+by re-running the test suites on the current commit — not copied from `docs/specs/BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
 **Audited at commit:** `503e165` (agent/md-sync-2026-09-22).
@@ -37,7 +37,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_KIMI_FIXES.md items worked this pass
+## `.agent/BEACON_RELAY_KIMI_FIXES.md` items worked this pass
 
 | Item | What it was | Status | Commit | Test evidence |
 |---|---|---|---|---|
@@ -55,7 +55,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_BUILD_SPEC.md
+## docs/specs/BEACON_RELAY_BUILD_SPEC.md
 
 ### §2 / §8.3 — The Configurator (Phase 3)
 - Base image build (minimal Debian, ro root, writable /data partition) — **DONE** (pipeline stages 00–30; QEMU acceptance).
@@ -122,7 +122,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_EHR_INTEGRATIONS.md
+## docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md
 
 ### §2 — four protocol adapters
 - HL7v2 passive tap — **DONE** (sidecar 18/18).
@@ -157,7 +157,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_CONTROLS_AND_IDENTITY.md
+## docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md
 
 ### §1/§3 — site network controls as first-class critical services
 - WAN/ISP circuit health (dual-path, failover detection) — **DONE**. `wan` added to the canonical schema `service` enum and the critical-service register; `runWanCheck` tests primary/backup circuits against external targets and sets `observed.failover=true` when the backup is active. Covered by `node scripts/test_ehr_unit.js`.
@@ -178,7 +178,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md
+## docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md
 
 - AWS Organization + three accounts (prod, sim/staging, security/log-archive) — **NOT STARTED**.
 - IoT Core + step-ca CA registration (device registry ingestion) — **NOT STARTED**.
@@ -194,7 +194,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md
+## docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md
 
 - Geographic fleet map (lat/lng on site profile, pins colored by status, same RBAC) — **DONE**. `sites` table stores `lat`/`lng`/`name`; enrollment tokens accept site metadata; `GET /api/fleet/map` returns one pin per site with overall status (worst of critical-service statuses, unknown treated as baseline); RBAC allows operations-manager/support-technician and restricts customer-it-admin to their own `site_id`; `public/fleet.html` renders the map. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 - `incident_signature` capture on incident open — **DONE**. Captured automatically when `fireAlert` creates an alert; computed from the latest event(s) for the service at the site (status transition, tier, co-occurring degraded/down signals, time-of-day bucket, interface engine). Covered by `node scripts/test_alerting_rbac_audit_support.js`.
@@ -206,7 +206,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ---
 
-## BEACON_RELAY_SPEC_INDEX.md
+## docs/specs/BEACON_RELAY_SPEC_INDEX.md
 - Reading/hand-off map for the five specs — **DONE** (it's a doc; it's present and read).
 
 ---

@@ -1,5 +1,5 @@
 // beacon-relay-agent/lib/self_monitor.js
-// Responsibility: the agent monitors ITSELF, not just the network (spec §3 —
+// Responsibility: the agent monitors ITSELF, not just the network (docs/specs/BEACON_RELAY_BUILD_SPEC.md §3 —
 // "a monitor that's silently stopped working is worse than no monitor"). Each
 // self-check is its own monitor with its own last-success tracking, so a
 // single silent failure (e.g. heartbeat stalled) is surfaced as a distinct

@@ -1,6 +1,6 @@
 // beacon-relay-agent/lib/m365_account_health.js
-// Responsibility: Phase 1 read-only Microsoft 365 / Entra ID account-health
-// visibility (CONTROLS_AND_IDENTITY §4). Uses exactly the four read-only
+// Responsibility: read-only Microsoft 365 / Entra ID account-health visibility
+// (docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md §4). Uses exactly the four read-only
 // scopes the spec names: User.Read.All, AuditLog.Read.All, Organization.Read.All,
 // Reports.Read.All. No write actions, no password reset, no unlock, no session
 // revocation. Emits a canonical check_result for service `m365_account_health`.

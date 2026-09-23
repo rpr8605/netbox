@@ -15,7 +15,7 @@ This document states who authenticates how, where protected health information (
 
 ### Operator authentication
 
-- The Fleet Console and operator API endpoints currently use a query-string role parameter (`?role=operations-manager`) as a Phase 2 placeholder.
+- The Fleet Console and operator API endpoints currently use a query-string role parameter (`?role=operations-manager`) as a placeholder until real operator auth is built.
 - This is **not real authentication**. Anyone who can reach the control-plane port can declare any role.
 - Real operator authentication (OIDC + MFA) is pending a decision on identity provider; options are documented in `.agent/c1-auth-options.md`.
 

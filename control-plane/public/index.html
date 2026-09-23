@@ -1,12 +1,12 @@
 <!doctype html>
 <!-- control-plane/public/index.html
-     Minimal fleet console (Phase 2 bare-bones scope): device list, state,
-     last-seen, and the operator quarantine-release button. Phase 7's React
-     console replaces this; do not grow this page beyond registry truth. -->
+     Minimal fleet console (bare-bones operator scope): device list, state,
+     last-seen, and the operator quarantine-release button. A full React console
+     replaces this later; do not grow this page beyond registry truth. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Beacon Relay — Fleet (Phase 1/2 console)</title>
+  <title>Beacon Relay — Fleet (minimal console)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; color: #17202a; }
     table { border-collapse: collapse; width: 100%; }
@@ -22,7 +22,7 @@
 </head>
 <body>
   <div id="demo-banner">DEMO MODE — Synthetic data only. No real hospitals, patients, or PHI.</div>
-  <h1>Beacon Relay fleet console <small>(Phase 1/2 minimal)</small></h1>
+  <h1>Beacon Relay fleet console <small>(minimal)</small></h1>
   <p>Device registry as the control plane sees it. Quarantined devices must be
      confirmed by an operator after their first valid certificate presentation.</p>
   <table id="t">

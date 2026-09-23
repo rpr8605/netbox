@@ -1,6 +1,6 @@
 // beacon-relay-agent/lib/ehr_check.js
 // Responsibility: the EHR/EMR check orchestrator — loads one per-site config
-// profile (EHR spec §2's "config profile, not new code"), dispatches each
+// profile (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §2's "config profile, not new code"), dispatches each
 // check entry to exactly one of the four protocol adapters, and emits one
 // canonical check_result event per entry via post_event.js.
 // Called by: scripts/test_ehr_unit.js, scripts/test_ehr_e2e.js today;
@@ -85,7 +85,7 @@ async function emitCheck(ctx, check, result, post) {
   if (result.tier) ev.tier_observed = result.tier;
   const main = await post(ev);
   // TLS certificate expiration is a first-class critical service per
-  // CONTROLS_AND_IDENTITY §3. Whenever any adapter observes a peer cert
+  // docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md §3. Whenever any adapter observes a peer cert
   // (L2 TLS handshake), also emit a metadata-only cert_expiration event so
   // the console can report expiry across all checked endpoints.
   if (result.observed?.cert) {
@@ -145,7 +145,7 @@ async function emitCertExpiration(ctx, check, cert, latencyMs, post) {
 // runProfile — executes all enabled checks, emits one event per check, and
 // returns a compact summary for the caller/log. A disabled entry is SKIPPED
 // by design (Epic Community Connect ships with FHIR disabled until the parent
-// org grants API creds, EHR spec §5; flag was approved during onboarding).
+  // org grants API creds, docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5; flag was approved during onboarding).
 export async function runProfile(ctx, profile, { post = postEvent, logger = console.log } = {}) {
   const summary = [];
   for (const check of profile.checks) {

@@ -1,4 +1,4 @@
-# .gitignore — Phase 1
+# .gitignore — device-identity foundation
 node_modules/
 dist/
 out/

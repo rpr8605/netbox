@@ -1,9 +1,10 @@
 // device-sim/src/index.js
-// Responsibility: simulate one Beacon Relay device through the full Phase 1 flow and
-// assert the trust boundaries hold. This file IS the Phase 1 end-to-end test —
-// it exits 0 only if every step, including the negative cases, behaves as speced.
+// Responsibility: simulate one Beacon Relay device through the enrollment and mTLS
+// foundation flow and assert the trust boundaries hold. This file IS the end-to-end
+// test for that foundation — it exits 0 only if every step, including the negative
+// cases, behaves as speced.
 //
-// Sequence (spec §2 + §8 step 1):
+// Sequence (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2 + §8.1):
 //   happy path:  token -> redeem -> fingerprint pin -> CSR -> step-ca sign ->
 //                mTLS heartbeat -> quarantine gate blocks check_result ->
 //                operator confirm -> check_result accepted
@@ -11,8 +12,9 @@
 //   negative 2:  self-signed client cert -> refused at the mTLS gate
 //
 // NOTE (flagged, not hidden): key storage here is a plain file under /data —
-// the software-key path. TPM sealing (spec §2) cannot be exercised in a
-// container and is marked untested-until-hardware in the Phase 1 report.
+// the software-key path. TPM sealing (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2) cannot
+// be exercised in a container and is marked untested-until-hardware in the device-identity
+// foundation report.
 import forge from 'node-forge';
 import { request, Agent } from 'undici';
 import crypto from 'node:crypto';
@@ -175,7 +177,7 @@ async function main() {
   const crEv2 = await api('POST', '/api/events', canonicalEvent('check_result'), mtls);
   check('check_result accepted after confirm', crEv2.status === 202);
 
-  // ---- key-continuity retrust (approved Phase 3 flow) ---------------------
+  // ---- key-continuity retrust (approved Configurator/renewal flow) --------
   // Simulates the expired-cert path: challenge -> SIGNED PoP -> new OTT.
   const ch = await api('POST', '/api/enroll/retrust/challenge', { device_id: DEVICE_ID });
   check('retrust challenge issued', ch.status === 200 && !!ch.body.challenge,

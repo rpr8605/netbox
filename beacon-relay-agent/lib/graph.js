@@ -1,9 +1,8 @@
-// beacon-relay-agent/lib/graph.js — Phase 1 READ-ONLY Microsoft Graph adapter for
-// the two Step 1 signals. Explicitly scoped to the four read-only
-// permissions (User.Read.All, AuditLog.Read.All, Organization.Read.All,
-// Reports.Read.All). No groups/directory writes, no Phase-2 actions. All
-// checks share this one access helper so a later MSv2 tenant profile wraps
-// them uniformly.
+// beacon-relay-agent/lib/graph.js — READ-ONLY Microsoft Graph adapter for the
+// two Step 1 signals. Explicitly scoped to the four read-only permissions
+// (User.Read.All, AuditLog.Read.All, Organization.Read.All, Reports.Read.All).
+// No groups/directory writes, no later password-reset actions. All checks share
+// this one access helper so a later MSv2 tenant profile wraps them uniformly.
 import { emitSecuritySignal } from './signal_emit.js';
 
 // Graph uses OAuth2 client-credentials from the per-site env profile
@@ -22,8 +21,8 @@ async function graph(token_url, fetcher) {
   };
 }
 
-// The two signals use Graph endpoints consistent with the Phase 1 scopes:
-// /auditLogs/directoryAudits (AuditLog.Read.All; admin-app creation data),
+// The two signals use Graph endpoints consistent with the read-only account-health
+// scopes: /auditLogs/directoryAudits (AuditLog.Read.All; admin-app creation data),
 // /auditLogs/signIns      (AuditLog.Read.All; after-hours patterns). We do not
 // define "after hours" globally — the per-site basis string comes from a
 // loadable hour map in the site profile (grumble loud).
@@ -36,7 +35,7 @@ function isAfterHours(ms, siteHours) {
 // after-hours sign-ins) and emit each as a canonical security_signal event.
 // No-ops when the site has no M365 profile (the tenantConfigured gate) so
 // non-Microsoft sites boot cleanly. READ-ONLY BY DESIGN and must stay that
-// way: Phase 1 grants only read scopes, and this function growing a directory
+// way: this step grants only read scopes, and this function growing a directory
 // write would break the detection-only boundary that limits what a compromised
 // or misbehaving agent can do to a tenant. `fetcher` is injectable purely so
 // the test harness can run the full path without network or tenant secrets.

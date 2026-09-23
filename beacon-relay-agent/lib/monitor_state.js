@@ -3,7 +3,7 @@
 // consecutive failure count — persisted to /data so a daemon restart doesn't
 // lose "how long has this been down" (the Fleet Console freshness story
 // depends on it). Called by: monitor_loop.js (every check cycle).
-// /data is the writable LUKS partition; root is read-only (spec §2), so state
+// /data is the writable LUKS partition; root is read-only (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2), so state
 // must NOT live anywhere else on the image.
 import fs from 'node:fs';
 import path from 'node:path';

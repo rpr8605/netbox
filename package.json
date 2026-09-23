@@ -2,7 +2,7 @@
   "name": "beacon-relay",
   "private": true,
   "type": "module",
-  "description": "Beacon Relay remote hospital infrastructure monitoring appliance — Phase 1 workspace.",
+  "description": "Beacon Relay remote hospital infrastructure monitoring appliance — device-identity foundation workspace.",
   "scripts": {
     "gen-types": "node scripts/gen_schema.js",
     "pki-seed": "node --env-file=.env scripts/pki_seed.js",

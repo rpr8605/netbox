@@ -5,11 +5,12 @@
 //   GET  /api/sites/:id/topology         per-site view: newest check_result per channel
 //   GET  /api/topology/rollup?role=<r>   cross-site rollup, ROLE-GATED to
 //                                        operations-manager | support-technician per the RBAC
-//                                        row (spec §5) — anyone else gets 403.
+//                                        row (docs/specs/BEACON_RELAY_BUILD_SPEC.md §5) — anyone else gets 403.
 //
-// RBAC is a STUB here (Phase 2 has no auth yet): the role comes from the query
-// string and is validated against an allow-list. The gate is structural — a
-// real auth layer (Phase 8) must map principal->role here, but the "rollup is
+// RBAC is a STUB here (the current operator-auth layer has no real identity
+// verification): the role comes from the query string and is validated against an
+// allow-list. The gate is structural — a future OIDC/Cognito auth layer must map
+// principal->role here, but the "rollup is
 // ops-manager/support-technician ONLY" decision lives at this route, not in
 // the console.
 import { listChannels, getChannel, getDevice, listEvents, listEventsBySite, listDevices, upsertChannel } from '../db.js';
@@ -59,7 +60,7 @@ async function toTopology(events) {
 
 export default async function channelRoutes(app) {
   // Operator registers a channel_id -> display name/engine. Same stub-gate as
-  // /api/enroll/tokens (Phase 2): real RBAC in Phase 8.
+  // /api/enroll/tokens (current operator-auth stub): real RBAC once auth lands.
   // Register a channel_id -> display name/engine. A WRITE to the registry —
   // requires channels:write (operations-manager). Was unauthenticated before.
   app.post('/api/channels', {

@@ -5,9 +5,9 @@
 //   POST /api/devices/:id/confirm     operator confirms identity + config
 //                                     integrity; flips quarantine -> active.
 //
-// The confirm step is the human half of the quarantine gate (spec §2): the
-// device cannot self-certify out of quarantine — an operator (Phase 8: an
-// RBAC'd one) must confirm, and the device must have presented a valid
+// The confirm step is the human half of the quarantine gate (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2): the
+// device cannot self-certify out of quarantine — an operator (once real RBAC auth
+// lands: an RBAC'd one) must confirm, and the device must have presented a valid
 // step-ca-issued cert at least once (last_seen_at set by the mTLS gate).
 import { getDevice, listDevices, listEvents, upsertDevice, replaceDevice, recordRevokedSerial } from '../db.js';
 import { requirePerm } from '../rbac.js';

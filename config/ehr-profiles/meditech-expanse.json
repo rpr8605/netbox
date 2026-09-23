@@ -1,7 +1,7 @@
 {
   "profile_id": "meditech-expanse",
   "vendor": "MEDITECH",
-  "vendor_note": "Expanse tier — the FHIR-capable MEDITECH product (EHR spec §5, row 3: Expanse L0–L4 achievable). Checks: FHIR L3 (capability + scoped synthetic read) plus an optional interface-engine admin read. Synthetic endpoints only; per-site values are set at onboarding.",
+  "vendor_note": "Expanse tier — the FHIR-capable MEDITECH product (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5, row 3: Expanse L0–L4 achievable). Checks: FHIR L3 (capability + scoped synthetic read) plus an optional interface-engine admin read. Synthetic endpoints only; per-site values are set at onboarding.",
   "checks": [
     {
       "name": "ehr-fhir-poll",

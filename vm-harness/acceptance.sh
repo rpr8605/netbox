@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vm-harness/acceptance.sh — the Phase 3 acceptance run, end to end:
+# vm-harness/acceptance.sh — the Configurator acceptance run, end to end:
 #   1. copy the built disk image (never boot the artifact itself)
 #   2. mint a one-time enrollment token from the REAL control plane
 #   3. write it onto the BOOT partition of the copy

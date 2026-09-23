@@ -71,9 +71,9 @@ Tests that touch PostgreSQL require `DATABASE_URL` set (`.env` does this by defa
 - `docs/reviews/2026-09-23-independent-review.md` — latest independent security review.
 - `docs/ARCHITECTURE.md` — system diagram and trust boundaries.
 - `docs/SECURITY_MODEL.md` — authentication, CA, PHI handling, and threat assumptions.
-- `BEACON_RELAY_SPEC_INDEX.md` — maps each spec to the code it governs.
-- `BEACON_RELAY_CHECKLIST.md` — implementation status and test evidence.
-- `BEACON_RELAY_STATUS.md` — current state and blockers.
+- `docs/specs/BEACON_RELAY_SPEC_INDEX.md` — maps each spec to the code it governs.
+- `docs/specs/BEACON_RELAY_CHECKLIST.md` — implementation status and test evidence.
+- `docs/specs/BEACON_RELAY_STATUS.md` — current state and blockers.
 
 ## Development notes
 

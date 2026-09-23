@@ -1,5 +1,6 @@
 # control-plane/Dockerfile
-# Phase 1/2 control plane image. Node 24 slim; better-sqlite3 needs build tools.
+# Control-plane image for the device-identity foundation + minimal operator UI.
+# Node 24 slim; better-sqlite3 needs build tools.
 # Build context is the repo root so the canonical schema can be copied in.
 FROM node:24-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \

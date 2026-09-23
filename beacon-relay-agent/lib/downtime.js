@@ -1,5 +1,5 @@
 // beacon-relay-agent/lib/downtime.js
-// Responsibility: downtime mode (spec §3) — the one piece of the product that
+// Responsibility: downtime mode (docs/specs/BEACON_RELAY_BUILD_SPEC.md §3) — the one piece of the product that
 // must work ESPECIALLY when the WAN and the cloud dashboard are both down. A
 // tiny local HTTP server on the device serves the cached contact tree, vendor
 // numbers, per-site recovery priorities, and runbooks straight from /data.

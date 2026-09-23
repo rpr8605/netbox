@@ -7,7 +7,7 @@ issues that pass turned up, left unfixed on purpose so they'd get a real look in
 drive-by patch. Each item below is self-contained — file, problem, why it matters, and a
 concrete fix — so any one of them can be handed to Kimi on its own.
 
-After fixing any item, re-run the relevant suite from `BEACON_RELAY_STATUS.md` §2 before
+After fixing any item, re-run the relevant suite from `docs/specs/BEACON_RELAY_STATUS.md` §2 before
 calling it done. Most of these touch `scripts/test_agent_loop.js` or
 `scripts/test_alerting_rbac_audit_support.js`.
 
@@ -72,7 +72,7 @@ should be gated is not:
   right now.
 
 This is documented honestly in `rbac.js`'s own comments (added in the comment-accuracy
-pass) and in `BEACON_RELAY_STATUS.md` §3 ("RBAC is a structural stub"), so this isn't a
+pass) and in `docs/specs/BEACON_RELAY_STATUS.md` §3 ("RBAC is a structural stub"), so this isn't a
 surprise finding — it's the known next step, made concrete.
 
 **Why it matters:** in Phase 2, `role` arrives as a plain request attribute
@@ -140,7 +140,7 @@ minting should be open on the host network in the meantime.
 
 **Files:** `configurator/src/index.js`, `configurator/flash_wrapper.sh`
 
-**Problem:** `BEACON_RELAY_BUILD_SPEC.md` calls for the flash tool to refuse a target that
+**Problem:** `docs/specs/BEACON_RELAY_BUILD_SPEC.md` calls for the flash tool to refuse a target that
 looks like the machine's own boot disk. That check does not exist. The only safeguard
 today is `confirmHard()` in `configurator/src/index.js` (line 29), which requires the
 operator to retype the exact target path — a real safeguard against fat-fingering, but not
@@ -206,10 +206,10 @@ on one property, but the `get()` method actually used to make requests sends
 correctly-prefixed value is dead: nothing reads it.
 
 **Why it matters:** this file isn't imported by `agent.js` today (per
-`BEACON_RELAY_STATUS.md` §3: "the existing `beacon-relay-agent/lib/graph.js` is only the
+`docs/specs/BEACON_RELAY_STATUS.md` §3: "the existing `beacon-relay-agent/lib/graph.js` is only the
 earlier Step-1 Graph security-signal work"), so this bug is currently harmless. It stops
 being harmless the moment someone wires Graph calls back in for the
-`CONTROLS_AND_IDENTITY` §6 M365 account-health work — every request will 401 until this is
+`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §6 M365 account-health work — every request will 401 until this is
 noticed, likely during that future integration work, costing time re-discovering a bug
 that's already known.
 
@@ -297,7 +297,7 @@ runtime update/rollback logic would live (not found in this repo's `pipeline/` o
 ESP once, from slot A, at image-build time. No grubenv, no slot-selection variable, and no
 rollback-on-failed-boot logic was found anywhere in the pipeline during this review.
 
-**Why it matters:** `BEACON_RELAY_STATUS.md` §1 lists signed A/B updates as part of what
+**Why it matters:** `docs/specs/BEACON_RELAY_STATUS.md` §1 lists signed A/B updates as part of what
 Phase 3 proves, and §3 separately notes "the dev → test-device → pilot-group → broad
 rollout... is not built" for the *staged rollout*, which reads as if the underlying A/B
 switch itself works and only the rollout policy on top of it is missing. If grub can't
@@ -319,7 +319,7 @@ boots into.
    variable instead of hardcoding `ROOTFS_A`.
 3. Confirm with whoever built the original Phase 3 acceptance run
    (`vm-harness/acceptance.sh`) whether an actual slot-B boot was ever exercised — the
-   acceptance criteria listed in `BEACON_RELAY_STATUS.md` §1 (first-boot → TPM-seal →
+   acceptance criteria listed in `docs/specs/BEACON_RELAY_STATUS.md` §1 (first-boot → TPM-seal →
    quarantine → confirm → active heartbeat) describe a first-boot flow on slot A, not an
    update-and-reboot-into-slot-B flow, so it's possible this was simply never tested yet
    rather than broken.

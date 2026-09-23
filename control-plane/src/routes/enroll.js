@@ -1,7 +1,7 @@
 // control-plane/src/routes/enroll.js
 // Responsibility: enrollment-token lifecycle.
-//   POST /api/enroll/tokens   (operator side — Phase 1: localhost-only) creates
-//                             a one-time token for a device_id/site_id pair.
+//   POST /api/enroll/tokens   (operator side — localhost-only until real operator
+//                             auth lands) creates a one-time token for a device_id/site_id pair.
 //   POST /api/enroll/redeem   (device side) exchanges the one-time token for a
 //                             short-lived step-ca JWK + CA bootstrap material.
 //
@@ -39,7 +39,7 @@ export function enrollmentTokenPolicy(deviceId, existingDevice, reEnroll) {
 
 export default async function enrollRoutes(app) {
   // Operator endpoint. Requires an operator role that can mint enrollment tokens
-  // (C2). Phase 1 still uses query-string roles, but the gate is structural so
+  // (C2). The current stub still uses query-string roles, but the gate is structural so
   // a real auth layer only has to supply the principal's role.
   app.post('/api/enroll/tokens', {
     preHandler: requirePerm('enroll:tokens', appendAudit),
@@ -70,7 +70,7 @@ export default async function enrollRoutes(app) {
     await createEnrollmentToken({ tokenHash, deviceId: device_id, siteId: site_id, expiresAt });
     // Register the device in quarantine NOW — before any cert exists. A device
     // that shows up with a valid cert but no registry row is refused later;
-    // quarantine-by-default is the safety property (spec §2). For re-enroll of
+    // quarantine-by-default is the safety property (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2). For re-enroll of
     // an existing non-active device the policy preserves the prior state.
     await upsertDevice({ deviceId: device_id, siteId: site_id, state: policy.state });
     // Optional site metadata for the geographic fleet map (TOPOLOGY_…_MEMORY §1).

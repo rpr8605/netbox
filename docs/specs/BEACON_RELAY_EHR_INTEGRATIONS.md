@@ -1,6 +1,6 @@
 # Beacon Relay — EHR/EMR Integration Reference & Configurator Pre-Read (for Kimi)
 
-This is a companion document to `BEACON_RELAY_BUILD_SPEC.md`. It does not replace anything in
+This is a companion document to `docs/specs/BEACON_RELAY_BUILD_SPEC.md`. It does not replace anything in
 that spec — architecture, tech stack, schema, and build order are still governed by
 Sections 1–11 there. This file exists so Kimi has one self-contained document to read
 **before** two specific pieces of work: the Configurator (build order Phase 3), and the
@@ -245,7 +245,7 @@ volume, it should be the more broadly available signal, not the exception.
 ## 8. What Beacon Relay does not do here (guardrails, restating the main spec's design)
 
 This document adds vendor names and transport details; it does not loosen any constraint
-already set in `BEACON_RELAY_BUILD_SPEC.md`:
+already set in `docs/specs/BEACON_RELAY_BUILD_SPEC.md`:
 
 - No PHI in the default `phi_mode: false` path, ever — metadata only, exactly as Section 4
   specifies, regardless of which vendor's feed it's reading.
@@ -288,7 +288,7 @@ spec's Phases 4–5 (device agent checks, HL7/MLLP sidecar):
 You are continuing work on "Beacon Relay." Phases 1-3 from the main build spec (schema/PKI,
 minimal control plane, Configurator) are done. You are now extending the Device Agent and
 HL7/MLLP sidecar (Phases 4-5) to recognize real-world hospital systems. Read both
-BEACON_RELAY_BUILD_SPEC.md and this document (BEACON_RELAY_EHR_INTEGRATIONS.md) in full before
+docs/specs/BEACON_RELAY_BUILD_SPEC.md and this document (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md) in full before
 starting — the second document is the "who are we plugging into" reference the first one
 doesn't cover.
 
@@ -296,7 +296,7 @@ Do not build fifteen separate EHR integrations. Build exactly four protocol-leve
 adapters — HL7v2 passive tap (already speced), FHIR R4 read-only polling client, generic
 network checks (already speced), and a Mirth Connect/NextGen Connect admin-API reader —
 plus a per-site config profile schema that maps a hospital's real systems onto those four
-adapters. Section 2 of BEACON_RELAY_EHR_INTEGRATIONS.md explains why.
+adapters. Section 2 of docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md explains why.
 
 Build order for this piece:
 1. The FHIR R4 read-only adapter, tested against a public FHIR R4 sandbox — auth
@@ -331,7 +331,7 @@ Handoff's job. Beacon Relay's job here is just: show what's talking to what, and
 healthy, using data the appliance already has a reason to collect.
 
 **Why this belongs in the Fleet Console specifically, not a new subsystem:** the main
-build spec's Fleet Console (`BEACON_RELAY_BUILD_SPEC.md`, Section 7) is already a multi-site,
+build spec's Fleet Console (`docs/specs/BEACON_RELAY_BUILD_SPEC.md`, Section 7) is already a multi-site,
 role-aware dashboard — every event already carries a `site_id`, and RBAC already
 distinguishes **customer IT admin** (the hospital's own staff, sees their site only) from
 **operations manager** and **support technician** (Ryan's team, sees across every
@@ -396,7 +396,7 @@ the interface engine.
 ```
 You are continuing work on "Beacon Relay." The Mirth Connect/NextGen Connect admin-API reader
 from Section 10's step 2 is done and demoable. Read Section 11 of
-BEACON_RELAY_EHR_INTEGRATIONS.md in full before starting — it explains why this is scoped to
+docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md in full before starting — it explains why this is scoped to
 topology visibility only, not a Handoff integration, and why it belongs in the existing
 Fleet Console rather than a new subsystem.
 
@@ -405,7 +405,7 @@ Build, in order:
    source_system, destination_system — populated from the admin-API reader when a site's
    config profile includes an interface engine.
 2. Add channel_id as an optional field on the existing canonical event schema
-   (BEACON_RELAY_BUILD_SPEC.md Section 4) — do not create a new event kind or a parallel schema.
+   (docs/specs/BEACON_RELAY_BUILD_SPEC.md Section 4) — do not create a new event kind or a parallel schema.
 3. Fleet Console per-site topology view: a graph of that site's channels, nodes as
    systems, edges as channels, edge color from the existing status enum
    (reachable/verified_ready/active/degraded/down). Clicking an edge shows last-message

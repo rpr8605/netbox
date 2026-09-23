@@ -2,7 +2,7 @@
 
 ## Goal
 Document the design for a per-site PHI-mode toggle before any implementation code is
-written. This is `BUILD_SPEC` §8.9, split out because enabling PHI retention is a
+written. This is `docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.9, split out because enabling PHI retention is a
 deliberate, contractual, audited act rather than a normal feature flag.
 
 ## Default state: OFF, forever, unless explicitly enabled

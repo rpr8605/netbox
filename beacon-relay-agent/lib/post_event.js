@@ -16,7 +16,7 @@ export function setMockPostEvent(fn) { _mockPostEvent = fn; }
 // maintains under /data. Prefers tls_key.pem when present, but NEVER in tests —
 // the NODE_ENV guard forces the sim/harness onto device_key.pem so test key
 // material is never confused with a device's renewal-managed key. ca stays
-// null: Phase 1 authenticates the DEVICE by this client cert; server
+// null: the device-identity foundation step authenticates the DEVICE by this client cert; server
 // verification is not CA-based yet (see postEvent).
 export function mtls() {
   const certPem = fs.readFileSync('/data/device.crt', 'utf8');
@@ -30,7 +30,7 @@ export function mtls() {
 // override (if set) short-circuits all real IO. Throws on non-200/202 ON
 // PURPOSE — callers must decide retry-vs-drop explicitly, because a silently
 // dropped security signal is indistinguishable from "everything is fine" on
-// the dashboard. rejectUnauthorized:false is a deliberate Phase 1 stance: the
+// the dashboard. rejectUnauthorized:false is a deliberate device-identity-foundation stance: the
 // control plane serves a private-CA cert the agent doesn't carry the root for,
 // so channel trust rides on the mTLS client cert + a deployment-fixed address.
 // Tightening that is a coordinated PKI change, not a local toggle.

@@ -1,5 +1,5 @@
 // control-plane/src/deliver.js
-// Responsibility: the delivery rails for the alerting engine (spec §6) —
+// Responsibility: the delivery rails for the alerting engine (docs/specs/BEACON_RELAY_BUILD_SPEC.md §6) —
 // Twilio SMS/voice, SES/SendGrid email, Slack/Teams webhook. Beacon Relay owns the
 // escalation DECISIONS (alerting.js); this file is the proven plumbing that
 // actually sends. Each channel is a small function over the injected config;
@@ -79,7 +79,7 @@ export async function sendSendGrid({ apiKey, from, to, subject, text }) {
   }, { authorization: `Bearer ${apiKey}` });
 }
 
-// AWS SES (v2) email. Spec §6 says SES *or* SendGrid; this gives customers the
+// AWS SES (v2) email. docs/specs/BEACON_RELAY_BUILD_SPEC.md §6 says SES *or* SendGrid; this gives customers the
 // choice. When SES is configured it is tried first; otherwise SendGrid is the
 // fallback. Credentials are scoped to SES only — no broader AWS access.
 export async function sendSes({ accessKeyId, secretAccessKey, region, from, to, subject, text }) {

@@ -1,6 +1,6 @@
 // beacon-relay-agent/lib/mirth_admin.js
 // Responsibility: Mirth Connect / NextGen Connect admin-API reader — adapter
-// #4 of the EHR/EMR layer (EHR spec §2.4, §4; picked first among interface
+// #4 of the EHR/EMR layer (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §2.4, §4; picked first among interface
 // engines deliberately because Mirth is the only engine a critical-access
 // hospital's budget can absorb). It logs in, reads per-channel connector
 // status, and logs out.
@@ -10,7 +10,7 @@
 // `includeContent=false`. The messages call requests only timestamps and status
 // values; it never fetches message bodies, identifiers, or PHI-adjacent content.
 // This single metadata-only exception exists because the Fleet Console detail
-// panel needs last-message time and recent error count (EHR spec §11), and
+// panel needs last-message time and recent error count (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §11), and
 // those values are not present in the status or statistics endpoints.
 //
 // Failure semantics: a session/auth failure reports 'unknown' (config deficit,

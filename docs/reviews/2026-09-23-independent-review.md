@@ -139,7 +139,7 @@ Also low: support-session token compared with `!==` (use `crypto.timingSafeEqual
 ### What makes it hard today
 
 1. **The README is 3 lines and wrong.** It describes a schema registry and a file (`apply_patch.py`) that isn't there. There's no "what is this, how do I run it, where do I start."
-2. **Thirteen Markdown files and about 30,000 words sit in the repo root.** Product specs are mixed with AI-process files (`BEACON_RELAY_KIMI_FIXES.md`, `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md`, `AGENTS.md`, `models/`, `opencode.json`). A newcomer can't tell which document is the source of truth.
+2. **Thirteen Markdown files and about 30,000 words sit in the repo root.** Product specs are mixed with AI-process files (`.agent/BEACON_RELAY_KIMI_FIXES.md`, `BEACON_RELAY_KIMI_AUDIT_FIXES(1).md` since deleted, `AGENTS.md`, `models/`, `opencode.json`). A newcomer can't tell which document is the source of truth.
 3. **Comments point at internal labels, not explanations.** Things like "spec §2", "Phase 8", "KF3" and "BUILD_SPEC §8.7" mean nothing without reading the specs.
 4. **Some comments are wrong, and that's worse than no comments.**
    - `events.js` says the server "sets rejectUnauthorized". It's `false`.

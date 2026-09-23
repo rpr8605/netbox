@@ -28,8 +28,8 @@ What would be needed:
 - Vendor/security questionnaire responses.
 
 What exists instead:
-- Security design intent is scattered across specs (`BEACON_RELAY_BUILD_SPEC.md`
-  §1, §5, §7; `BEACON_RELAY_CONTROLS_AND_IDENTITY.md`; `BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md`).
+- Security design intent is scattered across specs (`docs/specs/BEACON_RELAY_BUILD_SPEC.md`
+  §1, §5, §7; `docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md`; `docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md`).
 - An independent code review (`Beacon_Relay_Code_Review_2026-09-23.md`) lists
   critical/high findings and recommends creating `docs/SECURITY_MODEL.md` as
   the core of the approval pack.
@@ -54,8 +54,8 @@ Evidence:
   - `pki-config/entrypoint.sh`
   - `scripts/pki_seed.js`
 - TPM sealing intent and LUKS fallback are documented:
-  - `BEACON_RELAY_BUILD_SPEC.md` §1, §2, §8.1
-  - `BEACON_RELAY_STATUS.md` §1 Phase 3 claims TPM-seal → quarantine → confirm
+  - `docs/specs/BEACON_RELAY_BUILD_SPEC.md` §1, §2, §8.1
+  - `docs/specs/BEACON_RELAY_STATUS.md` §1 Phase 3 claims TPM-seal → quarantine → confirm
 - Device-side cert/key handling:
   - `beacon-relay-agent/lib/tpm.js`
   - `beacon-relay-agent/agent.js`
@@ -87,7 +87,7 @@ Evidence:
   - `control-plane/src/db.js` (`createSupportSession`, `expiredSupportSessions`)
   - `scripts/test_alerting_rbac_audit_support.js` D1–D6 pass
 - No standing SSH: design explicitly says "outbound-only session broker" and
-  "no inbound ports" (`BEACON_RELAY_BUILD_SPEC.md` §7, §8.2).
+  "no inbound ports" (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §7, §8.2).
 - RBAC role/permission map exists for five roles:
   - `control-plane/src/rbac.js`
   - `scripts/test_alerting_rbac_audit_support.js` B1–B17 pass
@@ -95,10 +95,10 @@ Evidence:
 Gaps:
 - **No real authentication or MFA.** Roles are passed as query/body parameters
   (`?role=operations-manager`), not derived from an authenticated principal
-  (`Beacon_Relay_Code_Review_2026-09-23.md` C1, `BEACON_RELAY_STATUS.md`
-  "Known issues").
+  (`Beacon_Relay_Code_Review_2026-09-23.md` C1, `docs/specs/BEACON_RELAY_STATUS.md`
+   "Known issues").
 - **Several routes have no permission gate at all** (`Beacon_Relay_Code_Review_2026-09-23.md` H3).
-- AWS Cognito with MFA is spec'd (`BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md`) but
+- AWS Cognito with MFA is spec'd (`docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md`) but
   not implemented.
 
 Because real auth/MFA is missing and route gates are incomplete, this area is
@@ -125,7 +125,7 @@ Evidence:
   - `scripts/test_update_client.js` U8–U9 pass
 
 Gaps:
-- **SBOM generation is deferred** (`BEACON_RELAY_CHECKLIST.md` §8.7).
+- **SBOM generation is deferred** (`docs/specs/BEACON_RELAY_CHECKLIST.md` §8.7).
 - **CVE monitoring is not implemented.** No SBOM means no CVE feed; no scanner
   integration found.
 - **OTA rollback logic may mark the wrong slot.** Independent review notes that
@@ -154,7 +154,7 @@ Evidence:
   - `scripts/test_alerting_rbac_audit_support.js` H1–H10 pass
 - PHI-mode toggle design note exists but is not implemented:
   - `.agent/phi-mode-design.md`
-  - `BEACON_RELAY_STATUS.md` §8.9
+  - `docs/specs/BEACON_RELAY_STATUS.md` §8.9
 
 Gaps:
 - **PHI guard only covers email.** SMS, voice, and Slack/Teams webhook paths
@@ -186,7 +186,7 @@ Evidence:
   - SES/SendGrid fallback implemented
 
 Note: delivery rails are proven by shape/skip behavior, not by sending real
-SaaS messages (documented in `BEACON_RELAY_STATUS.md`).
+SaaS messages (documented in `docs/specs/BEACON_RELAY_STATUS.md`).
 
 ---
 
@@ -290,10 +290,10 @@ What would be needed:
 
 What exists instead:
 - AWS doc mentions RDS, ECS/Fargate, S3, IoT Core, Cognito are HIPAA-eligible
-  and a BAA is required (`BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §5).
+  and a BAA is required (`docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §5).
 - PHI-mode design note mentions requiring a recorded BAA/contract amendment
   reference per site (`.agent/phi-mode-design.md`).
-- `BEACON_RELAY_CHECKLIST.md` lists "HIPAA BAA / eligible-services confirmation"
+- `docs/specs/BEACON_RELAY_CHECKLIST.md` lists "HIPAA BAA / eligible-services confirmation"
   as NOT STARTED.
 
 Gap: no actual contract or insurance documents exist in the repo.

@@ -1,7 +1,7 @@
 {
   "profile_id": "oracle-health-communityworks",
   "vendor": "Oracle Health (Cerner) — CommunityWorks",
-  "vendor_note": "CommunityWorks tier (EHR spec §5, row 2): HL7v2 integration-standard (Cerner Open Interface / Ignite where enabled); FHIR R4-supported per vendor docs. Caveat: CommunityWorks is multitenant ASP — a given site only rises L3/L4 via FHIR iff the tenant actually exposes an Ignite/API package per vendor docs + licensing. The fhir check ships enabled:true as the standard deliverable; disable it (allow-disabled pattern) at sites where the entitlement is absent, per Section 5's 'confirm per site' row rather than assuming.",
+  "vendor_note": "CommunityWorks tier (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5, row 2): HL7v2 integration-standard (Cerner Open Interface / Ignite where enabled); FHIR R4-supported per vendor docs. Caveat: CommunityWorks is multitenant ASP — a given site only rises L3/L4 via FHIR iff the tenant actually exposes an Ignite/API package per vendor docs + licensing. The fhir check ships enabled:true as the standard deliverable; disable it (allow-disabled pattern) at sites where the entitlement is absent, per docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §5's 'confirm per site' row rather than assuming.",
   "checks": [
     {
       "name": "mllp-listener-tcp",

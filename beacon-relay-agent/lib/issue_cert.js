@@ -20,7 +20,7 @@ export async function issueCert({ caUrl, ott, commonName, keys }) {
   // openssl CANNOT read the key from /dev/stdin in the minimal image (fopen on
   // /dev/stdin fails with ENXIO when stdin is an execSync pipe). Write to a
   // mode-0600 temp file instead. /tmp is NOT usable: the image root is
-  // read-only (spec §2), so the temp key lives on the writable /data LUKS
+  // read-only (docs/specs/BEACON_RELAY_BUILD_SPEC.md §2), so the temp key lives on the writable /data LUKS
   // partition and is removed immediately after the CSR is built.
   const keyPem = keys.privateKeyPem ?? keys.privateKey;
   const tmpKey = `/data/.csr-key-${crypto.randomUUID()}`;

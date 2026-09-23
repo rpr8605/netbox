@@ -1,6 +1,6 @@
 // control-plane/src/db.js
 // Responsibility: persistence for the device registry, enrollment tokens,
-// and ingested events. Supports PostgreSQL in production (spec §5) and
+// and ingested events. Supports PostgreSQL in production (docs/specs/BEACON_RELAY_BUILD_SPEC.md §5) and
 // SQLite for zero-ops local dev / unit tests. The public API is async so
 // callers do not need to know which driver is underneath.
 // Called by: src/index.js at startup; src/routes/*.js for all reads/writes.

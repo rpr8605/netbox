@@ -1,11 +1,11 @@
 // control-plane/src/incident_memory.js
 // Responsibility: deterministic, evidence-linked troubleshooting memory
-// (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2). No LLM, no generated narration —
+// (docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2). No LLM, no generated narration —
 // a plain weighted-overlap score over structured past incidents, with every
 // suggestion linked to the real past cases it matched.
 import { allClosedIncidents } from './db.js';
 
-// bucket hour into the three buckets the spec names.
+// bucket hour into the three buckets the build spec names.
 function timeBucket(hour) {
   if (hour >= 6 && hour < 18) return 'business-hours';
   if (hour >= 18 && hour < 22) return 'after-hours';

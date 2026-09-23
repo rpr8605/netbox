@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-sidecar/mllp_tap.py — Beacon Relay HL7/MLLP passive-tap sidecar (spec §3).
+sidecar/mllp_tap.py — Beacon Relay HL7/MLLP passive-tap sidecar
+(docs/specs/BEACON_RELAY_BUILD_SPEC.md §3).
 
 Reads MLLP traffic PASSIVELY (it is a tap on a mirror/SPAN feed or a read-only
 socket: never in the message path, never able to block or delay a real message).
 Extracts METADATA ONLY by default (phi_mode=False): message type/trigger event,
 direction, timestamp, ACK/NACK, latency, size — never the message body.
 
-THE SAFETY GUARANTEE (spec §4) is behavioral, not a policy flag:
+THE SAFETY GUARANTEE (docs/specs/BEACON_RELAY_BUILD_SPEC.md §4) is behavioral, not a policy flag:
 when phi_mode is False the raw payload is dropped from memory IMMEDIATELY after
 metadata extraction and before any write — the identifier fields are tokenized
 with a per-device keyed HMAC-SHA256 and the body bytes are never assigned to a
@@ -70,7 +71,7 @@ class CorrelationTokenizer:
 
     The key is a per-device secret (derived at provision time). Because the
     key is per device, the same identifier tokenizes differently on different
-    devices — that IS the anti-correlation property the spec calls for.
+    devices — that IS     the anti-correlation property the build spec calls for.
     """
 
     def __init__(self, device_secret: bytes):

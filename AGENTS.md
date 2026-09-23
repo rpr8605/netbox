@@ -14,13 +14,13 @@ should paste or reference this file at the start of every session.
 
 ## 1. Before touching any code
 
-- **Read the spec docs before reading the code.** `BEACON_RELAY_SPEC_INDEX.md` tells you which
+- **Read the spec docs before reading the code.** `docs/specs/BEACON_RELAY_SPEC_INDEX.md` tells you which
   document governs which part of the system and in what order. Don't re-derive architecture
   decisions from scratch by reverse-engineering the code when they're already written down.
   Re-deriving costs credits; reading doesn't.
 - **Don't trust a DONE/PASS claim in any doc without a fresh test run backing it up in this
   session.** Docs go stale the moment code changes underneath them. Re-run the specific test
-  named in `BEACON_RELAY_CHECKLIST.md` for whatever you're about to touch, before you assume
+  named in `docs/specs/BEACON_RELAY_CHECKLIST.md` for whatever you're about to touch, before you assume
   it works, and before you build anything new on top of it.
 - **Check what already exists before generating something new.** If a function, schema, or
   pattern already exists elsewhere in the repo that does most of what's needed, extend or
@@ -62,7 +62,7 @@ should paste or reference this file at the start of every session.
 - **A task is DONE when a test proves it, not when the code compiles or the happy path looks
   right in a manual check.** PARTIAL is a legitimate, expected status. Use it whenever
   something is real but incomplete, mocked, or unverified, exactly the way
-  `BEACON_RELAY_CHECKLIST.md` already does. There's no penalty for reporting PARTIAL
+  `docs/specs/BEACON_RELAY_CHECKLIST.md` already does. There's no penalty for reporting PARTIAL
   accurately. There is a real cost to reporting DONE inaccurately, because everything built
   on top of a false DONE has to be re-checked once the truth comes out.
 - **If a fix doesn't work after a reasonable attempt, report the actual failure and your best
@@ -79,8 +79,8 @@ should paste or reference this file at the start of every session.
   should be able to understand intent from the code and its comments without needing the
   full conversation history replayed to it. Replaying context costs credits; reading a good
   comment doesn't.
-- When a phase or task finishes, update the relevant status doc (`BEACON_RELAY_CHECKLIST.md`,
-  `BEACON_RELAY_STATUS.md`, etc.) in the same session, with the real test evidence. Don't
+- When a phase or task finishes, update the relevant status doc (`docs/specs/BEACON_RELAY_CHECKLIST.md`,
+  `docs/specs/BEACON_RELAY_STATUS.md`, etc.) in the same session, with the real test evidence. Don't
   leave that for a "later cleanup pass" — status drift is exactly what caused the TPM gap.
 
 ## 5. When to stop and ask vs. when to proceed

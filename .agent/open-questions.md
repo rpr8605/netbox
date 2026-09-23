@@ -62,4 +62,4 @@ Two acceptance runs failed identically with `Could not access KVM kernel module:
 4. **Validation gate before removal:**
    - All `node --test` suites must pass with `DATABASE_URL` set and SQLite unavailable.
    - The Docker image must build and start with only `pg` installed.
-   - Document the final removal commit and update `BEACON_RELAY_STATUS.md` / `BEACON_RELAY_CHECKLIST.md`.
+    - Document the final removal commit and update `docs/specs/BEACON_RELAY_STATUS.md` / `docs/specs/BEACON_RELAY_CHECKLIST.md`.

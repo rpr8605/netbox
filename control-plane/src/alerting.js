@@ -1,5 +1,5 @@
 // control-plane/src/alerting.js
-// Responsibility: the alert escalation ENGINE (spec §6) — severity tiers,
+// Responsibility: the alert escalation ENGINE (docs/specs/BEACON_RELAY_BUILD_SPEC.md §6) — severity tiers,
 // owner mapping, plain-language impact statements, runbook attachment,
 // required acknowledgment with automatic escalation on timeout, and
 // suppression/maintenance windows. Delivery rails (Twilio SMS/voice, SES/
@@ -19,7 +19,7 @@ import {
 } from './db.js';
 
 // Reject transport-jargon impact statements at the door — the console and the
-// on-call page are for humans. Spec §6 makes this a product requirement.
+// on-call page are for humans. docs/specs/BEACON_RELAY_BUILD_SPEC.md §6 makes this a product requirement.
 const JARGON = /\b(tcp|udp|port \d|icmp|tls handshake|econnrefused|http \d{3})\b/i;
 
 // validateImpactStatement — a rule's impact_stmt must be plain language a

@@ -1,5 +1,5 @@
 // control-plane/src/routes/retrust.js
-// Key-continuity re-enroll (approved Phase 3 input): a device whose cert
+// Key-continuity re-enroll (approved Configurator/renewal input): a device whose cert
 // expired proves possession of the SAME long-term private key pinned at
 // enrollment, and receives a fresh step-ca OTT. No new one-time token.
 //

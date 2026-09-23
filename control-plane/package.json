@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Beacon Relay control plane: device registry, ingestion API, minimal console (Phase 1/2).",
+  "description": "Beacon Relay control plane: device registry, ingestion API, minimal console (device-identity foundation + minimal operator UI).",
   "scripts": {
     "dev": "node --env-file=../.env --watch src/index.js",
     "start": "node --env-file=../.env src/index.js",

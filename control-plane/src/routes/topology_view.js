@@ -1,6 +1,6 @@
 // control-plane/src/routes/topology_view.js
 // Responsibility: the per-site "full status" view model for the Fleet Console
-// demo (spec §7). One call returns everything the topology view needs:
+// demo (docs/specs/BEACON_RELAY_BUILD_SPEC.md §7). One call returns everything the topology view needs:
 //   - the critical-service register (every service enum, not just channels)
 //    with each service's latest observed status + the check that produced it
 //   - the interface-engine channel topology (from the channel registry +
@@ -9,7 +9,7 @@
 //
 // RULE-BASED, NOT GENERATIVE: this view model returns STRUCTURED FACTS ONLY.
 // The detail panel renders them deterministically — no prose about WHY a node
-// is down, no inferred root cause. (EHR spec §11: explanation is Handoff's
+// is down, no inferred root cause. (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §11: explanation is Handoff's
 // job, not Beacon Relay's.) The "co-occurring signals" list is a mechanical
 // co-occurrence: other nodes at the SAME site currently degraded/down,
 // presented as facts without asserting causation.
@@ -22,7 +22,7 @@ import { appendAudit } from '../db.js';
 // register of record. Ordered by operational criticality for display.
 const CRITICAL_SERVICES = ['ehr', 'adt', 'lab', 'pharmacy', 'imaging', 'eprescribe', 'internet', 'phone', 'printing', 'custom', 'cert_expiration', 'firewall', 'dns', 'wan', 'm365_account_health', 'wireless_ap_health', 'vpn_tunnel_health', 'backup_dr_status', 'av_edr_checkin', 'dhcp_health'];
 
-// Static tier meanings — the L0-L4 definitions from spec §3, as display text.
+// Static tier meanings — the L0-L4 definitions from docs/specs/BEACON_RELAY_BUILD_SPEC.md §3, as display text.
 // Rule-based: this is a lookup table, not generated narration.
 export const TIER_MEANING = {
   L0: 'L0 — basic reachability (ICMP/ping)',
@@ -137,7 +137,7 @@ export default async function topologyViewRoutes(app) {
     };
   });
 
-  // Geographic fleet map (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §1). Returns
+  // Geographic fleet map (docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §1). Returns
   // one pin per site with lat/lng and the site's current overall status (worst
   // of its critical-service statuses). RBAC: ops-manager/support-technician see
   // the whole fleet; customer-it-admin must pass their own site_id and sees only

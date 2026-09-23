@@ -1,7 +1,7 @@
 // control-plane/src/routes/releases.js
 // Responsibility: serve the signed RAUC bundle + latest-version pointer to
 // enrolled devices' OTA update clients, AND manage the staged rollout policy
-// that decides which devices are allowed to see a new version (BUILD_SPEC §8.7).
+// that decides which devices are allowed to see a new version (docs/specs/BEACON_RELAY_BUILD_SPEC.md §8.7).
 // The device verifies the bundle signature itself before installing; the control
 // plane only ever serves a bundle that was signed at build time.
 import crypto from 'node:crypto';

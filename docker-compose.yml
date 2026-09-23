@@ -1,4 +1,4 @@
-# docker-compose.yml — Phase 1 local stack
+# docker-compose.yml — local stack for the device-identity foundation + minimal console
 # step-ca (private CA) + PostgreSQL + control-plane (Fastify API + console) + device simulator.
 # All services are local-only; no real hospital data, no real HL7 feed.
 #

@@ -1,5 +1,5 @@
 // beacon-relay-agent/lib/monitor_loop.js
-// Responsibility: the continuous monitoring orchestrator (spec §3) — runs the
+// Responsibility: the continuous monitoring orchestrator (docs/specs/BEACON_RELAY_BUILD_SPEC.md §3) — runs the
 // site's configured EHR/EMR checks on a schedule, maintains per-monitor state,
 // and routes any failing check through outage_confirm BEFORE an event fires.
 // This is what turns the agent from a test-invoked function into the product.

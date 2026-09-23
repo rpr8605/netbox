@@ -21,25 +21,25 @@ projection; every "built" line below has a test suite that currently passes and 
 
 ## 1. What's actually built and passing tests right now
 
-Mapped to `BEACON_RELAY_BUILD_SPEC.md` Section 8 phases and the companion docs. "Built" here
+Mapped to `docs/specs/BEACON_RELAY_BUILD_SPEC.md` Section 8 phases and the companion docs. "Built" here
 means: real code exists, it runs, and a named test suite passes against it as of this
 commit. Nothing is listed as built on the strength of a prior prose summary.
 
 ### Built and green
 
-- **Phase 1 — schema & PKI foundation** (`BUILD_SPEC` §8.1). Canonical event schema
+- **Phase 1 — schema & PKI foundation** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.1). Canonical event schema
   (`schemas/beacon_relay_event.schema.json` + generated TS/Python types), step-ca private CA,
   device enrollment → quarantine → confirm flow. Proven by the device-sim suite and by
   the QEMU acceptance harness (`vm-harness/acceptance.sh`).
-- **Phase 2 — minimal control plane** (`BUILD_SPEC` §8.2). Device registry, mTLS-gated
+- **Phase 2 — minimal control plane** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.2). Device registry, mTLS-gated
   ingestion API with quarantine enforcement, schema validation, minimal console.
-- **Phase 3 — the Configurator** (`BUILD_SPEC` §8.3, §2; `EHR_INTEGRATIONS` §1). Verified
+- **Phase 3 — the Configurator** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.3, §2; `docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §1). Verified
   end to end this pass: signed RAUC bundle builds and verifies (`rauc bundle` + `rauc info
   --keyring` VERIFY OK); Configurator `releases` / `save` / `flash` with the unmissable
   confirm-target gate; flash + post-write sha256 verify; first-boot → TPM-seal → quarantine
   → confirm → active heartbeat in QEMU (`ACCEPTANCE_PASS`); standalone install file boots
   identically via dd; LUKS on the data partition confirmed by post-boot `luksDump`.
-- **Phase 4 — device agent** (`BUILD_SPEC` §8.4, §3). The continuous monitoring loop
+- **Phase 4 — device agent** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.4, §3). The continuous monitoring loop
   (`lib/monitor_loop.js`): scheduled checks, last-successful-check-per-monitor persisted to
   /data, and the ordered multi-step outage confirmation (`lib/outage_confirm.js`: retry
   locally → second independent dependency → primary WAN path → LTE failover) before any
@@ -48,35 +48,35 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   mode (`lib/downtime.js`): a local web UI on the device serving the cached contact tree /
   vendor numbers / recovery priorities / runbooks from /data, proven to keep serving with
   the control plane severed and to catch back up on reconnect.
-- **Phase 5 — HL7/MLLP sidecar** (`BUILD_SPEC` §8.5, §3). `sidecar/mllp_tap.py`: passive
+- **Phase 5 — HL7/MLLP sidecar** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.5, §3). `sidecar/mllp_tap.py`: passive
   metadata-only extraction (type/trigger, direction, timestamp, ACK/NACK, latency, size),
   per-device keyed HMAC-SHA256 correlation token. The `phi_mode: false` guarantee is
   structural (raw body never retained past metadata extraction) and was attacked directly
   in the security test — the adversarial test FAILS to recover the payload.
-- **EHR/EMR integration layer** (`EHR_INTEGRATIONS` §9 steps 1–4, §10). Four protocol
+- **EHR/EMR integration layer** (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §9 steps 1–4, §10). Four protocol
   adapters — FHIR R4 read-only (SMART backend-services, capability statement + scoped
   synthetic read), Mirth Connect admin-API reader (status only, never message content),
   generic network checks (L0/L1/L2), and the `ehr_check` orchestrator — plus config
   profiles for MEDITECH (Expanse, Magic, Client-Server), TruBridge/Evident, Epic Community
   Connect, Oracle Health CommunityWorks, athenahealth, Surescripts connectivity, VA
   (VistA/CPRS), and IHS (RPMS). Tested against a public FHIR R4 sandbox and stubs.
-- **Interface topology visibility** (`EHR_INTEGRATIONS` §11/§12). Channel registry
+- **Interface topology visibility** (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §11/§12). Channel registry
   now carries `site_id`, `source_system`, and `destination_system` so channels can be
   rendered as graph edges; the Mirth/NextGen reader exposes those endpoints; per-site
   topology view, cross-site rollup gated to operations-manager/support-technician, and
   full-status detail panel all return them. Rule-based detail panel — no AI narration,
   per the §11 guardrail.
-- **TLS certificate expiration as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+- **TLS certificate expiration as a first-class critical service** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md`
   §3). The existing L2 TLS handshake now also emits a metadata-only `cert_expiration`
   check_result (subject CN, issuer CN, valid_from, valid_to — no cert bytes or keys).
   Status mapping: expired -> `down`, expiring within 30 days -> `degraded`, valid ->
   `verified_ready`. Added to the canonical schema `service` enum and the Fleet Console
   critical-service register. Covered by dedicated unit checks for expired / soon / valid.
-- **Core firewall/router reachability as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+- **Core firewall/router reachability as a first-class critical service** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md`
   §3). `firewall` added to the canonical schema `service` enum and the critical-service
   register; existing generic TCP/TLS net checks can target a gateway with `service: 'firewall'`.
   No new adapter needed — the network-check rail is reused.
-- **DNS/DHCP health as first-class critical services** (`CONTROLS_AND_IDENTITY` §3). `dns`
+- **DNS/DHCP health as first-class critical services** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3). `dns`
   added to the schema `service` enum and critical-service register; new `dnsCheck` adapter
   queries a site-configured resolver for a known-good hostname and reports `active`/`down`.
   `dhcp_health` added to the service enum and critical-service register; new
@@ -84,34 +84,34 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   `verified_ready`/`degraded`/`down`/`unknown`, falling back to `unknown` when no source is
   configured so endpoint health can be inferred. Covered by
   `node --env-file=.env scripts/test_ehr_unit.js`.
-- **WAN/ISP circuit health as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+- **WAN/ISP circuit health as a first-class critical service** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md`
   §1/§3). `wan` added to the schema `service` enum and critical-service register; new
   `runWanCheck` adapter tests each configured circuit against external targets, reports
   `reachable` when healthy, `degraded` when the primary circuit is down but a backup circuit
   has taken over (`observed.failover = true`), and `down` when both fail. Falls back from
   ICMP ping to TCP when the image does not ship a ping binary.
-- **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
+- **Alerting & escalation engine** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
   maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, SES email via
   `@aws-sdk/client-sesv2`, Slack/Teams webhook) wired as injected senders.
-- **PostgreSQL storage + migration safety for the control plane** (`BUILD_SPEC` §5). `control-plane/src/db.js` is an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; the image entrypoint runs `control-plane/migrate.js` to copy legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
+- **PostgreSQL storage + migration safety for the control plane** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). `control-plane/src/db.js` is an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; the image entrypoint runs `control-plane/migrate.js` to copy legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
 - **PostgreSQL as the default for test suites.** `.env` (gitignored) and `.env.example` set `DATABASE_URL` to the isolated `beacon_relay_test` database by default; `npm run test:db:reset` recreates it. DB-touching tests now run against Postgres unless `DATABASE_URL` is explicitly unset for SQLite-specific coverage.
-- **RBAC completeness** (`BUILD_SPEC` §5). All five roles (support technician, customer IT
+- **RBAC completeness** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). All five roles (support technician, customer IT
   admin, operations manager, security auditor, read-only executive) with per-route
   allow/deny proven.
-- **Audit log** (`BUILD_SPEC` §5). Append-only, immutability enforced by database triggers
+- **Audit log** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). Append-only, immutability enforced by database triggers
   (UPDATE/DELETE raise), not by policy. Remote-support sessions, alert lifecycle, and RBAC
   denies are all written to it.
-- **Remote-support session broker** (`BUILD_SPEC` §7). Admin requests → device picks up a
+- **Remote-support session broker** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §7). Admin requests → device picks up a
   JIT token over its existing outbound mTLS → opens an outbound, time-limited tunnel.
   Sessions close at their TTL (sweep-enforced); every session is audit-logged.
-- **Ticketing Tier 0 export** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3). `GET
+- **Ticketing Tier 0 export** (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §3). `GET
   /api/alerts/:id/ticket` returns plain-text and Markdown copy-paste blocks from the
   alert's existing fields; `POST .../ticket/email` sends the block via the existing
   SendGrid pipe. Works with any inbox/ticketing system, no vendor API. RBAC-gated and
   metadata-only (no raw events, payloads, keys, or cert contents).
-- **Geographic fleet map** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §1). `sites` table
+- **Geographic fleet map** (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §1). `sites` table
   stores `lat`/`lng`/`name`; enrollment tokens accept optional site metadata;
   `GET /api/fleet/map` returns one pin per site with overall status computed as the
   worst of the site's critical-service statuses (unknown is the baseline, not a
@@ -119,7 +119,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   see the whole fleet; customer-it-admin must supply their own `site_id` and sees
   only that pin. `public/fleet.html` renders the pins without external map libraries.
   Covered by the alerting/RBAC suite.
-- **Troubleshooting memory + similar-past-incidents panel** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY`
+- **Troubleshooting memory + similar-past-incidents panel** (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md`
   §2). `incident_signature` is captured automatically when an alert opens, from
   recorded events only (status transition, tier, co-occurring degraded/down signals,
   time-of-day bucket, interface engine). `POST /api/alerts/:id/close` captures the
@@ -128,7 +128,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   root-cause/action distributions and per-incident links — or an empty list when
   nothing clears the threshold. No LLM, no generated narration. Covered by the
   alerting/RBAC suite.
-- **RAUC OTA staged rollout path** (`BUILD_SPEC` §8.7). Control-plane rollout policy
+- **RAUC OTA staged rollout path** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.7). Control-plane rollout policy
   (`rollouts` table) supports `dev`/`test`/`pilot`/`broad` stages with a 0-100%
   percentage; `deviceInRollout` assigns devices deterministically by hashing
   `device_id:version`; `/api/releases/latest` gates visibility so a device outside the
@@ -137,27 +137,27 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   back (RAUC `mark-bad`) when the check fails; passing the check calls `mark-good`.
   Every rollout action is audit-logged. Covered by `scripts/test_update_client.js` and
   `scripts/test_ota_rollout.js`.
-- **Action Registry** (`CONTROLS_AND_IDENTITY` §2). Per-site whitelist of approved
+- **Action Registry** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §2). Per-site whitelist of approved
   action types (`action_registry` table). Each execution requires a live human-initiated
   session issued through the existing remote-support broker, with the `action_id` bound
   to the session. Unregistered actions and under-privileged roles are refused before any
   session is created. `action_registry.created` and `action_registry.executed` are written
   to the audit log. Covered by `scripts/test_alerting_rbac_audit_support.js`.
-- **Microsoft 365 Phase 1 read-only account health** (`CONTROLS_AND_IDENTITY` §4). New
+- **Microsoft 365 Phase 1 read-only account health** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §4). New
   `m365_account_health` critical service and `m365` adapter. Uses the four read-only scopes
   (`User.Read.All`, `AuditLog.Read.All`, `Organization.Read.All`, `Reports.Read.All`) to
   surface AD Connect sync health, sign-in failure spikes, and MFA-registration gaps as
   metadata-only `check_result` events. Built and tested against mocks; live Entra ID test
   tenant required for real-world validation (logged in `.agent/open-questions.md`).
   Covered by `scripts/test_ehr_unit.js`.
-- **Site-level network/endpoint controls** (`CONTROLS_AND_IDENTITY` §3). New
+- **Site-level network/endpoint controls** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3). New
   `wireless_ap_health`, `vpn_tunnel_health`, `backup_dr_status`, and `av_edr_checkin`
   critical services, plus a single generic `site_controls.js` adapter module. Each reads a
   configured status source (HTTP(S) URL or local file) and emits metadata-only
   `check_result` events; no write actions. Built and tested against mocks. Covered by
   `scripts/test_ehr_unit.js`.
-- **Topology detail panel: last-message time + recent error count** (`EHR_INTEGRATIONS`
-  §11/§12 + `TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §2). The Mirth reader now calls
+- **Topology detail panel: last-message time + recent error count** (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md`
+  §11/§12 + `docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §2). The Mirth reader now calls
   `/channels/{id}/messages?includeContent=false` to read metadata-only message timestamps
   and statuses. The per-channel `last_message_time` and 15-minute `recent_error_count`
   flow through `observed.channels` into the Fleet Console full-status API and the detail
@@ -168,7 +168,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
   the image. The manually-maintained duplicate tree is gone from git.
 
-### `BEACON_RELAY_KIMI_FIXES.md` items this pass
+### `.agent/BEACON_RELAY_KIMI_FIXES.md` items this pass
 
 - **KF6 — Graph Authorization header** (`107ac2f`). Fixed `beacon-relay-agent/lib/graph.js` so GET requests to Microsoft Graph send `authorization: Bearer <token>` instead of the raw token. Removed the dead `authorization` property on the returned client object. Added an assertion in `scripts/test_step1_signals.js` and set mock tenant credentials so the Graph path actually executes in the test.
 - **KF7 — Dead `enroll.js` / node-forge** (`a68b0f5`). Removed `beacon-relay-agent/lib/enroll.js` (unused, imported `node-forge` which is not on-device) and removed it from the required-files lists in `pipeline/build.js` and `pipeline/stages/30-agent.sh`.
@@ -181,17 +181,17 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   three accounts, IoT Core CA registration, RDS Multi-AZ + Cognito groups, ECS Fargate
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
-- **Network controls + remaining identity-provider work** (`CONTROLS_AND_IDENTITY` §6):
+- **Network controls + remaining identity-provider work** (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §6):
   all first-class critical services in §3 are now built: WAN/ISP, firewall, DNS/DHCP
   (DNS direct; DHCP inferred), TLS certificate expiration, wireless AP health, site-to-site
   VPN tunnel health, backup/DR job status, and AV/EDR agent check-in. The Action Registry
   and M365 Phase 1 read-only account-health adapter are also built.
-- **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
+- **Ticketing Tier-1 generic REST adapter** (`docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md` §3).
   Not started — explicitly deferred until a real customer names a specific system.
-- **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
+- **Remaining EHR vendor profiles** (`docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
   deferred — profiles only, when a real customer site justifies each.
-- **PHI-mode toggle + hardware lifecycle tooling** (`BUILD_SPEC` §8.9). PHI-mode toggle is
+- **PHI-mode toggle + hardware lifecycle tooling** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §8.9). PHI-mode toggle is
   design-only (`.agent/phi-mode-design.md`) pending review. The no-hardware portion of
   hardware lifecycle tooling is done: BOM with approved alternates (`hardware/bom.json`),
   golden-image manifest (`hardware/golden_manifest.json`), manifest validator
@@ -277,7 +277,7 @@ built image plus the harness container.
 3. Atomic enrollment-token / retrust-challenge consumption (`UPDATE ... RETURNING`).
 4. Route-level auth policy test that fails on any ungated route.
 
-(When AWS access is available, return to `BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §6 step 1: stand up the AWS Organization with the three accounts.)
+(When AWS access is available, return to `docs/specs/BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §6 step 1: stand up the AWS Organization with the three accounts.)
 
 ---
 

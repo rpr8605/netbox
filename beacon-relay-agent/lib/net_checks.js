@@ -1,6 +1,6 @@
 // beacon-relay-agent/lib/net_checks.js
 // Responsibility: generic network checks — adapter #3 of the EHR/EMR layer
-// (EHR spec §2): L0 ICMP reachability, L1 TCP port, L2 TLS handshake/certificate
+// (docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md §2): L0 ICMP reachability, L1 TCP port, L2 TLS handshake/certificate
 // validity. Reused as-is against whatever host:port a site's EHR, interface
 // engine, or pharmacy gateway lives at. Vendor-agnostic by design; the per-site
 // config profile points it at real endpoints.
@@ -179,7 +179,7 @@ export async function runNetCheck({ host, port, tls: wantTls = false }) {
   };
 }
 
-// WAN/ISP circuit health (CONTROLS_AND_IDENTITY §1/§3). Tests each configured
+// WAN/ISP circuit health (docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md §1/§3). Tests each configured
 // circuit against one or more external targets. The primary circuit must be up
 // for "healthy"; if it fails and a backup circuit is up, the status is
 // "degraded" with observed.failover=true. If both fail, status is "down".

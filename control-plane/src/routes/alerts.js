@@ -84,7 +84,7 @@ export default async function alertRoutes(app) {
     return out;
   });
 
-  // --- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2) ------
+  // --- Troubleshooting memory (docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2) ------
   app.get('/api/alerts/:id/signature', {
     preHandler: requirePerm('alerts:read', appendAudit),
     config: { auth: 'operator:alerts:read' },
@@ -144,7 +144,7 @@ export default async function alertRoutes(app) {
     return findSimilarIncidents(sig, { excludeAlertId: req.params.id });
   });
 
-  // --- Ticketing Tier 0 (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §3) ------------
+  // --- Ticketing Tier 0 (docs/specs/BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §3) ------------
   // Copy-paste-ready incident block. No vendor API, no credentials — works with
   // any ticketing system or plain inbox that accepts text/Markdown.
   app.get('/api/alerts/:id/ticket', {

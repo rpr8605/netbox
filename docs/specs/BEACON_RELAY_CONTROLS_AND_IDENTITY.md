@@ -1,6 +1,6 @@
 # Beacon Relay — Network Controls, Action Registry, and Identity-Provider Visibility
 
-This is a companion document to `BEACON_RELAY_BUILD_SPEC.md` and `BEACON_RELAY_EHR_INTEGRATIONS.md`. It
+This is a companion document to `docs/specs/BEACON_RELAY_BUILD_SPEC.md` and `docs/specs/BEACON_RELAY_EHR_INTEGRATIONS.md`. It
 does not replace anything in either — architecture, tech stack, schema, and build order are
 still governed there. This file covers three things Ryan asked to think through together,
 because they're actually one design decision, not three separate features:
@@ -46,7 +46,7 @@ phase — noted here so it isn't forgotten, not built in this pass.
 ## 2. The Action Registry — how monitoring and control share one cheap, safe transport
 
 Beacon Relay already has the right pattern for taking any remote action safely: the **remote
-support session broker** in `BEACON_RELAY_BUILD_SPEC.md` Section 7. The device holds an
+support session broker** in `docs/specs/BEACON_RELAY_BUILD_SPEC.md` Section 7. The device holds an
 outbound, mutually-authenticated connection at all times. An authorized person requests a
 session; the device picks up a time-limited, scoped token over that existing connection and
 opens an *outbound* tunnel for the action. No standing inbound port, no shared credential,
@@ -167,7 +167,7 @@ vendor, not something that requires being a large Microsoft partner.
 **Hybrid or on-prem Active Directory tenants — guided support, not credentialed access.**
 Don't attempt remote domain credentials at all; the blast radius if that ever went wrong is
 too severe for a small vendor to carry. Instead, reuse the remote-support session broker
-(Section 2 above / `BEACON_RELAY_BUILD_SPEC.md` Section 7) as a guided-support channel: a support
+(Section 2 above / `docs/specs/BEACON_RELAY_BUILD_SPEC.md` Section 7) as a guided-support channel: a support
 technician opens a time-limited, audit-logged session over the existing outbound tunnel and
 walks the hospital's own IT person through the fix, or screen-shares while the hospital's
 own already-logged-in domain account performs the action. The expertise is yours; the
@@ -218,7 +218,7 @@ before. This is explicitly a "don't build ahead of demand" item.
 ## 6. Copy-paste prompt for Kimi — network controls + Action Registry + Microsoft Graph Phase 1
 
 ```
-You are continuing work on "Beacon Relay." Read BEACON_RELAY_CONTROLS_AND_IDENTITY.md in full before
+You are continuing work on "Beacon Relay." Read docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md in full before
 starting. This is new scope, not a continuation of the EHR/interface work — confirm you
 understand the distinction in this document between "network controls" (in scope) and
 general facilities monitoring (explicitly out of scope) before writing anything.
@@ -239,7 +239,7 @@ Build in this order, stopping to report after each numbered step:
 
 4. Build the Action Registry as its own piece of infrastructure: a per-site whitelist of
    approved action types, each requiring a live human-initiated session issued through the
-   existing remote-support session broker (BEACON_RELAY_BUILD_SPEC.md Section 7), audit-logged
+   existing remote-support session broker (docs/specs/BEACON_RELAY_BUILD_SPEC.md Section 7), audit-logged
    on every execution. No action type should be callable unless it is explicitly registered
    for that site. Do not build any actual action yet — just the registry and session-gating
    mechanism, tested with a single harmless dummy action type to prove the flow end to end.
