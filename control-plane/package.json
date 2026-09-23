@@ -10,6 +10,7 @@
     "test": "node --test test/"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1138.0",
     "@fastify/static": "^8.0.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

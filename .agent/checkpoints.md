@@ -73,3 +73,12 @@
 - **Next:** Ticketing Tier 0 copy-paste block (`TOPOLOGY_…_MEMORY` §3)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 62 of 99 CHECKLIST items complete (63%), up from 61 of 99 (62%)
+
+## Checkpoint #7 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - Ticketing Tier 0 (`TOPOLOGY_…_MEMORY` §3): `GET /api/alerts/:id/ticket` and `POST .../ticket/email`, RBAC-gated, metadata-only, SendGrid pipe reused.
+- **Tests:** alerting/RBAC/audit/support/ticketing 39/39, EHR unit 21/21, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** SES email sender alongside SendGrid (`BUILD_SPEC` §6), then next unblocked CHECKLIST items in spec priority order
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
+- **Progress:** 63 of 99 CHECKLIST items complete (64%), up from 62 of 99 (63%)

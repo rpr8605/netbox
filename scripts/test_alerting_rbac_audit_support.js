@@ -10,6 +10,7 @@
 import crypto from 'node:crypto';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import { request, Agent } from '../control-plane/node_modules/undici/index.js';
+import { sendSes } from '../control-plane/src/deliver.js';
 
 // Default host port matches docker-compose.yml's CONTROL_PLANE_HOST_PORT remap
 // (10443 because Windows/Hyper-V reserves 9100 in excluded range 9035-9134).
@@ -258,6 +259,11 @@ async function partE() {
   const email = await api('POST', `/api/alerts/${alertId}/ticket/email?role=support-technician`, { to: 'it-inbox@hospital.example', actor: 'tech-1' });
   check('E5. ticket email action returns sent status without crashing', email.status === 200 && typeof email.body?.sent === 'boolean', JSON.stringify(email.body));
   check('E6. ticket email skipped when SendGrid not configured', email.body?.sent === false, JSON.stringify(email.body));
+
+  // Direct SES sender returns skipped when credentials absent — proves the path
+  // exists and fails safe rather than throwing.
+  const sesSkip = await sendSes({ to: 'it@hospital.example', subject: 't', text: 'b' });
+  check('E7. SES sender skipped when not configured', sesSkip.skipped === true, JSON.stringify(sesSkip));
 }
 
 await partA();

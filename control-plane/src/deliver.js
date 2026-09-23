@@ -55,6 +55,25 @@ export async function sendSendGrid({ apiKey, from, to, subject, text }) {
   }, { authorization: `Bearer ${apiKey}` });
 }
 
+// AWS SES (v2) email. Spec §6 says SES *or* SendGrid; this gives customers the
+// choice. When SES is configured it is tried first; otherwise SendGrid is the
+// fallback. Credentials are scoped to SES only — no broader AWS access.
+export async function sendSes({ accessKeyId, secretAccessKey, region, from, to, subject, text }) {
+  if (!accessKeyId || !secretAccessKey || !region) return { skipped: true, reason: 'ses not configured' };
+  try {
+    const { SESv2Client, SendEmailCommand } = await import('@aws-sdk/client-sesv2');
+    const client = new SESv2Client({ region, credentials: { accessKeyId, secretAccessKey } });
+    const res = await client.send(new SendEmailCommand({
+      FromEmailAddress: from,
+      Destination: { ToAddresses: [to] },
+      Content: { Simple: { Subject: { Data: subject }, Body: { Text: { Data: text } } } },
+    }));
+    return { status: 200, body: { messageId: res.MessageId } };
+  } catch (e) {
+    return { status: 0, body: String(e.message ?? e) };
+  }
+}
+
 // Slack/Teams incoming webhook — one JSON POST, both platforms accept it.
 export async function sendWebhook({ webhookUrl, text }) {
   if (!webhookUrl) return { skipped: true, reason: 'webhook not configured' };
@@ -64,12 +83,18 @@ export async function sendWebhook({ webhookUrl, text }) {
 // deliver — the single entry point the alerting engine calls. Routes a
 // contact to the right channel by contact.channel and returns the result.
 // Delivery failures are returned (not thrown) so escalation continues.
+// Email tries SES first (if configured), then SendGrid, matching the spec's
+// "SES or SendGrid" stance.
 export async function deliver(contact, alert, cfg = {}) {
   const text = `[${alert.severity}] ${alert.impact}${alert.runbook ? ` — runbook: ${alert.runbook}` : ''}${alert.escalated ? ' (ESCALATED)' : ''}`;
   switch (contact.channel) {
     case 'sms': return sendTwilio({ ...cfg.twilio, to: contact.address, body: text });
     case 'voice': return sendTwilio({ ...cfg.twilio, to: contact.address, body: text, voice: true });
-    case 'email': return sendSendGrid({ ...cfg.sendgrid, to: contact.address, subject: text, text });
+    case 'email': {
+      const ses = await sendSes({ ...cfg.ses, to: contact.address, subject: text, text });
+      if (!ses.skipped) return ses;
+      return sendSendGrid({ ...cfg.sendgrid, to: contact.address, subject: text, text });
+    }
     case 'slack':
     case 'teams': return sendWebhook({ webhookUrl: cfg.webhook?.[contact.channel] ?? cfg.webhook?.url, text });
     default: return { skipped: true, reason: `unknown channel ${contact.channel}` };

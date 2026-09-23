@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `4678fc6` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, and ticketing Tier-0 work).
+**Current commit on `main`:** `831f71d` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, ticketing Tier-0, and SES email-sender work).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -75,8 +75,8 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 - **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
-  maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, Slack/Teams
-  webhook) wired as injected senders.
+  maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, SES email via
+  `@aws-sdk/client-sesv2`, Slack/Teams webhook) wired as injected senders.
 - **RBAC completeness** (`BUILD_SPEC` §5). All five roles (support technician, customer IT
   admin, operations manager, security auditor, read-only executive) with per-route
   allow/deny proven.
@@ -140,7 +140,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 | `node scripts/test_alerting_rbac_audit_support.js` | 39/39 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip | `node scripts/test_alerting_rbac_audit_support.js` | 40/40 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.
@@ -169,9 +169,10 @@ built image plus the harness container.
   enforcement, and audit logging are real and tested; the actual tunneled data path is a
   session record, not an SSH/websocket forwarder. The real transport is meant to be AWS IoT
   Secure Tunneling per `CLOUD_ARCHITECTURE_AWS` §1 — that substitution is by design, not a gap.
-- **Alert delivery is wired but unauthenticated to real SaaS in this repo** — Twilio/
-  SendGrid/webhook senders are real code but run against no live credentials in tests; the
-  delivery path is proven by shape, not by a real SMS leaving the building.
+- **Alert delivery is wired but unauthenticated to real SaaS in this repo** — Twilio,
+  SendGrid, SES (via `@aws-sdk/client-sesv2`), and webhook senders are real code, but run
+  against no live credentials in tests; the delivery path is proven by shape/skip behavior,
+  not by a real SMS or email leaving the building.
 - **The Epic Community Connect profile ships with its FHIR check `enabled: false` by
   default** (parent-org API grant is not guaranteed) — that's a deliberate product decision,
   not a bug; the `unknown`-not-`down` auth mapping exists because of it.

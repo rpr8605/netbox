@@ -15,9 +15,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                        "sha256":  "c238d495e277624334c0a8d1c00ef2613581e950d4d39f77c446a48eb86e708f",
+                                        "sha256":  "11da42357838de72894ff0a7d3d3b4a1f96e1358cfeb2a836e8659c9b95bf7e9",
                                         "status":  "reference",
-                                        "note":  "status doc; channel registry + TLS cert expiration marked DONE; EHR unit 21/21",
+                                        "note":  "status doc; channel registry + TLS cert expiration + ticketing Tier 0 marked DONE; alerting 39/39",
                                         "commits":  [
                                                         "107ac2f",
                                                         "a68b0f5",
@@ -26,7 +26,8 @@
                                                         "c975e84",
                                                         "bb00146",
                                                         "32aad48",
-                                                        "4678fc6"
+                                                        "4678fc6",
+                                                        "831f71d"
                                                     ]
                                     },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -90,9 +91,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                    "sha256":  "069275921571155a3e2cb5747a611c68807a603b24c2fea763592482b5f61732",
+                                    "sha256":  "80159915f43a51de1204703f0ee9b5334f3c03ee6e34536b0af430bf65af5a67",
                                     "status":  "reference",
-                                    "note":  "status doc; channel registry + TLS cert expiration DONE; EHR unit 21/21",
+                                    "note":  "status doc; channel registry + TLS cert expiration + ticketing Tier 0 DONE; alerting 39/39",
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
@@ -101,17 +102,18 @@
                                                     "c975e84",
                                                     "bb00146",
                                                     "32aad48",
-                                                    "4678fc6"
+                                                    "4678fc6",
+                                                    "831f71d"
                                                 ]
                                 },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
-                                                                "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
-                                                                "status":  "reference",
-                                                                "note":  "fleet map/troubleshooting memory/ticketing not started; deferred",
-                                                                "commits":  [
-
-                                                                            ]
-                                                            },
+                                                                 "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
+                                                                 "status":  "reference",
+                                                                 "note":  "fleet map/troubleshooting memory/Tier-1 ticketing deferred; Tier-0 copy-paste+email built",
+                                                                 "commits":  [
+                                                                                 "831f71d"
+                                                                             ]
+                                                             },
     "README(2).md":  {
                          "sha256":  "cf2340ed79e0ae4a8185813914453a569c50b7a8507b3bc5149bb8ae7821669f",
                          "status":  "reference",
@@ -179,14 +181,15 @@
                                            ]
                            },
     ".agent/checkpoints.md":  {
-                                   "sha256":  "cbe123d61775dd1f4a59418a3b82f6165543e11178242850b8b7fe1e142cfaa5",
+                                   "sha256":  "48bd0e6c87830580ed5b3ae44e36f13d00dc1435fefd770b1fc2424f1f0d9a0f",
                                    "status":  "reference",
-                                   "note":  "session checkpoint log; added checkpoints #5/#6 (channel registry + TLS cert expiration)",
+                                   "note":  "session checkpoint log; added checkpoints #5/#6/#7 (channel registry + TLS cert expiration + ticketing Tier 0)",
                                    "commits":  [
                                                    "fea0d33",
                                                    "c975e84",
                                                    "32aad48",
-                                                   "4678fc6"
+                                                   "4678fc6",
+                                                   "831f71d"
                                                ]
                                },
     ".agent/open-questions.md":  {

@@ -9,7 +9,7 @@ import {
   listChannels,
 } from '../db.js';
 import { fireAlert, acknowledgeAlert, validateImpactStatement } from '../alerting.js';
-import { deliver, sendSendGrid } from '../deliver.js';
+import { deliver, sendSendGrid, sendSes } from '../deliver.js';
 import { requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
 
@@ -84,9 +84,11 @@ export default async function alertRoutes(app) {
     if (!to || typeof to !== 'string') return reply.code(400).send({ error: 'to address required' });
     const rule = getAlertRule(alert.rule_id);
     const block = formatTicketBlock(alert, rule);
-    const apiKey = cfg.sendgrid?.apiKey ?? process.env.SENDGRID_API_KEY;
-    const from = cfg.sendgrid?.from ?? process.env.SENDGRID_FROM ?? 'alerts@beacon-relay.local';
-    const result = await sendSendGrid({ apiKey, from, to, subject: block.title, text: block.plain_text });
+    const from = cfg.sendgrid?.from ?? cfg.ses?.from ?? process.env.SENDGRID_FROM ?? process.env.SES_FROM ?? 'alerts@beacon-relay.local';
+    let result = await sendSendGrid({ apiKey: cfg.sendgrid?.apiKey ?? process.env.SENDGRID_API_KEY, from, to, subject: block.title, text: block.plain_text });
+    if (result.skipped) {
+      result = await sendSes({ ...cfg.ses, from, to, subject: block.title, text: block.plain_text });
+    }
     appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email', target: alert.alert_id, detail: `to=${to} sent=${!(result.skipped || result.status >= 400)}` });
     if (result.skipped) return { sent: false, reason: result.reason };
     return { sent: result.status >= 200 && result.status < 300, result };

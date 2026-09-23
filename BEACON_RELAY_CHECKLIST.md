@@ -19,7 +19,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support / ticketing Tier 0 | `node scripts/test_alerting_rbac_audit_support.js` | 39/39 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip | `node scripts/test_alerting_rbac_audit_support.js` | 40/40 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -92,7 +92,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Runbook attachment per condition — **DONE** (rule carries runbook_url; suite 23/23).
 - Required ack + auto-escalation on timeout — **DONE** (sweep escalates un-acked P1 to tier 2; suite 23/23).
 - Suppression/maintenance windows — **DONE** (maintenance suppresses fire; suite 23/23).
-- Delivery rails: Twilio SMS/voice, SES/SendGrid email, Slack/Teams webhook — **PARTIAL**. `lib/deliver.js` is real code for all four channels, but no live SaaS credentials are wired in tests — delivery is proven by shape/mocking, not by a real message leaving. (SES specifically is not implemented — SendGrid is the email path currently written.)
+- Delivery rails: Twilio SMS/voice, SES/SendGrid email, Slack/Teams webhook — **PARTIAL**. `lib/deliver.js` is real code for all four channels (SES added via `@aws-sdk/client-sesv2`, tried first; SendGrid fallback). No live SaaS credentials are wired in tests — delivery is proven by shape/skip behavior, not by a real message leaving.
 
 ### §7 — Fleet Console
 - Per-device registry/status console — **DONE** (`public/index.html`).
@@ -216,7 +216,6 @@ No DONE item is *broken* by an unbuilt dependency — the current system is inte
 Small, unblocked, worth doing first:
 
 - **AWS Organization + three accounts** (`CLOUD_ARCHITECTURE_AWS` §6 step 1) — the doc is explicit that nothing else in it should build before this, and it's foundational like step-ca was; zero new device/EHR code.
-- **SES email sender alongside SendGrid** (`BUILD_SPEC` §6) — the deliver.js email path is SendGrid-only today; the spec names SES *or* SendGrid, so this is a one-function addition on a proven rail, and closes the "SES not implemented" note.
 
 ---
 
