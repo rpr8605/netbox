@@ -21,7 +21,7 @@ const PUB_JWK_FILE = path.join(PROV_DIR, 'public_jwk.json');
 const PRIV_JWK_FILE = path.join(PROV_DIR, 'private_jwk.json');
 const PW_FILE = 'pki-config/password';
 
-const provisionerName = process.env.PKI_PROVISIONER ?? 'beacon-relay-device';
+const provisionerName = process.env.PKI_PROVISIONER ?? process.env.PROVISIONER_NAME ?? 'beacon-relay-device';
 
 function jwkPub(p) {
   const { d, ...pub } = p;
@@ -98,8 +98,11 @@ async function main() {
   console.log(`pki seed: rendered pki-config/config.render/ca.json (provisioner '${provisionerName}')`);
 
   if (!fs.existsSync(PW_FILE)) {
-    fs.writeFileSync(PW_FILE, process.env.CA_PASSWORD ?? 'dev-only-insecure-changeit!');
-    console.warn('pki seed: wrote dev CA password to pki-config/password (gitignored)');
+    if (!process.env.CA_PASSWORD) {
+      throw new Error('CA_PASSWORD is required. Set it in your environment or source a .env file before running pki_seed.js.');
+    }
+    fs.writeFileSync(PW_FILE, process.env.CA_PASSWORD);
+    console.warn('pki seed: wrote CA password to pki-config/password (gitignored)');
   }
 }
 main().catch(e => { console.error(e); process.exit(1); });
