@@ -1,6 +1,7 @@
 # .gitignore — Phase 1
 node_modules/
 dist/
+out/
 *.log
 .env
 .env.local

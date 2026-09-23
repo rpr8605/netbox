@@ -11,7 +11,9 @@ services:
     user: root
     entrypoint: ["sh", "/home/step/entrypoint.sh"]
     environment:
-      CA_PASSWORD: ${CA_PASSWORD}
+      # Required, no default. `docker compose up` will fail with the message if
+      # the variable is unset, preventing accidental startup with a public password.
+      CA_PASSWORD: ${CA_PASSWORD:?set CA_PASSWORD}
       STEPPATH: /home/step
     volumes:
       - ./pki-config/entrypoint.sh:/home/step/entrypoint.sh:ro
@@ -20,7 +22,10 @@ services:
       - pki-secrets:/home/step/secrets
       - pki-db:/home/step/db
     ports:
-      - "9000:9000"
+      # Localhost-only: the CA is never accessed directly by hospital devices;
+      # compose-internal services reach it by service name. Binding to all
+      # interfaces would expose the CA port to the LAN (C3).
+      - "127.0.0.1:9000:9000"
     healthcheck:
       test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:9000/health"]
       interval: 5s
@@ -31,13 +36,14 @@ services:
     image: postgres:15-alpine
     container_name: beacon-relay-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-beacon}
+      # Required, no default (C3).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-beacon_relay}
     volumes:
       - pg-data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_HOST_PORT}:5432"
+    # Postgres is intentionally NOT published to the host. Only the control-plane
+    # service inside this compose network needs it (C3).
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -74,12 +80,11 @@ services:
       - ./out:/out:ro
       - cp-data:/data
     ports:
-      # Host-side port is configurable. Default is 10443 because Windows/Hyper-V
-      # reserves 9100 in excluded range 9035-9134 on the build machine. To disable
-      # host publish entirely, override this to an empty list in a compose override
-      # file or unset the line (the container port remains 9100 for compose-internal
-      # services like device-sim and the vm-harness).
-      - "${CONTROL_PLANE_HOST_PORT}:9100"
+      # Localhost-only host publish. The container port remains 9100 for
+      # compose-internal services (device-sim, vm-harness). Binding to all
+      # interfaces combined with the Phase-2 query-string RBAC would let anyone
+      # on the LAN act as operations-manager (C3).
+      - "127.0.0.1:${CONTROL_PLANE_HOST_PORT}:9100"
     depends_on:
       step-ca:
         condition: service_healthy
