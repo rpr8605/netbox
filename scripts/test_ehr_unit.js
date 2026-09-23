@@ -447,6 +447,30 @@ async function main() {
   });
   check('AV/EDR check-in stale -> down', avStale.status === 'down', JSON.stringify(avStale));
 
+  // ---- DHCP health (direct check where hospital exposes a status source) ----
+  const dhcpOk = await runOne('dhcp', 'dhcp-ok', 'dhcp_health', {
+    mockData: { server: '10.0.0.2', scope: '10.0.0.0/24', status: 'healthy', leases_in_use: 80, leases_available: 120 },
+  });
+  check('DHCP healthy -> verified_ready', dhcpOk.status === 'verified_ready', JSON.stringify(dhcpOk));
+
+  const dhcpUtilHigh = await runOne('dhcp', 'dhcp-high-util', 'dhcp_health', {
+    mockData: { server: '10.0.0.2', scope: '10.0.0.0/24', status: 'healthy', utilization_percent: 95 },
+  });
+  check('DHCP high utilization -> degraded', dhcpUtilHigh.status === 'degraded', JSON.stringify(dhcpUtilHigh));
+
+  const dhcpFailoverDegraded = await runOne('dhcp', 'dhcp-failover-degraded', 'dhcp_health', {
+    mockData: { server: '10.0.0.2', scope: '10.0.0.0/24', status: 'healthy', failover_state: 'communications-interrupted' },
+  });
+  check('DHCP failover degraded -> degraded', dhcpFailoverDegraded.status === 'degraded', JSON.stringify(dhcpFailoverDegraded));
+
+  const dhcpDown = await runOne('dhcp', 'dhcp-down', 'dhcp_health', {
+    mockData: { server: '10.0.0.2', status: 'down' },
+  });
+  check('DHCP down -> down', dhcpDown.status === 'down', JSON.stringify(dhcpDown));
+
+  const dhcpUnconfigured = await runOne('dhcp', 'dhcp-unconfigured', 'dhcp_health', {});
+  check('DHCP unconfigured -> unknown (not down)', dhcpUnconfigured.status === 'unknown', JSON.stringify(dhcpUnconfigured));
+
   // ---- loader negative cases ----------------------------------------------
   try { loadProfile({ profile_id: 'x', vendor: 'y', checks: [] }); check('loader rejects empty checks', false); }
   catch { check('loader rejects empty checks', true); }

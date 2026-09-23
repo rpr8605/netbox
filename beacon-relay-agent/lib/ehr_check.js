@@ -23,9 +23,9 @@ import { runM365AccountHealthCheck } from './m365_account_health.js';
 import { runFhirCheck } from './fhir_r4.js';
 import { runMirthCheck } from './mirth_admin.js';
 import { postEvent } from './post_event.js';
-import { runWirelessApCheck, runVpnTunnelCheck, runBackupDrStatusCheck, runAvEdrCheckinCheck } from './site_controls.js';
+import { runWirelessApCheck, runVpnTunnelCheck, runBackupDrStatusCheck, runAvEdrCheckinCheck, runDhcpHealthCheck } from './site_controls.js';
 
-const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck, dns: dnsCheck, wan: runWanCheck, m365: runM365AccountHealthCheck, wireless: runWirelessApCheck, vpn: runVpnTunnelCheck, backup_dr: runBackupDrStatusCheck, av_edr: runAvEdrCheckinCheck };
+const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck, dns: dnsCheck, wan: runWanCheck, m365: runM365AccountHealthCheck, wireless: runWirelessApCheck, vpn: runVpnTunnelCheck, backup_dr: runBackupDrStatusCheck, av_edr: runAvEdrCheckinCheck, dhcp: runDhcpHealthCheck };
 
 // loadProfile — parse + validate one config profile document. Throws on ANY
 // structural violation rather than skipping entries: a profile is site

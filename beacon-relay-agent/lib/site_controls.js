@@ -303,3 +303,71 @@ export async function runAvEdrCheckinCheck(params = {}) {
   }
   return interpretAvEdr(read.data, read.latency_ms);
 }
+
+// ---------------------------------------------------------------------------
+// DHCP health
+// ---------------------------------------------------------------------------
+function interpretDhcp(data, latencyMs) {
+  const server = data?.server ?? data?.dhcp_server ?? null;
+  const scope = data?.scope ?? data?.subnet ?? null;
+  const leasesInUse = data?.leases_in_use ?? data?.leases_in_use_count ?? null;
+  const leasesAvailable = data?.leases_available ?? data?.leases_available_count ?? null;
+  const utilizationPercent = data?.utilization_percent ?? data?.utilization ?? null;
+  const failoverState = data?.failover_state ?? data?.failover ?? null;
+  const rawStatus = data?.status ?? data?.service_status ?? 'unknown';
+  const status = String(rawStatus).toLowerCase();
+
+  const observed = {
+    server,
+    scope,
+    leases_in_use: leasesInUse,
+    leases_available: leasesAvailable,
+    utilization_percent: utilizationPercent,
+    failover_state: failoverState,
+  };
+
+  if (['failed', 'error', 'down', 'unreachable'].includes(status)) {
+    return { status: 'down', detail: `DHCP server reported ${status}`, observed, latency_ms: latencyMs };
+  }
+
+  if (utilizationPercent != null && Number(utilizationPercent) >= 90) {
+    return { status: 'degraded', detail: `DHCP scope ${scope ?? 'unknown'} ${utilizationPercent}% utilized`, observed, latency_ms: latencyMs };
+  }
+
+  if (leasesAvailable != null && leasesInUse != null) {
+    const total = leasesInUse + leasesAvailable;
+    if (total > 0 && leasesAvailable / total < 0.1) {
+      return { status: 'degraded', detail: `DHCP scope ${scope ?? 'unknown'} has ${leasesAvailable} of ${total} leases free`, observed, latency_ms: latencyMs };
+    }
+  }
+
+  if (failoverState && !['normal', 'active', 'up', 'ok'].includes(String(failoverState).toLowerCase())) {
+    return { status: 'degraded', detail: `DHCP failover state: ${failoverState}`, observed, latency_ms: latencyMs };
+  }
+
+  if (['healthy', 'active', 'ok', 'up', 'running'].includes(status)) {
+    return { status: 'verified_ready', detail: 'DHCP server healthy', observed, latency_ms: latencyMs };
+  }
+
+  return { status: 'unknown', detail: 'DHCP status unclear', observed, latency_ms: latencyMs };
+}
+
+// runDhcpHealthCheck — read-only DHCP server health.
+// Params: source (http(s) URL or file path to the hospital's DHCP health
+//         endpoint), optional mockData.
+// Returns: { status, detail, observed, latency_ms }.
+// NOTE: DHCP is broadcast-based; this adapter reads from a status source that
+// the hospital's own DHCP infrastructure exposes. Where no such source exists,
+// DHCP health is inferred from monitored endpoints and this adapter returns
+// 'unknown'.
+export async function runDhcpHealthCheck(params = {}) {
+  if (!params.mockData && !params.source) {
+    return { status: 'unknown', detail: 'DHCP status source not configured', observed: {}, latency_ms: 0 };
+  }
+  const read = await readStatusSource(params);
+  if (!read.ok) {
+    const reason = read.error === 'status source not configured' ? 'unknown' : 'down';
+    return { status: reason, detail: `DHCP status source unreachable — ${read.error}`, observed: {}, latency_ms: read.latency_ms };
+  }
+  return interpretDhcp(read.data, read.latency_ms);
+}

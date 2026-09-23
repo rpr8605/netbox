@@ -7,7 +7,7 @@
   "definitions": {
     "kind": { "enum": ["check_result", "hl7_metadata", "heartbeat", "update_event", "security_signal"] },
     "service": {
-      "enum": ["ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom", "cert_expiration", "firewall", "dns", "wan", "m365_account_health", "wireless_ap_health", "vpn_tunnel_health", "backup_dr_status", "av_edr_checkin"]
+      "enum": ["ehr", "adt", "lab", "pharmacy", "imaging", "eprescribe", "internet", "phone", "printing", "custom", "cert_expiration", "firewall", "dns", "wan", "m365_account_health", "wireless_ap_health", "vpn_tunnel_health", "backup_dr_status", "av_edr_checkin", "dhcp_health"]
     },
     "tier": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
     "status": { "enum": ["reachable", "verified_ready", "active", "degraded", "down", "unknown"] },

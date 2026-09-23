@@ -10,7 +10,7 @@ export type BeaconRelayEvent = {
   /** ISO 8601 date-time */
   occurred_at: string;
   kind: 'check_result' | 'hl7_metadata' | 'heartbeat' | 'update_event' | 'security_signal';
-  service: 'ehr' | 'adt' | 'lab' | 'pharmacy' | 'imaging' | 'eprescribe' | 'internet' | 'phone' | 'printing' | 'custom' | 'cert_expiration' | 'firewall' | 'dns' | 'wan' | 'm365_account_health' | 'wireless_ap_health' | 'vpn_tunnel_health' | 'backup_dr_status' | 'av_edr_checkin';
+  service: 'ehr' | 'adt' | 'lab' | 'pharmacy' | 'imaging' | 'eprescribe' | 'internet' | 'phone' | 'printing' | 'custom' | 'cert_expiration' | 'firewall' | 'dns' | 'wan' | 'm365_account_health' | 'wireless_ap_health' | 'vpn_tunnel_health' | 'backup_dr_status' | 'av_edr_checkin' | 'dhcp_health';
   tier_observed?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
   status?: 'reachable' | 'verified_ready' | 'active' | 'degraded' | 'down' | 'unknown';
   signal?: 'unusual' | 'advisory' | 'verified_unusual';
