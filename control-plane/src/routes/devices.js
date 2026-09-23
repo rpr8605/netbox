@@ -15,9 +15,15 @@ import { appendAudit } from '../db.js';
 import { revokeStepCaCertificate, canonicalSerial } from '../ca.js';
 
 export default async function deviceRoutes(app) {
-  app.get('/api/devices', async () => listDevices());
+  app.get('/api/devices', {
+    preHandler: requirePerm('devices:read', appendAudit),
+    config: { auth: 'operator:devices:read' },
+  }, async () => listDevices());
 
-  app.get('/api/devices/:id', async (req, reply) => {
+  app.get('/api/devices/:id', {
+    preHandler: requirePerm('devices:read', appendAudit),
+    config: { auth: 'operator:devices:read' },
+  }, async (req, reply) => {
     const d = await getDevice(req.params.id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
     return { ...d, recent_events: await listEvents(d.device_id, 20) };
@@ -25,7 +31,10 @@ export default async function deviceRoutes(app) {
 
   // confirm flips quarantine -> active: a WRITE to the device registry, so it
   // requires devices:write. Wired (was unauthenticated before the RBAC pass).
-  app.post('/api/devices/:id/confirm', { preHandler: requirePerm('devices:write', appendAudit) }, async (req, reply) => {
+  app.post('/api/devices/:id/confirm', {
+    preHandler: requirePerm('devices:write', appendAudit),
+    config: { auth: 'operator:devices:write' },
+  }, async (req, reply) => {
     const d = await getDevice(req.params.id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
     if (d.state === 'revoked') return reply.code(409).send({ error: 'device revoked' });
@@ -52,7 +61,10 @@ export default async function deviceRoutes(app) {
   // this action. The flow revokes the old certificate in step-ca first, then
   // records the serial locally so the next mTLS presentation is rejected before
   // any DB state check.
-  app.post('/api/devices/:id/replace', { preHandler: requirePerm('devices:replace', appendAudit) }, async (req, reply) => {
+  app.post('/api/devices/:id/replace', {
+    preHandler: requirePerm('devices:replace', appendAudit),
+    config: { auth: 'operator:devices:replace' },
+  }, async (req, reply) => {
     const oldDeviceId = req.params.id;
     const { new_device_id, reason } = req.body ?? {};
     if (!new_device_id || typeof new_device_id !== 'string') {

@@ -89,11 +89,14 @@ const app = Fastify({
 // Console pages should not be reachable without at least a declared role, even
 // though Phase 2 has no real identity layer. The Fleet Map page is protected
 // here; the data endpoint enforces the same RBAC as the rollup gate.
-app.get('/fleet.html', { preHandler: (req, reply, done) => {
-  const role = req.query?.role;
-  if (!role) return reply.code(403).send({ error: 'role required' });
-  done();
-} }, async (req, reply) => {
+app.get('/fleet.html', {
+  preHandler: (req, reply, done) => {
+    const role = req.query?.role;
+    if (!role) return reply.code(403).send({ error: 'role required' });
+    done();
+  },
+  config: { auth: 'operator:topology:rollup' },
+}, async (req, reply) => {
   return reply.sendFile('fleet.html');
 });
 
@@ -112,16 +115,19 @@ await app.register(actionRegistryRoutes);
 // Audit log read — security-auditor and operations-manager only. Read-only by
 // design: there is no route that mutates audit_log, and the db triggers make
 // UPDATE/DELETE raise.
-app.get('/api/audit', { preHandler: requirePerm('audit:read', appendAudit) }, async (req) => {
+app.get('/api/audit', {
+  preHandler: requirePerm('audit:read', appendAudit),
+  config: { auth: 'operator:audit:read' },
+}, async (req) => {
   return await listAudit(Number(req.query?.limit ?? 100));
 });
 
-app.get('/api/health', async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
+app.get('/api/health', { config: { auth: 'public' } }, async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
 
 // Demo mode flag so the static console can show a prominent DEMO banner and
 // avoid any ambiguity that the data on screen is synthetic. The banner is
 // rendered client-side so this endpoint is the single source of truth.
-app.get('/api/demo', async () => ({ demo: DEMO_MODE }));
+app.get('/api/demo', { config: { auth: 'public' } }, async () => ({ demo: DEMO_MODE }));
 
 // Escalation sweep: any open alert past its ack window escalates to the next
 // tier. Support-session sweep: any session past its expires_at is closed.

@@ -29,7 +29,10 @@ function roleMeets(requesterRole, requiredRole) {
 export default async function actionRegistryRoutes(app) {
   // Register an approved action type for a site. Adding an action type is a
   // deliberate config change, not something a session can improvise.
-  app.post('/api/action-registry', { preHandler: requirePerm('action_registry:write', appendAudit) }, async (req, reply) => {
+  app.post('/api/action-registry', {
+    preHandler: requirePerm('action_registry:write', appendAudit),
+    config: { auth: 'operator:action_registry:write' },
+  }, async (req, reply) => {
     const { action_id, site_id, requires_role, max_scope } = req.body ?? {};
     if (!action_id || !site_id || !requires_role) {
       return reply.code(400).send({ error: 'action_id, site_id, requires_role required' });
@@ -47,7 +50,10 @@ export default async function actionRegistryRoutes(app) {
   });
 
   // List approved actions for a site.
-  app.get('/api/action-registry/:siteId', { preHandler: requirePerm('action_registry:read', appendAudit) }, async (req) => {
+  app.get('/api/action-registry/:siteId', {
+    preHandler: requirePerm('action_registry:read', appendAudit),
+    config: { auth: 'operator:action_registry:read' },
+  }, async (req) => {
     return { site_id: req.params.siteId, actions: await listActionRegistryEntries(req.params.siteId) };
   });
 
@@ -56,7 +62,10 @@ export default async function actionRegistryRoutes(app) {
   // the single-use JIT token, exactly like a normal support session. If the
   // action type is not registered for the site, or the requester's role is too
   // low, the request is refused before any session is created.
-  app.post('/api/action-registry/execute', { preHandler: requirePerm('action_registry:execute', appendAudit) }, async (req, reply) => {
+  app.post('/api/action-registry/execute', {
+    preHandler: requirePerm('action_registry:execute', appendAudit),
+    config: { auth: 'operator:action_registry:execute' },
+  }, async (req, reply) => {
     const { action_id, site_id, device_id, requested_by } = req.body ?? {};
     const requesterRole = req.query?.role ?? req.body?.role ?? 'unknown';
     if (!action_id || !site_id || !device_id || !requested_by) {

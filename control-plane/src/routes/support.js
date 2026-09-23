@@ -20,7 +20,10 @@ export default async function supportRoutes(app) {
   // The device will poll for it over its existing outbound mTLS connection.
   // Admin requests a session — requires support:request (ops/support roles).
   // The RBAC gate runs BEFORE any session row or token is created.
-  app.post('/api/support/sessions', { preHandler: requirePerm('support:request', appendAudit) }, async (req, reply) => {
+  app.post('/api/support/sessions', {
+    preHandler: requirePerm('support:request', appendAudit),
+    config: { auth: 'operator:support:request' },
+  }, async (req, reply) => {
     const { device_id, requested_by, ttl_seconds } = req.body ?? {};
     if (!device_id || !requested_by) return reply.code(400).send({ error: 'device_id and requested_by required' });
     // Per-session TTL is allowed but CAPPED: a session can't outlive the
@@ -37,7 +40,9 @@ export default async function supportRoutes(app) {
 
   // Device polls (over its existing mTLS connection) for a pending session and
   // picks up its token. Only the device's own sessions are returned.
-  app.get('/api/support/sessions/:deviceId/pending', async (req, reply) => {
+  app.get('/api/support/sessions/:deviceId/pending', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     // Device-facing: the caller must present the mTLS cert for the SAME device
     // it's polling for. Without this check any enrolled device could enumerate
     // another device's pending sessions (the comment above claimed this check;
@@ -59,7 +64,9 @@ export default async function supportRoutes(app) {
   // appliance, authenticated by its mTLS client cert (CN must match the
   // session's device_id) PLUS the single-use JIT token — not a human RBAC role.
   // Both halves are required: a valid token from the wrong device is refused.
-  app.post('/api/support/sessions/:id/open', async (req, reply) => {
+  app.post('/api/support/sessions/:id/open', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     const s = await getSupportSession(req.params.id);
     if (!s) return reply.code(404).send({ error: 'unknown session' });
     // mTLS device identity: the client cert CN must match the session's device.
@@ -90,7 +97,10 @@ export default async function supportRoutes(app) {
 
   // Close a session (either side). The time-limit is enforced: reading or
   // closing an expired session marks it 'expired', not 'open'.
-  app.post('/api/support/sessions/:id/close', async (req, reply) => {
+  app.post('/api/support/sessions/:id/close', {
+    preHandler: requirePerm('support:request', appendAudit),
+    config: { auth: 'operator:support:request' },
+  }, async (req, reply) => {
     const s = await getSupportSession(req.params.id);
     if (!s) return reply.code(404).send({ error: 'unknown session' });
     await closeSupportSession(s.session_id, 'closed');
@@ -98,7 +108,10 @@ export default async function supportRoutes(app) {
     return { session_id: s.session_id, state: 'closed' };
   });
 
-  app.get('/api/support/sessions/:id', async (req, reply) => {
+  app.get('/api/support/sessions/:id', {
+    preHandler: requirePerm('support:request', appendAudit),
+    config: { auth: 'operator:support:request' },
+  }, async (req, reply) => {
     const s = await getSupportSession(req.params.id);
     if (!s) return reply.code(404).send({ error: 'unknown session' });
     const expired = new Date(s.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now();

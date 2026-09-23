@@ -15,7 +15,7 @@
 // presented as facts without asserting causation.
 import crypto from 'node:crypto';
 import { listEventsBySite, listChannels, getChannel, listSites } from '../db.js';
-import { can } from '../rbac.js';
+import { can, requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
 
 // The critical-service register — the canonical schema's service enum is the
@@ -60,7 +60,10 @@ function timeInState(events, currentStatus) {
 }
 
 export default async function topologyViewRoutes(app) {
-  app.get('/api/sites/:id/full-status', async (req) => {
+  app.get('/api/sites/:id/full-status', {
+    preHandler: requirePerm('topology:read', appendAudit),
+    config: { auth: 'operator:topology:read' },
+  }, async (req) => {
     const siteId = req.params.id;
     const events = await listEventsBySite(siteId, 500);
     const checkResults = events.filter(e => e.kind === 'check_result');
@@ -148,15 +151,18 @@ export default async function topologyViewRoutes(app) {
     }
     return worst ?? 'unknown';
   }
-  app.get('/api/fleet/map', { preHandler: async (req, reply) => {
-    const role = req.query?.role ?? req.body?.role ?? null;
-    const requestedSite = req.query?.site_id ?? null;
-    if (can(role, 'topology:rollup')) return;
-    // customer-it-admin may see only their own site pin.
-    if (role === 'customer-it-admin' && requestedSite) return;
-    await appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
-    return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks fleet map access` });
-  } }, async (req) => {
+  app.get('/api/fleet/map', {
+    preHandler: async (req, reply) => {
+      const role = req.query?.role ?? req.body?.role ?? null;
+      const requestedSite = req.query?.site_id ?? null;
+      if (can(role, 'topology:rollup')) return;
+      // customer-it-admin may see only their own site pin.
+      if (role === 'customer-it-admin' && requestedSite) return;
+      await appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
+      return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks fleet map access` });
+    },
+    config: { auth: 'operator:topology:rollup' },
+  }, async (req) => {
     const role = req.query?.role ?? req.body?.role ?? null;
     const requestedSite = req.query?.site_id ?? null;
     const sites = [];

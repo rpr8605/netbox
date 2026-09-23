@@ -34,7 +34,9 @@ export default async function releaseRoutes(app) {
   // Latest release version — gated by the active staged rollout when one exists.
   // Devices pass their device_id so the policy can deterministically decide
   // whether this device is in the current rollout percentage.
-  app.get('/api/releases/latest', async (req, reply) => {
+  app.get('/api/releases/latest', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     const m = readManifest();
     if (!m) return reply.code(404).send({ error: 'no release published' });
     const deviceId = req.query?.device_id ?? null;
@@ -52,7 +54,9 @@ export default async function releaseRoutes(app) {
   });
 
   // The signed bundle bytes. mTLS-gated: only an enrolled device may pull it.
-  app.get('/api/releases/:version/bundle', async (req, reply) => {
+  app.get('/api/releases/:version/bundle', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     const cert = req.socket.getPeerCertificate?.();
     if (!req.socket.authorized || !cert?.subject?.CN || !(await getDevice(cert.subject.CN))) {
       return reply.code(403).send({ error: 'enrolled device cert required' });
@@ -68,7 +72,10 @@ export default async function releaseRoutes(app) {
   // audit-logged. The rollout engine itself is intentionally small: a version,
   // a stage, and a percentage, with deterministic device assignment.
   // -------------------------------------------------------------------------
-  app.post('/api/releases/rollouts', { preHandler: requirePerm('releases:manage', appendAudit) }, async (req, reply) => {
+  app.post('/api/releases/rollouts', {
+    preHandler: requirePerm('releases:manage', appendAudit),
+    config: { auth: 'operator:releases:manage' },
+  }, async (req, reply) => {
     const { version, stage, percentage = 100 } = req.body ?? {};
     if (!isValidReleaseVersion(version)) {
       return reply.code(400).send({ error: 'version must be major.minor.patch with optional pre-release label' });
@@ -87,11 +94,15 @@ export default async function releaseRoutes(app) {
     return { rollout_id: rolloutId, version, stage, percentage, active: false };
   });
 
-  app.get('/api/releases/rollouts', { preHandler: requirePerm('releases:manage', appendAudit) }, async () => {
-    return listRollouts();
-  });
+  app.get('/api/releases/rollouts', {
+    preHandler: requirePerm('releases:manage', appendAudit),
+    config: { auth: 'operator:releases:manage' },
+  }, async () => listRollouts());
 
-  app.post('/api/releases/rollouts/:id/activate', { preHandler: requirePerm('releases:manage', appendAudit) }, async (req, reply) => {
+  app.post('/api/releases/rollouts/:id/activate', {
+    preHandler: requirePerm('releases:manage', appendAudit),
+    config: { auth: 'operator:releases:manage' },
+  }, async (req, reply) => {
     const changes = await activateRollout(req.params.id);
     if (!changes) return reply.code(404).send({ error: 'rollout not found' });
     const active = await getActiveRollout();

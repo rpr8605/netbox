@@ -34,7 +34,9 @@ export function publicKeyFingerprint(publicKeyPem) {
 }
 
 export default async function retrustRoutes(app) {
-  app.post('/api/enroll/retrust/challenge', async (req, reply) => {
+  app.post('/api/enroll/retrust/challenge', {
+    config: { auth: 'public' },
+  }, async (req, reply) => {
     const { device_id } = req.body ?? {};
     if (!device_id) return reply.code(400).send({ error: 'device_id required' });
     const d = await getDevice(device_id);
@@ -47,7 +49,9 @@ export default async function retrustRoutes(app) {
     return { device_id, challenge, expires_in_s: 60 };
   });
 
-  app.post('/api/enroll/retrust', async (req, reply) => {
+  app.post('/api/enroll/retrust', {
+    config: { auth: 'public' },
+  }, async (req, reply) => {
     const { device_id, challenge, signature_b64, public_key_pem } = req.body ?? {};
     if (!device_id || !challenge || !signature_b64 || !public_key_pem) {
       return reply.code(400).send({ error: 'device_id, challenge, signature_b64, public_key_pem required' });

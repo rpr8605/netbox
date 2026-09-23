@@ -62,7 +62,10 @@ export default async function channelRoutes(app) {
   // /api/enroll/tokens (Phase 2): real RBAC in Phase 8.
   // Register a channel_id -> display name/engine. A WRITE to the registry —
   // requires channels:write (operations-manager). Was unauthenticated before.
-  app.post('/api/channels', { preHandler: requirePerm('channels:write', appendAudit) }, async (req, reply) => {
+  app.post('/api/channels', {
+    preHandler: requirePerm('channels:write', appendAudit),
+    config: { auth: 'operator:channels:write' },
+  }, async (req, reply) => {
     const { channel_id, display_name, engine, site_id, source_system, destination_system } = req.body ?? {};
     if (!channel_id || !display_name || !engine) {
       return reply.code(400).send({ error: 'channel_id, display_name, engine required' });
@@ -70,7 +73,10 @@ export default async function channelRoutes(app) {
     await upsertChannel({ channelId: channel_id, displayName: display_name, engine, siteId: site_id, sourceSystem: source_system, destinationSystem: destination_system });
     return { channel_id, display_name, engine, site_id: site_id ?? null, source_system: source_system ?? null, destination_system: destination_system ?? null };
   });
-  app.get('/api/channels', async () => listChannels());
+  app.get('/api/channels', {
+    preHandler: requirePerm('channels:read', appendAudit),
+    config: { auth: 'operator:channels:read' },
+  }, async () => listChannels());
 
   // Flat newest-per-(site,channel) row set. Kept in the route because the
   // per-site and fleet rollups share it; the actual SQL grouping is one
@@ -90,7 +96,10 @@ export default async function channelRoutes(app) {
   }
 
   // Per-site topology: newest check_result per channel at one site.
-  app.get('/api/sites/:id/topology', async (req) => {
+  app.get('/api/sites/:id/topology', {
+    preHandler: requirePerm('topology:read', appendAudit),
+    config: { auth: 'operator:topology:read' },
+  }, async (req) => {
     const siteId = req.params.id;
     const evs = await listEventsBySite(siteId, 200);
     const newest = newestPerChannel(evs);
@@ -99,7 +108,10 @@ export default async function channelRoutes(app) {
   });
 
   // Cross-site rollup: fleet-wide newest-per-channel across sites. RBAC-gated.
-  app.get('/api/topology/rollup', async (req, reply) => {
+  app.get('/api/topology/rollup', {
+    preHandler: requirePerm('topology:rollup', appendAudit),
+    config: { auth: 'operator:topology:rollup' },
+  }, async (req, reply) => {
     const role = req.query.role ?? req.body?.role ?? null;
     if (!rollupAllowed(role, reply)) return;
     // Gather each registered device's recent events and fold by site/channel.

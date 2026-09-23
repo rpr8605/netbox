@@ -17,22 +17,22 @@ export const ROLE_PERMISSIONS = {
   'support-technician': new Set([
     'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:ack', 'alerts:close', 'support:request', 'support:open',
-    'action_registry:read', 'action_registry:execute',
+    'channels:read', 'action_registry:read', 'action_registry:execute',
   ]),
   'customer-it-admin': new Set([
-    'devices:read', 'events:read', 'topology:read',
+    'devices:read', 'events:read', 'topology:read', 'channels:read',
     'alerts:read', 'downtime:manage',
   ]),
   'operations-manager': new Set([
     'devices:read', 'devices:write', 'devices:replace', 'events:read', 'topology:read', 'topology:rollup',
-    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write',
+    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write', 'channels:read',
     'releases:manage', 'enroll:tokens', 'action_registry:write', 'action_registry:read', 'action_registry:execute',
   ]),
   'security-auditor': new Set([
-    'devices:read', 'events:read', 'topology:read', 'audit:read',
+    'devices:read', 'events:read', 'topology:read', 'channels:read', 'audit:read',
   ]),
   'readonly-executive': new Set([
-    'devices:read', 'topology:read', 'alerts:read',
+    'devices:read', 'topology:read', 'channels:read', 'alerts:read',
   ]),
 };
 

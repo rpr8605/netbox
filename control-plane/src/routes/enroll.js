@@ -41,7 +41,10 @@ export default async function enrollRoutes(app) {
   // Operator endpoint. Requires an operator role that can mint enrollment tokens
   // (C2). Phase 1 still uses query-string roles, but the gate is structural so
   // a real auth layer only has to supply the principal's role.
-  app.post('/api/enroll/tokens', { preHandler: requirePerm('enroll:tokens', appendAudit) }, async (req, reply) => {
+  app.post('/api/enroll/tokens', {
+    preHandler: requirePerm('enroll:tokens', appendAudit),
+    config: { auth: 'operator:enroll:tokens' },
+  }, async (req, reply) => {
     const { device_id, site_id, ttl_minutes = 60, name, lat, lng, re_enroll = false } = req.body ?? {};
     if (!device_id || !site_id) {
       return reply.code(400).send({ error: 'device_id and site_id required' });
@@ -88,7 +91,9 @@ export default async function enrollRoutes(app) {
   // Device endpoint — the only unauthenticated-by-cert device call in the system.
   // Accepts an optional public_key_pem; first redemption PINS sha256(der(pubkey))
   // as the device_key_fp used by key-continuity retrust (routes/retrust.js).
-  app.post('/api/enroll/redeem', async (req, reply) => {
+  app.post('/api/enroll/redeem', {
+    config: { auth: 'public' },
+  }, async (req, reply) => {
     const { enrollment_token, public_key_pem } = req.body ?? {};
     if (!enrollment_token) return reply.code(400).send({ error: 'enrollment_token required' });
 

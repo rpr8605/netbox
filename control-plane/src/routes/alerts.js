@@ -18,12 +18,21 @@ import { assertNoPhi, scanPhi } from '../phi_guard.js';
 export default async function alertRoutes(app) {
   const cfg = app.config ?? {};
 
-  app.get('/api/alerts', async () => listAlerts());
-  app.get('/api/alert-rules', async () => listAlertRules());
+  app.get('/api/alerts', {
+    preHandler: requirePerm('alerts:read', appendAudit),
+    config: { auth: 'operator:alerts:read' },
+  }, async () => listAlerts());
+  app.get('/api/alert-rules', {
+    preHandler: requirePerm('alerts:read', appendAudit),
+    config: { auth: 'operator:alerts:read' },
+  }, async () => listAlertRules());
 
   // Register a rule. The plain-language gate runs here: a rule whose impact
   // statement reads like a transport error is rejected before it can ever page.
-  app.post('/api/alert-rules', async (req, reply) => {
+  app.post('/api/alert-rules', {
+    preHandler: requirePerm('alerts:rules:write', appendAudit),
+    config: { auth: 'operator:alerts:rules:write' },
+  }, async (req, reply) => {
     const { severity, service, impact_stmt, runbook_url = null, ack_window_s = 300,
             maintenance_start = null, maintenance_end = null } = req.body ?? {};
     if (!severity || !service) return reply.code(400).send({ error: 'severity and service required' });
@@ -35,7 +44,10 @@ export default async function alertRoutes(app) {
   });
 
   // Register an escalation contact (tier = order paged).
-  app.post('/api/alert-contacts', async (req, reply) => {
+  app.post('/api/alert-contacts', {
+    preHandler: requirePerm('alerts:rules:write', appendAudit),
+    config: { auth: 'operator:alerts:rules:write' },
+  }, async (req, reply) => {
     const { severity, tier, channel, address } = req.body ?? {};
     if (!severity || tier == null || !channel || !address) {
       return reply.code(400).send({ error: 'severity, tier, channel, address required' });
@@ -48,7 +60,10 @@ export default async function alertRoutes(app) {
   // Fire an alert for a rule+device. In production this is called by the
   // ingestion path when a confirmed outage lands; here it's the demo/test
   // surface that proves the engine end to end.
-  app.post('/api/alerts/fire', { preHandler: requirePerm('alerts:fire', appendAudit) }, async (req, reply) => {
+  app.post('/api/alerts/fire', {
+    preHandler: requirePerm('alerts:fire', appendAudit),
+    config: { auth: 'operator:alerts:fire' },
+  }, async (req, reply) => {
     const { rule_id, device_id, site_id } = req.body ?? {};
     if (!rule_id || !device_id || !site_id) return reply.code(400).send({ error: 'rule_id, device_id, site_id required' });
     try {
@@ -60,14 +75,20 @@ export default async function alertRoutes(app) {
   });
 
   // The required ack. Stops the escalation sweep.
-  app.post('/api/alerts/:id/ack', { preHandler: requirePerm('alerts:ack', appendAudit) }, async (req, reply) => {
+  app.post('/api/alerts/:id/ack', {
+    preHandler: requirePerm('alerts:ack', appendAudit),
+    config: { auth: 'operator:alerts:ack' },
+  }, async (req, reply) => {
     const out = await acknowledgeAlert({ alertId: req.params.id, actor: req.body?.actor ?? 'unknown' });
     if (!out.ok) return reply.code(400).send(out);
     return out;
   });
 
   // --- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2) ------
-  app.get('/api/alerts/:id/signature', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
+  app.get('/api/alerts/:id/signature', {
+    preHandler: requirePerm('alerts:read', appendAudit),
+    config: { auth: 'operator:alerts:read' },
+  }, async (req, reply) => {
     const sig = await getIncidentSignature(req.params.id);
     if (!sig) return reply.code(404).send({ error: 'signature not found' });
     return sig;
@@ -75,7 +96,10 @@ export default async function alertRoutes(app) {
 
   // Close an incident and record the human-filled resolution. The close is the
   // only path that creates a resolution_record; nothing is inferred.
-  app.post('/api/alerts/:id/close', { preHandler: requirePerm('alerts:close', appendAudit) }, async (req, reply) => {
+  app.post('/api/alerts/:id/close', {
+    preHandler: requirePerm('alerts:close', appendAudit),
+    config: { auth: 'operator:alerts:close' },
+  }, async (req, reply) => {
     const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     if (alert.status === 'closed') return reply.code(409).send({ error: 'alert already closed' });
@@ -109,7 +133,10 @@ export default async function alertRoutes(app) {
 
   // Deterministic similar-past-incidents panel. Returns an empty matches list
   // when nothing clears the threshold — no weak guesses dressed up as matches.
-  app.get('/api/alerts/:id/similar', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
+  app.get('/api/alerts/:id/similar', {
+    preHandler: requirePerm('alerts:read', appendAudit),
+    config: { auth: 'operator:alerts:read' },
+  }, async (req, reply) => {
     const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     const sig = await getIncidentSignature(req.params.id);
@@ -120,7 +147,10 @@ export default async function alertRoutes(app) {
   // --- Ticketing Tier 0 (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §3) ------------
   // Copy-paste-ready incident block. No vendor API, no credentials — works with
   // any ticketing system or plain inbox that accepts text/Markdown.
-  app.get('/api/alerts/:id/ticket', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
+  app.get('/api/alerts/:id/ticket', {
+    preHandler: requirePerm('alerts:read', appendAudit),
+    config: { auth: 'operator:alerts:read' },
+  }, async (req, reply) => {
     const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     const rule = await getAlertRule(alert.rule_id);
@@ -130,7 +160,10 @@ export default async function alertRoutes(app) {
   // Send the same block as email via the existing SendGrid pipe. If SendGrid is
   // not configured, returns {sent:false, reason:'sendgrid not configured'} rather
   // than throwing, so a missing integration does not crash the console.
-  app.post('/api/alerts/:id/ticket/email', { preHandler: requirePerm('alerts:ack', appendAudit) }, async (req, reply) => {
+  app.post('/api/alerts/:id/ticket/email', {
+    preHandler: requirePerm('alerts:ack', appendAudit),
+    config: { auth: 'operator:alerts:ack' },
+  }, async (req, reply) => {
     const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     const to = req.body?.to;

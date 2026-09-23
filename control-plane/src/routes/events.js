@@ -56,14 +56,18 @@ async function deviceFromCert(req, reply) {
 }
 
 export default async function eventRoutes(app) {
-  app.post('/api/heartbeat', async (req, reply) => {
+  app.post('/api/heartbeat', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     const device = await deviceFromCert(req, reply);
     if (!device) return;
     await touchDevice(device.device_id);
     return { device_id: device.device_id, state: device.state, server_time: new Date().toISOString() };
   });
 
-  app.post('/api/events', async (req, reply) => {
+  app.post('/api/events', {
+    config: { auth: 'device' },
+  }, async (req, reply) => {
     const device = await deviceFromCert(req, reply);
     if (!device) return;
 
