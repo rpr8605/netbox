@@ -118,3 +118,21 @@
 - **Next:** wireless AP health + VPN tunnel health, then backup/DR + AV/EDR read-only status, per `CONTROLS_AND_IDENTITY` §3 build order.
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant for M365 real-world validation.
 - **Progress:** 72 of 99 CHECKLIST items complete (73%), up from 71 of 99 (72%).
+
+## Checkpoint #12 | Block: $4.77 | Total: $681.19 | Cost/feature commit: $1.59
+
+- **Done:**
+  - Site-level network/endpoint controls (`CONTROLS_AND_IDENTITY` §3): wireless AP, VPN tunnel, backup/DR, AV/EDR read-only adapters (`site_controls.js`). `b998c64`.
+  - Topology detail panel (`EHR_INTEGRATIONS` §11/§12): Mirth reader fetches metadata-only message timestamps and recent error counts; full-status API and Fleet Console render them. `f025efc`.
+  - Mirth reader allowlist fix: `pickMessageMeta` drops any content fields the API returns despite `includeContent=false`; new test feeds content-bearing stub and asserts it is dropped. `9332e36`.
+  - Hardware lifecycle tooling (no-hardware portion): BOM + alternates (`hardware/bom.json`), golden-image manifest (`hardware/golden_manifest.json`), manifest validator (`scripts/validate_golden_manifest.js`), swap procedure doc, control-plane `POST /api/devices/:id/replace` workflow + CLI (`scripts/swap_device.js`). `36df918`.
+  - PHI-mode toggle design note (`BUILD_SPEC` §8.9): `.agent/phi-mode-design.md` written and under review; no code implemented. `60dd1d3`.
+  - React frontend rewrite logged as deferred in `BEACON_RELAY_STATUS.md` / `BEACON_RELAY_CHECKLIST.md`.
+- **Tests:** EHR unit 43/43, topology 7/7, device lifecycle 6/6, alerting/RBAC/audit 76/76, OTA rollout 10/10, doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
+- **Repeat check:** none.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps (secure wipe/TPM clear/alternate qualification/barcode scanning) require real hardware.
+- **Next 3:**
+  1. Await PHI-mode design approval; do not implement until approved.
+  2. After approval, implement PHI-mode toggle (schema/API/audit/badge/purge worker).
+  3. Then pick the next unblocked priority: PostgreSQL driver swap, AWS account setup, or remaining BUILD_SPEC surfaces.
+- **Progress:** 78 of 99 CHECKLIST items complete (79%), up from 72 of 99 (73%).
