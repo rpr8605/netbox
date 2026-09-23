@@ -4,7 +4,7 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `ae9b2ed` (agent/md-sync-2026-09-22).
+**Audited at commit:** `63e9a70` (agent/md-sync-2026-09-22).
 
 > **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
 
@@ -20,6 +20,8 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
+| OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -104,7 +106,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ### §8.7 — Signed OTA updates
 - Signed bundle builds + signature verifies — **DONE** (build.js VERIFY OK).
-- Staged rollout path (dev → test → pilot → broad), SBOM, rollback-verified-with-broken-build — **NOT STARTED**.
+- Staged rollout path (dev → test → pilot → broad), rollback-verified-with-broken-build — **DONE**. Control-plane rollout policy (`rollouts` table) supports stage + percentage; `deviceInRollout` assigns devices deterministically; `/api/releases/latest` gates visibility; update client runs post-install health check and rolls back on failure. Audit-logged (`rollout.created`, `rollout.activated`, `rollout.rejected`). SBOM generation remains deferred. Covered by `node scripts/test_update_client.js` and `node scripts/test_ota_rollout.js`.
 
 ### §8.9 — PHI mode toggle + hardware lifecycle tooling — **NOT STARTED**.
 

@@ -1,8 +1,10 @@
 // beacon-relay-agent/lib/update.js
-// Responsibility: the OTA update client (spec §3). Polls the control plane for
-// a new signed RAUC bundle, verifies the signature BEFORE anything touches
-// disk, applies it to the INACTIVE slot, and only marks it good after a
-// successful boot + local health check — automatic rollback otherwise.
+// Responsibility: the OTA update client (spec §3 + BUILD_SPEC §8.7). Polls the
+// control plane for a new signed RAUC bundle, verifies the signature BEFORE
+// anything touches disk, applies it to the INACTIVE slot, and only marks it good
+// after a successful post-update health check — automatic rollback to the
+// previous slot otherwise. The staged-rollout path obeys the control plane's
+// percentage-based assignment.
 // Called by: agent.js daemon on a slow cadence (default 5 min).
 //
 // SAFETY (do not weaken): the signature check via `rauc info --keyring` runs
@@ -16,11 +18,14 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 
 // checkForUpdate — ask the control plane for the latest release version and
-// compare to the running one. Returns { updateAvailable, latestVersion }.
-// A CP that is unreachable or answers non-JSON means "no update", never throw.
+// compare to the running one. The device_id is included so the staged rollout
+// policy can decide whether this device is in the rollout group. Returns
+// { updateAvailable, latestVersion }. A CP that is unreachable or answers
+// non-JSON means "no update", never throw.
 export async function checkForUpdate(ctx, fetchJson) {
   try {
-    const r = await fetchJson(`${ctx.cpBase}/api/releases/latest`);
+    const q = ctx.deviceId ? `?device_id=${encodeURIComponent(ctx.deviceId)}` : '';
+    const r = await fetchJson(`${ctx.cpBase}/api/releases/latest${q}`);
     const latest = r?.version;
     return { updateAvailable: Boolean(latest && latest !== ctx.currentVersion), latestVersion: latest ?? null };
   } catch {
@@ -84,20 +89,71 @@ export function markGood() {
   catch { return false; }
 }
 
-// runUpdateCycle — one full pass: check -> download -> VERIFY -> apply. The
-// ordering is load-bearing: verify is a hard gate, not a log line. Returns a
-// result object the caller can log/emit. Never throws.
-export async function runUpdateCycle(ctx, { fetchJson, fetchBytes } = {}) {
+// rollback — called when the post-update health check fails. RAUC marks the
+// current (new) slot bad so the bootloader will revert to the previous
+// known-good slot on the next boot.
+export function rollback() {
+  try { execSync('rauc status mark-bad', { stdio: 'pipe' }); return true; }
+  catch { return false; }
+}
+
+// performHealthCheck — post-update sanity check before marking the new slot
+// good. Default implementation checks control-plane reachability via the
+// device's existing mTLS path; callers may inject a different check. Returns
+// { healthy: boolean, detail: string }.
+export async function performHealthCheck(ctx, fetchJson) {
+  try {
+    const r = await fetchJson(`${ctx.cpBase}/api/health`);
+    return { healthy: r?.ok === true, detail: 'control-plane health check' };
+  } catch (e) {
+    return { healthy: false, detail: String(e.message ?? e) };
+  }
+}
+
+// runUpdateCycle — one full pass: check -> download -> VERIFY -> apply ->
+// health-check -> mark-good/rollback. The ordering is load-bearing: verify is a
+// hard gate, not a log line. Returns a result object the caller can log/emit.
+// Never throws. Hooks (verifyBundle, applyBundle, markGood, rollback,
+// performHealthCheck) are injectable so tests can prove the policy paths
+// without a real RAUC installation.
+export async function runUpdateCycle(ctx, deps = {}) {
+  const {
+    fetchJson, fetchBytes,
+    verifyBundleFn = verifyBundle,
+    applyBundleFn = applyBundle,
+    markGoodFn = markGood,
+    rollbackFn = rollback,
+    healthCheckFn = performHealthCheck,
+  } = deps;
+
   const { updateAvailable, latestVersion } = await checkForUpdate(ctx, fetchJson);
   if (!updateAvailable) return { action: 'none', reason: 'up to date', currentVersion: ctx.currentVersion };
+
   const bundlePath = await downloadBundle(ctx, latestVersion, fetchBytes);
-  if (!verifyBundle(bundlePath)) {
+
+  if (!verifyBundleFn(bundlePath)) {
     fs.rmSync(bundlePath, { force: true });
     return { action: 'rejected', reason: 'signature verification failed', version: latestVersion };
   }
-  const applied = applyBundle(bundlePath);
+
+  const applied = applyBundleFn(bundlePath);
   fs.rmSync(bundlePath, { force: true });
-  return applied.ok
-    ? { action: 'installed', version: latestVersion, note: 'mark-good pending post-boot health check' }
-    : { action: 'install-failed', version: latestVersion, reason: (applied.out ?? '').trim().slice(-400) };
+  if (!applied.ok) {
+    return { action: 'install-failed', version: latestVersion, reason: (applied.out ?? '').trim().slice(-400) };
+  }
+
+  // Post-install health check before marking the new slot good. A failed check
+  // triggers automatic rollback to the previous known-good slot.
+  const health = await healthCheckFn(ctx, fetchJson);
+  if (!health.healthy) {
+    rollbackFn();
+    return { action: 'rolled-back', version: latestVersion, reason: `health check failed: ${health.detail}` };
+  }
+
+  const marked = markGoodFn();
+  return {
+    action: marked ? 'installed-good' : 'installed-pending',
+    version: latestVersion,
+    reason: marked ? 'health check passed, slot marked good' : 'health check passed, mark-good failed',
+  };
 }

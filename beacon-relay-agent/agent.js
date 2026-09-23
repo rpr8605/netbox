@@ -258,7 +258,7 @@ const CURRENT_VERSION = (() => { try { return fs.readFileSync('/etc/beacon-relay
 async function updateTick() {
   try {
     const r = await runUpdateCycle(
-      { cpBase: CP, currentVersion: CURRENT_VERSION },
+      { cpBase: CP, currentVersion: CURRENT_VERSION, deviceId },
       {
         fetchJson: async (url) => (await api('GET', url, null, mtls())).body,
         // binary mode: the bundle is raw octet-stream bytes, not JSON —
@@ -268,11 +268,11 @@ async function updateTick() {
       },
     );
     if (r.action !== 'none') console.log(`agent: update ${r.action} ${r.version ?? ''} ${r.reason ?? ''}`.trim());
-    if (r.action === 'installed') {
+    if (r.action === 'installed-good' || r.action === 'installed-pending') {
       // The verified bundle is in the inactive slot and RAUC has pointed
-      // grubenv at it — the only way to run the new slot is to boot it. The
-      // post-reboot health gate is the markGood call in heartbeat() above.
-      // (Staged dev/test/pilot rollout timing is the separate §8.7 work.)
+      // grubenv at it — the only way to run the new slot is to boot it.
+      // runUpdateCycle already ran the post-install health check and either
+      // marked the slot good or left it pending a later mark-good after reboot.
       console.log('agent: update installed; rebooting into new slot');
       try { execSync('systemctl reboot', { stdio: 'pipe' }); }
       catch (e) { console.log(`agent: reboot request failed (non-fatal): ${e.message}`); }

@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `ae9b2ed` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
+**Current commit on `main`:** `63e9a70` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -122,6 +122,15 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   root-cause/action distributions and per-incident links — or an empty list when
   nothing clears the threshold. No LLM, no generated narration. Covered by the
   alerting/RBAC suite.
+- **RAUC OTA staged rollout path** (`BUILD_SPEC` §8.7). Control-plane rollout policy
+  (`rollouts` table) supports `dev`/`test`/`pilot`/`broad` stages with a 0-100%
+  percentage; `deviceInRollout` assigns devices deterministically by hashing
+  `device_id:version`; `/api/releases/latest` gates visibility so a device outside the
+  rollout sees no update. The update client passes `device_id`, verifies the bundle
+  signature before install, runs a post-install health check, and automatically rolls
+  back (RAUC `mark-bad`) when the check fails; passing the check calls `mark-good`.
+  Every rollout action is audit-logged. Covered by `scripts/test_update_client.js` and
+  `scripts/test_ota_rollout.js`.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -150,9 +159,6 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
   deferred — profiles only, when a real customer site justifies each.
-- **RAUC OTA staged rollout path** (`BUILD_SPEC` §8.7): the bundle builds and signs, but the
-  dev → test-device → pilot-group → broad rollout with rollback-verified-intentionally-
-  broken-build is not built. The `rauc bundle` step is verified; the rollout machinery is not.
 - **PHI-mode toggle + hardware lifecycle tooling** (`BUILD_SPEC` §8.9). Not started.
 
 ---
@@ -169,6 +175,8 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
+| OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.

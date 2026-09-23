@@ -176,6 +176,19 @@ CREATE TABLE IF NOT EXISTS resolution_records (
   closed_at       TEXT NOT NULL
 );
 
+-- OTA staged rollout policy (BUILD_SPEC §8.7). A version can have multiple
+-- stage rows (dev, test, pilot, broad) but only one active rollout at a time
+-- governs what devices see on /api/releases/latest.
+CREATE TABLE IF NOT EXISTS rollouts (
+  rollout_id  TEXT PRIMARY KEY,
+  version     TEXT NOT NULL,
+  stage       TEXT NOT NULL CHECK (stage IN ('dev','test','pilot','broad')),
+  percentage  INTEGER NOT NULL CHECK (percentage >= 0 AND percentage <= 100),
+  active      INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Remote-support session broker (spec §7): outbound-only, JIT token, every
 -- session audit-logged. No standing SSH port, no shared credential.
 CREATE TABLE IF NOT EXISTS support_sessions (
@@ -539,6 +552,60 @@ export function captureIncidentSignature({ alertId, siteId, service, vendor = 'u
     time_of_day_bucket: bucket,
     opened_at: openedAt,
   });
+}
+
+// --- OTA staged rollout -----------------------------------------------------
+// createRollout: register a stage row for a release version. Only one rollout
+// can be active at a time; activation is a separate, audited step.
+export function createRollout(r) {
+  const id = r.rollout_id ?? crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO rollouts (rollout_id, version, stage, percentage, active)
+     VALUES (@rollout_id, @version, @stage, @percentage, 0)`
+  ).run({ ...r, rollout_id: id, percentage: r.percentage ?? 100 });
+  return id;
+}
+// listRollouts: all rows, newest first.
+export function listRollouts(limit = 100) {
+  return db.prepare(`SELECT * FROM rollouts ORDER BY created_at DESC LIMIT ?`).all(limit);
+}
+// getActiveRollout: the single active policy row, if any.
+export function getActiveRollout() {
+  return db.prepare(`SELECT * FROM rollouts WHERE active = 1 ORDER BY updated_at DESC LIMIT 1`).get();
+}
+// activateRollout: make one row active and deactivate all others. Returns the
+// number of rows affected.
+export function activateRollout(rolloutId) {
+  db.prepare(`UPDATE rollouts SET active = 0 WHERE rollout_id != ?`).run(rolloutId);
+  const info = db.prepare(`UPDATE rollouts SET active = 1, updated_at = datetime('now') WHERE rollout_id = ?`).run(rolloutId);
+  return info.changes;
+}
+// deleteRollout: remove an inactive rollout row.
+export function deleteRollout(rolloutId) {
+  return db.prepare(`DELETE FROM rollouts WHERE rollout_id = ? AND active = 0`).run(rolloutId).changes;
+}
+
+// deviceInRollout — deterministic, stable assignment of a device to a staged
+// percentage. Hashes device_id + version so the same device/version pair always
+// lands in the same bucket, but changing either changes the assignment. Returns
+// true when the resulting 0-99 value is less than the percentage.
+export function deviceInRollout(deviceId, version, percentage) {
+  const hash = crypto.createHash('sha256').update(`${deviceId}:${version}`).digest('hex');
+  const bucket = parseInt(hash.slice(0, 8), 16) % 100;
+  return bucket < percentage;
+}
+
+// offeredVersion — given a device_id and the latest published version, decide
+// whether the active staged rollout permits this device to see that version.
+// No active rollout means everyone sees the latest version (backward-compatible
+// with the pre-rollout path). This is the single policy gate used by
+// /api/releases/latest.
+export function offeredVersion(deviceId, latestVersion) {
+  if (!latestVersion) return null;
+  const rollout = getActiveRollout();
+  if (!rollout) return latestVersion;
+  if (deviceInRollout(deviceId, rollout.version, rollout.percentage)) return rollout.version;
+  return null;
 }
 
 // --- remote support sessions ------------------------------------------------
