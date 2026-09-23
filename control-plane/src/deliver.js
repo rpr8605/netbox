@@ -7,6 +7,7 @@
 // missing integration never crashes an escalation.
 // Called by: alerting.js's fireAlert/sweepEscalations via the deliver() below.
 import https from 'node:https';
+import { scanPhi } from './phi_guard.js';
 
 function postJson(urlStr, body, headers = {}) {
   const u = new URL(urlStr);
@@ -21,6 +22,14 @@ function postJson(urlStr, body, headers = {}) {
     req.on('error', e => resolve({ status: 0, body: String(e.message ?? e) }));
     req.end(JSON.stringify(body));
   });
+}
+
+function guardEmailPhi({ subject, text }) {
+  const subj = scanPhi(subject);
+  if (!subj.ok) return { skipped: true, reason: `PHI detected in subject (${subj.type}); email not sent` };
+  const body = scanPhi(text);
+  if (!body.ok) return { skipped: true, reason: `PHI detected in body (${body.type}); email not sent` };
+  return null;
 }
 
 // Twilio SMS/voice. Form-encoded per Twilio's API. Voice uses a TwiML message.
@@ -49,6 +58,8 @@ export async function sendTwilio({ accountSid, authToken, from, to, body, voice 
 // SendGrid email.
 export async function sendSendGrid({ apiKey, from, to, subject, text }) {
   if (!apiKey) return { skipped: true, reason: 'sendgrid not configured' };
+  const phi = guardEmailPhi({ subject, text });
+  if (phi) return phi;
   return postJson('https://api.sendgrid.com/v3/mail/send', {
     personalizations: [{ to: [{ email: to }] }],
     from: { email: from }, subject, content: [{ type: 'text/plain', value: text }],
@@ -60,6 +71,8 @@ export async function sendSendGrid({ apiKey, from, to, subject, text }) {
 // fallback. Credentials are scoped to SES only — no broader AWS access.
 export async function sendSes({ accessKeyId, secretAccessKey, region, from, to, subject, text }) {
   if (!accessKeyId || !secretAccessKey || !region) return { skipped: true, reason: 'ses not configured' };
+  const phi = guardEmailPhi({ subject, text });
+  if (phi) return phi;
   try {
     const { SESv2Client, SendEmailCommand } = await import('@aws-sdk/client-sesv2');
     const client = new SESv2Client({ region, credentials: { accessKeyId, secretAccessKey } });

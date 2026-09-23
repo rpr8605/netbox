@@ -12,7 +12,8 @@
 import crypto from 'node:crypto';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
 import { request, Agent } from '../control-plane/node_modules/undici/index.js';
-import { sendSes } from '../control-plane/src/deliver.js';
+import { sendSes, sendSendGrid } from '../control-plane/src/deliver.js';
+import { scanPhi, assertNoPhi } from '../control-plane/src/phi_guard.js';
 
 // Default host port matches docker-compose.yml's CONTROL_PLANE_HOST_PORT remap
 // (10443 because Windows/Hyper-V reserves 9100 in excluded range 9035-9134).
@@ -407,6 +408,77 @@ async function partG() {
   check('G9. similar incidents finds the matching closed lab-down', similar.status === 200 && similar.body.matches.some(m => m.alert_id === fire2.body.alertId && m.score >= 4), JSON.stringify(similar.body));
 }
 
+// ------------------------------------------------------- H. PHI guard --------
+async function partH() {
+  console.log('--- H. PHI guard: resolution_record + email payloads ---');
+  const rule = await api('POST', '/api/alert-rules', {
+    severity: 'P2', service: 'lab', impact_stmt: 'Lab interface results delayed from this site', ack_window_s: 300,
+  });
+  const fire = await api('POST', '/api/alerts/fire?role=operations-manager', {
+    rule_id: rule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID(),
+  });
+  const alertId = fire.body.alertId;
+
+  // Length cap on free-text resolution fields.
+  const longNote = 'x'.repeat(501);
+  const longClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'other', root_cause_note: longNote, action_taken: 'ok', actor: 'tech-1',
+  });
+  check('H1. close rejects root_cause_note over 500 chars', longClose.status === 400);
+
+  // PHI patterns in action_taken / root_cause_note are rejected with the UI warning.
+  const phoneClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'other', action_taken: 'called 555-123-4567', actor: 'tech-1',
+  });
+  check('H2. close rejects phone number in action_taken', phoneClose.status === 400 && phoneClose.body?.warning === 'no patient identifiers', JSON.stringify(phoneClose.body));
+
+  const ssnClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'other', action_taken: 'ssn 123-45-6789 noted', actor: 'tech-1',
+  });
+  check('H3. close rejects SSN in action_taken', ssnClose.status === 400 && ssnClose.body?.warning === 'no patient identifiers');
+
+  const dobClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'other', action_taken: 'DOB 04/15/1985', actor: 'tech-1',
+  });
+  check('H4. close rejects DOB in action_taken', dobClose.status === 400);
+
+  const mrnClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'other', action_taken: 'MRN 1234567', actor: 'tech-1',
+  });
+  check('H5. close rejects MRN pattern in action_taken', mrnClose.status === 400);
+
+  // Clean close still works.
+  const cleanClose = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
+    root_cause_category: 'interface-engine-deadlock',
+    root_cause_note: 'Mirth channel stuck',
+    action_taken: 'restarted HL7 listener via Action Registry entry X',
+    actor: 'tech-1',
+  });
+  check('H6. clean close passes PHI guard', cleanClose.status === 200);
+
+  // Direct email senders refuse to transmit PHI.
+  const phiSubj = scanPhi('123-45-6789');
+  check('H7. scanPhi detects SSN', !phiSubj.ok && phiSubj.type === 'ssn');
+  const phiEmail = await sendSendGrid({ apiKey: 'fake-key', from: 'a@b', to: 'c@d', subject: 'ticket', text: 'pt phone 555-123-4567' });
+  check('H8. sendSendGrid skips when body contains PHI', phiEmail.skipped === true && /PHI/.test(phiEmail.reason), JSON.stringify(phiEmail));
+
+  const phiSubject = await sendSendGrid({ apiKey: 'fake-key', from: 'a@b', to: 'c@d', subject: '123-45-6789', text: 'ok' });
+  check('H9. sendSendGrid skips when subject contains PHI', phiSubject.skipped === true && /PHI/.test(phiSubject.reason));
+
+  // Ticket email path also blocks PHI: create a rule whose impact statement
+  // carries a phone number, then try to email the ticket block.
+  const phiRule = await api('POST', '/api/alert-rules', {
+    severity: 'P2', service: 'printing',
+    impact_stmt: 'printer support line 555-999-0000 unavailable',
+    ack_window_s: 300,
+  });
+  const phiFire = await api('POST', '/api/alerts/fire?role=operations-manager', {
+    rule_id: phiRule.body.rule_id, device_id: crypto.randomUUID(), site_id: crypto.randomUUID(),
+  });
+  const phiTicketEmail = await api('POST', `/api/alerts/${phiFire.body.alertId}/ticket/email?role=support-technician`, { to: 'it@hospital.example', actor: 'tech-1' });
+  check('H10. ticket email blocked when impact statement contains PHI', phiTicketEmail.status === 200 && phiTicketEmail.body?.sent === false && /PHI/.test(phiTicketEmail.body?.reason ?? ''), JSON.stringify(phiTicketEmail.body));
+}
+
 await partA();
 await partB();
 await partC();
@@ -414,6 +486,7 @@ await partD();
 await partE();
 await partF();
 await partG();
+await partH();
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} alerting/rbac/audit/support checks passed`);
 process.exit(failed.length ? 1 : 0);

@@ -13,6 +13,7 @@ import { deliver, sendSendGrid, sendSes } from '../deliver.js';
 import { requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
 import { findSimilarIncidents } from '../incident_memory.js';
+import { assertNoPhi, scanPhi } from '../phi_guard.js';
 
 export default async function alertRoutes(app) {
   const cfg = app.config ?? {};
@@ -82,6 +83,13 @@ export default async function alertRoutes(app) {
     if (!root_cause_category || !action_taken) {
       return reply.code(400).send({ error: 'root_cause_category and action_taken required' });
     }
+    if (String(root_cause_note ?? '').length > 500 || String(action_taken).length > 500) {
+      return reply.code(400).send({ error: 'root_cause_note and action_taken must be 500 characters or fewer' });
+    }
+    const notePhi = assertNoPhi(root_cause_note, 'root_cause_note');
+    if (!notePhi.ok) return reply.code(400).send({ error: notePhi.error, warning: 'no patient identifiers' });
+    const actionPhi = assertNoPhi(action_taken, 'action_taken');
+    if (!actionPhi.ok) return reply.code(400).send({ error: actionPhi.error, warning: 'no patient identifiers' });
     const closedAt = new Date();
     const openedAt = new Date(alert.created_at);
     const timeToResolveMin = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
@@ -130,6 +138,15 @@ export default async function alertRoutes(app) {
     const rule = getAlertRule(alert.rule_id);
     const block = formatTicketBlock(alert, rule);
     const from = cfg.sendgrid?.from ?? cfg.ses?.from ?? process.env.SENDGRID_FROM ?? process.env.SES_FROM ?? 'alerts@beacon-relay.local';
+    let blockPhi = { ok: true };
+    for (const field of [block.title, block.plain_text, block.markdown]) {
+      const r = scanPhi(field);
+      if (!r.ok) { blockPhi = r; break; }
+    }
+    if (!blockPhi.ok) {
+      appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email.phi_blocked', target: alert.alert_id, detail: `${blockPhi.type}` });
+      return { sent: false, reason: `PHI detected in ticket block (${blockPhi.type}); email not sent` };
+    }
     let result = await sendSendGrid({ apiKey: cfg.sendgrid?.apiKey ?? process.env.SENDGRID_API_KEY, from, to, subject: block.title, text: block.plain_text });
     if (result.skipped) {
       result = await sendSes({ ...cfg.ses, from, to, subject: block.title, text: block.plain_text });
