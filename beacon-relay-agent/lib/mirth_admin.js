@@ -44,11 +44,18 @@ export async function mirthLogout(base, cookie) {
 // Metadata-only message summary: timestamps and statuses only, no bodies.
 // `includeContent=false` is mandatory here. `windowMinutes` defines "recent" for
 // the error count (default 15 min), matching the topology detail panel's need.
-function parseMessageDate(msg) {
-  const v = msg?.receivedDate ?? msg?.dateCreated ?? msg?.createdDate ?? msg?.originalDate ?? null;
-  if (!v) return null;
-  const n = Date.parse(String(v));
-  return Number.isFinite(n) ? n : null;
+//
+// ALLOWLIST, not blocklist: even if a misbehaving Mirth instance returns message
+// content despite `includeContent=false`, we only read the two fields below and
+// deliberately drop everything else. The returned object contains no raw message
+// fields, identifiers, or PHI-adjacent data.
+function pickMessageMeta(msg) {
+  const ts = msg?.receivedDate ?? msg?.dateCreated ?? msg?.createdDate ?? msg?.originalDate ?? null;
+  const n = ts ? Date.parse(String(ts)) : NaN;
+  return {
+    timestamp: Number.isFinite(n) ? n : null,
+    status: msg?.status ?? null,
+  };
 }
 
 export async function mirthChannelMessagesSummary(base, cookie, channelId, windowMinutes = 15) {
@@ -60,11 +67,11 @@ export async function mirthChannelMessagesSummary(base, cookie, channelId, windo
   const cutoff = Date.now() - windowMinutes * 60 * 1000;
   let lastMessageTime = null;
   let recentErrors = 0;
-  for (const msg of res.json) {
-    const t = parseMessageDate(msg);
-    if (t != null) {
-      if (lastMessageTime == null || t > lastMessageTime) lastMessageTime = t;
-      if (t >= cutoff && String(msg?.status ?? '').toUpperCase() === 'ERROR') recentErrors += 1;
+  for (const raw of res.json) {
+    const msg = pickMessageMeta(raw);
+    if (msg.timestamp != null) {
+      if (lastMessageTime == null || msg.timestamp > lastMessageTime) lastMessageTime = msg.timestamp;
+      if (msg.timestamp >= cutoff && String(msg.status).toUpperCase() === 'ERROR') recentErrors += 1;
     }
   }
   return {

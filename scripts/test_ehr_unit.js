@@ -231,7 +231,7 @@ async function main() {
   check('FHIR endpoint down -> down', r4.status === 'down', r4.detail);
 
   // ---- Mirth across HTTP ---------------------------------------------------
-  const { runMirthCheck, mirthChannelStates, mirthLogin, mirthLogout } = await import('../beacon-relay-agent/lib/mirth_admin.js');
+  const { runMirthCheck, mirthChannelStates, mirthChannelMessagesSummary, mirthLogin, mirthLogout } = await import('../beacon-relay-agent/lib/mirth_admin.js');
   const mirthServer = startMirthStub();
   const mirthPort = await listen(mirthServer);
   const m1 = await runOne('mirth', 'healthy', 'adt', { base_url: `http://127.0.0.1:${mirthPort}/api`, username: 'admin', password: 'adminpass' });
@@ -247,6 +247,29 @@ async function main() {
   check('Mirth reader exposes last_message_time and recent_error_count',
     states.channels.every(c => c.last_message_time != null && typeof c.recent_error_count === 'number'),
     JSON.stringify(states.channels));
+
+  // ---- Mirth reader explicit allowlist: content returned by API is dropped ----
+  const contentServer = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://127.0.0.1');
+    if (u.pathname === '/api/sessions' && req.method === 'POST') {
+      return res.writeHead(200, { 'set-cookie': ['JSESSIONID=stub123'], 'content-type': 'application/json' }).end('{}');
+    }
+    if (u.pathname.match(/^\/api\/channels\/\d+\/messages$/) && req.method === 'GET') {
+      return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify([
+        { receivedDate: new Date().toISOString(), status: 'SENT', rawContent: 'SECRET-PATIENT-DATA', message: '<PID>secret</PID>', body: 'phi-body' },
+      ]));
+    }
+    res.writeHead(404).end();
+  });
+  const contentPort = await listen(contentServer);
+  const login2 = await mirthLogin(`http://127.0.0.1:${contentPort}/api`, { username: 'admin', password: 'adminpass' });
+  const summary = await mirthChannelMessagesSummary(`http://127.0.0.1:${contentPort}/api`, login2.cookie, '1');
+  await mirthLogout(`http://127.0.0.1:${contentPort}/api`, login2.cookie);
+  await closeServer(contentServer);
+  check('Mirth messages summary drops content fields even if API returns them',
+    summary.last_message_time != null && summary.recent_error_count === 0 &&
+    !JSON.stringify(summary).includes('SECRET') && !JSON.stringify(summary).includes('phi-body'),
+    JSON.stringify(summary));
 
   mirthMode = 'degraded';
   const m2 = await runOne('mirth', 'one-channel-stopped', 'adt', { base_url: `http://127.0.0.1:${mirthPort}/api`, username: 'admin', password: 'adminpass' });
