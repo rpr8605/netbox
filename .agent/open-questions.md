@@ -30,3 +30,26 @@ These are logged here rather than built ahead of demand.
 ## QEMU acceptance x3 — BLOCKED by missing KVM in Docker Desktop
 
 Two acceptance runs failed identically with `Could not access KVM kernel module: No such file or directory`. Docker Desktop on Windows does not expose `/dev/kvm` to containers, and `vm-harness/acceptance.sh` hardcodes `-enable-kvm`. Anti-loop rule applied: stopped after 2 failures. See `.agent/attempts.md` for options.
+
+## Plan for removing SQLite entirely
+
+`control-plane/src/db.js` is currently a dual-driver layer (Postgres when `DATABASE_URL` is set, SQLite otherwise). SQLite is still convenient for zero-ops local runs and a few unit tests, but PostgreSQL is the spec'd production store. Removal checklist:
+
+1. **Test-suite migration (this session):**
+   - `.env` now sets `DATABASE_URL` to the isolated `beacon_relay_test` database by default.
+   - `npm run test:db:reset` recreates the test database.
+   - `npm test` runs the DB-touching suites against Postgres.
+   - `control-plane/test/migrate.once.test.js` verifies the one-shot SQLite migration.
+2. **Remaining SQLite-only call sites to migrate:**
+   - Audit-log tamper test currently reaches into the SQLite driver directly; it needs a Postgres equivalent (use a read-only role or trigger check).
+   - Any host-side scripts that rely on `DB_PATH` or the absence of `DATABASE_URL` should require `DATABASE_URL` instead.
+3. **Drop the dual-driver code:**
+   - Remove the `isPg` branch and the `pgize()` placeholder conversion in `control-plane/src/db.js`.
+   - Keep only Postgres SQL and use `$n` placeholders everywhere.
+   - Remove `better-sqlite3` from `control-plane/package.json`.
+   - Remove `DB_PATH` from `docker-compose.yml` and the control-plane environment.
+   - Retire `control-plane/migrate.js` once all deployed environments have migrated (it is now marker-guarded and renames the source file).
+4. **Validation gate before removal:**
+   - All `node --test` suites must pass with `DATABASE_URL` set and SQLite unavailable.
+   - The Docker image must build and start with only `pg` installed.
+   - Document the final removal commit and update `BEACON_RELAY_STATUS.md` / `BEACON_RELAY_CHECKLIST.md`.

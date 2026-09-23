@@ -169,22 +169,28 @@ async function partC() {
   const hasFired = audit.body.some(e => e.action === 'alert.fired');
   const hasEscalated = audit.body.some(e => e.action === 'alert.escalated');
   check('C2. alert.fire + alert.escalated are audit-logged', hasFired && hasEscalated);
-  // Tamper: insert a row into a THROWAWAY local DB (same schema+triggers),
+  // Tamper: insert a row into a THROWAWAY local SQLite DB (same schema+triggers),
   // then try to UPDATE and DELETE it. Both must raise — the append-only
   // guarantee is enforced by the database triggers, not by the API.
+  // This sub-test intentionally forces SQLite so the tamper attempt runs against
+  // an isolated throwaway file regardless of whether the suite's DATABASE_URL
+  // points at Postgres.
   let updateThrew = false, deleteThrew = false;
   const os = await import('node:os');
   const path = await import('node:path');
   const fs = await import('node:fs');
   const tmpDb = path.join(os.tmpdir(), `beacon-relay-audit-test-${crypto.randomUUID()}.db`);
+  const savedDatabaseUrl = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
   process.env.DB_PATH = tmpDb;
-  const { db, appendAudit } = await import('../control-plane/src/db.js');
+  const { db, appendAudit } = await import(`../control-plane/src/db.js?cacheBust=${crypto.randomUUID()}`);
   await appendAudit({ auditId: 'tamper-target', actor: 'test', action: 'test.entry' });
   try { db.prepare(`UPDATE audit_log SET action='tampered' WHERE audit_id='tamper-target'`).run(); } catch { updateThrew = true; }
   try { db.prepare(`DELETE FROM audit_log WHERE audit_id='tamper-target'`).run(); } catch { deleteThrew = true; }
   const intact = db.prepare(`SELECT action FROM audit_log WHERE audit_id='tamper-target'`).get()?.action === 'test.entry';
   db.close(); // release the file lock BEFORE cleanup (Windows EPERM otherwise)
   fs.rmSync(tmpDb, { force: true }); fs.rmSync(tmpDb + '-wal', { force: true }); fs.rmSync(tmpDb + '-shm', { force: true });
+  if (savedDatabaseUrl !== undefined) process.env.DATABASE_URL = savedDatabaseUrl;
   check('C3. UPDATE on audit_log is rejected', updateThrew && intact);
   check('C4. DELETE on audit_log is rejected', deleteThrew && intact);
 }

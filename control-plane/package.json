@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Beacon Relay control plane: device registry, ingestion API, minimal console (Phase 1/2).",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "test": "node --test test/"
+    "dev": "node --env-file=../.env --watch src/index.js",
+    "start": "node --env-file=../.env src/index.js",
+    "test": "node --env-file=../.env --test test/"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1138.0",
