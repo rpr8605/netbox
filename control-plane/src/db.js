@@ -8,6 +8,7 @@ import Database from 'better-sqlite3';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { canonicalSerial } from './ca.js';
 
 const DB_PATH = process.env.DB_PATH ?? './data/beacon-relay.db';
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -49,6 +50,17 @@ CREATE TABLE IF NOT EXISTS device_replacements (
   reason        TEXT,
   replaced_at   TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (old_device_id, new_device_id)
+);
+
+-- Revoked certificate serials: the authoritative step-ca revocation is
+-- passive, so the control plane also records the serial of any cert revoked
+-- by the swap workflow. deviceFromCert rejects these serials before any
+-- DB device-state check, making the next connection attempt fail.
+CREATE TABLE IF NOT EXISTS revoked_serials (
+  serial      TEXT PRIMARY KEY,
+  device_id   TEXT NOT NULL REFERENCES devices(device_id),
+  source      TEXT NOT NULL,
+  revoked_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS sites (
@@ -287,9 +299,27 @@ export function touchDevice(deviceId) {
 
 // Record the serial/expiry of the cert a device just presented — observed
 // truth from the TLS handshake, kept distinct from what we issued.
+// Store the canonical decimal serial so revocation lookups never depend on
+// whether Node reported it as hex or decimal.
 export function recordCertPresentation(deviceId, serial, notAfter) {
   db.prepare(`UPDATE devices SET cert_serial = ?, cert_not_after = ? WHERE device_id = ?`)
-    .run(serial, notAfter, deviceId);
+    .run(canonicalSerial(serial), notAfter, deviceId);
+}
+
+// Record that a certificate serial has been revoked in step-ca. The local
+// serial registry is what lets deviceFromCert reject the next connection
+// immediately, even though step-ca's revocation is passive.
+export function recordRevokedSerial(serial, deviceId, source = 'replace') {
+  db.prepare(
+    `INSERT OR IGNORE INTO revoked_serials (serial, device_id, source, revoked_at)
+     VALUES (?, ?, ?, datetime('now'))`
+  ).run(canonicalSerial(serial), deviceId, source);
+}
+
+// Check whether a certificate serial is in the local revocation registry.
+export function isSerialRevoked(serial) {
+  const row = db.prepare(`SELECT 1 FROM revoked_serials WHERE serial = ?`).get(canonicalSerial(serial));
+  return !!row;
 }
 
 // replaceDevice — field-swap workflow (hardware lifecycle, BUILD_SPEC §8.9).

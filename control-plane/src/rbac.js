@@ -24,7 +24,7 @@ export const ROLE_PERMISSIONS = {
     'alerts:read', 'downtime:manage',
   ]),
   'operations-manager': new Set([
-    'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
+    'devices:read', 'devices:write', 'devices:replace', 'events:read', 'topology:read', 'topology:rollup',
     'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write',
     'releases:manage', 'action_registry:write', 'action_registry:read', 'action_registry:execute',
   ]),

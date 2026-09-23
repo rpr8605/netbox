@@ -9,9 +9,10 @@
 // device cannot self-certify out of quarantine — an operator (Phase 8: an
 // RBAC'd one) must confirm, and the device must have presented a valid
 // step-ca-issued cert at least once (last_seen_at set by the mTLS gate).
-import { getDevice, listDevices, listEvents, upsertDevice, replaceDevice } from '../db.js';
+import { getDevice, listDevices, listEvents, upsertDevice, replaceDevice, recordRevokedSerial } from '../db.js';
 import { requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
+import { revokeStepCaCertificate, canonicalSerial } from '../ca.js';
 
 export default async function deviceRoutes(app) {
   app.get('/api/devices', async () => listDevices());
@@ -46,19 +47,33 @@ export default async function deviceRoutes(app) {
   });
 
   // Field-swap workflow: retire an old device and stand in a replacement device
-  // at the same site. Requires devices:write; audits the replacement.
-  app.post('/api/devices/:id/replace', { preHandler: requirePerm('devices:write', appendAudit) }, async (req, reply) => {
+  // at the same site. Restricted to operations-manager because it permanently
+  // destroys a device identity in step-ca; support-technicians may not perform
+  // this action. The flow revokes the old certificate in step-ca first, then
+  // records the serial locally so the next mTLS presentation is rejected before
+  // any DB state check.
+  app.post('/api/devices/:id/replace', { preHandler: requirePerm('devices:replace', appendAudit) }, async (req, reply) => {
     const oldDeviceId = req.params.id;
     const { new_device_id, reason } = req.body ?? {};
     if (!new_device_id || typeof new_device_id !== 'string') {
       return reply.code(400).send({ error: 'new_device_id required' });
     }
     try {
+      const oldDevice = getDevice(oldDeviceId);
+      if (!oldDevice) return reply.code(404).send({ error: 'old device not found' });
+
+      // Revoke the old device's certificate in step-ca if it ever presented one.
+      // If the CA call fails, stop the swap rather than leaving a live identity.
+      if (oldDevice.cert_serial) {
+        await revokeStepCaCertificate(oldDevice.cert_serial);
+        recordRevokedSerial(oldDevice.cert_serial, oldDeviceId, 'replace');
+      }
+
       const role = req.body?.role ?? req.query?.role ?? 'operations-manager';
       const result = replaceDevice({ oldDeviceId, newDeviceId: new_device_id, reason, actor: role });
       return result;
     } catch (e) {
-      return reply.code(400).send({ error: e.message });
+      return reply.code(502).send({ error: e.message });
     }
   });
 }

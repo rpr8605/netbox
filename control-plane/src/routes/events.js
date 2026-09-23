@@ -12,7 +12,8 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import fs from 'node:fs';
-import { getDevice, insertEvent, touchDevice, recordCertPresentation } from '../db.js';
+import { getDevice, insertEvent, touchDevice, recordCertPresentation, isSerialRevoked } from '../db.js';
+import { canonicalSerial } from '../ca.js';
 
 const schema = JSON.parse(fs.readFileSync('./schemas/beacon_relay_event.schema.json', 'utf8'));
 const ajv = new Ajv({ allErrors: true });
@@ -32,6 +33,11 @@ function deviceFromCert(req, reply) {
     reply.code(401).send({ error: 'valid client certificate required' });
     return null;
   }
+  const serial = canonicalSerial(cert.serialNumber);
+  if (isSerialRevoked(serial)) {
+    reply.code(403).send({ error: 'certificate revoked' });
+    return null;
+  }
   const device = getDevice(cert.subject.CN);
   if (!device) {
     reply.code(403).send({ error: 'certificate valid but device not registered' });
@@ -43,8 +49,8 @@ function deviceFromCert(req, reply) {
   }
   // Record the presented certificate's identity — the quarantine-release
   // confirmation (routes/devices.js) requires proof a valid cert was presented.
-  if (device.cert_serial !== cert.serialNumber) {
-    recordCertPresentation(device.device_id, cert.serialNumber, cert.valid_to ?? null);
+  if (device.cert_serial !== serial) {
+    recordCertPresentation(device.device_id, serial, cert.valid_to ?? null);
   }
   return device;
 }

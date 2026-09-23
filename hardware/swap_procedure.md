@@ -13,8 +13,8 @@ the control-plane API or the `scripts/swap_device.js` CLI.
    first-boot provisioning (it is in `quarantine` state, not yet confirmed).
 2. Old unit is reachable enough to issue a final heartbeat, OR an operator has
    verified it is dead/unrecoverable.
-3. The operator performing the swap holds `operations-manager` or
-   `support-technician` role (`devices:write` permission).
+3. The operator performing the swap holds the `operations-manager` role
+   (`devices:replace` permission); support-technicians may not retire a device.
 4. The new unit's serial number / device_id is recorded on the shipping label.
 
 ## Step-by-step
@@ -32,6 +32,9 @@ node scripts/swap_device.js \
 
 What the workflow does:
 - Verifies both devices exist and belong to the same site.
+- Revokes the old device's certificate in step-ca (passive revocation).
+- Records the revoked certificate serial so the control plane rejects the next
+  mTLS connection attempt from the old identity immediately.
 - Sets the old device state to `revoked` (it can no longer ingest events).
 - Carries the `site_id` forward to the new device.
 - Writes an `audit.device.replaced` record with old_id, new_id, site_id, reason,

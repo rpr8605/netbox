@@ -6,12 +6,41 @@
 // Called by: routes/enroll.js (token minting), routes/bootstrap.js (fingerprint).
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SignJWT, importJWK } from 'jose';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 const CA_URL = process.env.CA_URL ?? 'https://localhost:9000';
 const PROV_NAME = process.env.PROVISIONER_NAME ?? 'beacon-relay-device';
-const PRIV_PATH = process.env.PROVISIONER_PRIVATE_JWK_PATH ?? '../pki-config/provisioner/private_jwk.json';
+const PRIV_PATH = process.env.PROVISIONER_PRIVATE_JWK_PATH ??
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../pki-config/provisioner/private_jwk.json');
+
+// Cached CA root material. We need both the PEM (for device bootstrap) and the
+// SHA-256 fingerprint (as the `sha` root claim in step-ca revocation tokens).
+let _rootPem = null;
+let _rootFingerprint = null;
+
+export function setCaRootMaterial(pem, fingerprint) {
+  _rootPem = pem;
+  _rootFingerprint = fingerprint;
+}
+
+export function caRootFingerprint() {
+  return _rootFingerprint;
+}
+
+// Normalize any serial number representation to a base-10 decimal string.
+// Node's `getPeerCertificate()` returns the serial as hex; step-ca's revoke
+// API expects a decimal string. We convert once and store the canonical form.
+export function canonicalSerial(serial) {
+  if (serial == null) return '';
+  const s = String(serial).trim();
+  if (/^[0-9]+$/.test(s)) return s.replace(/^0+/, '') || '0';
+  const hex = s.replace(/[^0-9a-fA-F]/g, '');
+  if (!hex) return '';
+  return BigInt(`0x${hex}`).toString(10);
+}
 
 let _privKey = null;
 async function provisionerKey() {
@@ -64,5 +93,56 @@ export async function caBootstrap() {
     'base64'
   );
   const fingerprint = crypto.createHash('sha256').update(der).digest('hex');
+  setCaRootMaterial(pem, fingerprint);
   return { pem, fingerprint };
+}
+
+// Mint a one-time JWK provisioner token that authorizes step-ca to revoke a
+// certificate by serial number. This is the same signing key and issuer used
+// for enrollment tokens; the audience is the revoke endpoint and the `sha`
+// claim binds the token to the root CA fingerprint we pinned at bootstrap.
+export async function mintStepCaRevokeToken(serial) {
+  const decimalSerial = canonicalSerial(serial);
+  if (!decimalSerial) throw new Error('invalid certificate serial');
+  if (!_rootFingerprint) throw new Error('CA root material not initialized');
+  const key = await provisionerKey();
+  return await new SignJWT({ sub: decimalSerial, sha: _rootFingerprint })
+    .setProtectedHeader({ alg: 'ES256', kid: 'beacon-relay-device', typ: 'JWT' })
+    .setIssuer(provName())
+    .setAudience(`${CA_URL}/1.0/revoke`)
+    .setIssuedAt()
+    .setJti(crypto.randomUUID())
+    .setExpirationTime('5m')
+    .sign(key);
+}
+
+// Revoke a certificate in step-ca by serial number. step-ca v0.30.2 only
+// supports passive revocation, but recording the revocation in the CA blocks
+// future renewal and is the authoritative record that the device identity is
+// retired. `reasonCode: 4` is RFC 5280 "Superseded", the correct semantics
+// for a hardware swap.
+export async function revokeStepCaCertificate(serial) {
+  const decimalSerial = canonicalSerial(serial);
+  if (!decimalSerial) throw new Error('invalid certificate serial');
+  const ott = await mintStepCaRevokeToken(decimalSerial);
+  const res = await undiciFetch(`${CA_URL}/1.0/revoke`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      serial: decimalSerial,
+      ott,
+      reasonCode: 4,
+      reason: 'Superseded',
+      passive: true,
+    }),
+    dispatcher: bootstrapAgent,
+  });
+  if (res.ok) return { revoked: true };
+  const text = await res.text();
+  // Idempotent: if step-ca already considers this serial revoked, treat it as
+  // success so retries and duplicate swap calls remain safe.
+  if (/already been revoked|revoked/i.test(text)) {
+    return { revoked: true, already: true };
+  }
+  throw new Error(`step-ca revoke failed (${res.status}): ${text}`);
 }
