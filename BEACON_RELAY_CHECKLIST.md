@@ -13,7 +13,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 17/17 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 21/21 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
@@ -154,7 +154,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Wireless AP health — **NOT STARTED**.
 - Site-to-site VPN tunnel health — **NOT STARTED**.
 - Backup/DR job status read — **NOT STARTED**.
-- TLS certificate expiration as a first-class service — **PARTIAL**. The L2 TLS check already captures cert validity/expiry on checked endpoints (net_checks), but there's no dedicated "cert expiration" critical-service entry or per-site cert-expiry reporting.
+- TLS certificate expiration as a first-class service — **DONE**. `cert_expiration` is a first-class `service` in the canonical schema and critical-service register; every TLS check now also emits a metadata-only `cert_expiration` event (subject/issuer/validity only — no cert bytes or keys). Tests cover valid, expiring-soon (<30 days), and expired certs. Covered by `node scripts/test_ehr_unit.js`.
 - AV/EDR agent check-in — **NOT STARTED**.
 
 ### §2 — Action Registry
@@ -216,7 +216,6 @@ No DONE item is *broken* by an unbuilt dependency — the current system is inte
 Small, unblocked, worth doing first:
 
 - **AWS Organization + three accounts** (`CLOUD_ARCHITECTURE_AWS` §6 step 1) — the doc is explicit that nothing else in it should build before this, and it's foundational like step-ca was; zero new device/EHR code.
-- **TLS-cert-expiration as a first-class critical service** (`CONTROLS_AND_IDENTITY` §3) — the L2 check already captures expiry on every checked endpoint; surfacing it as a named service is a thin slice over existing code.
 - **Ticketing Tier 0 copy-paste block** (`TOPOLOGY_…_MEMORY` §3) — renders data the incident already carries; no new backend, and it covers every hospital incl. inbox-only sites.
 - **SES email sender alongside SendGrid** (`BUILD_SPEC` §6) — the deliver.js email path is SendGrid-only today; the spec names SES *or* SendGrid, so this is a one-function addition on a proven rail, and closes the "SES not implemented" note.
 

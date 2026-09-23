@@ -46,6 +46,21 @@ const forgeCert = (() => {
   return { key: forge.pki.privateKeyToPem(keys.privateKey), cert: forge.pki.certificateToPem(cert) };
 })();
 
+// Generate a self-signed cert with arbitrary validity window. Used to exercise
+// the cert_expiration first-class service: expired, expiring-soon, valid.
+function makeCertMaterial({ startOffsetMs = -86400e3, endOffsetMs }) {
+  const keys = forge.pki.rsa.generateKeyPair(2048);
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = String(Math.floor(Math.random() * 1e6));
+  cert.validity.notBefore = new Date(Date.now() + startOffsetMs);
+  cert.validity.notAfter = new Date(Date.now() + endOffsetMs);
+  cert.setSubject([{ name: 'commonName', value: 'stub-cert' }]);
+  cert.setIssuer([{ name: 'commonName', value: 'stub-ca' }]);
+  cert.sign(keys.privateKey, forge.md.sha256.create());
+  return { key: forge.pki.privateKeyToPem(keys.privateKey), cert: forge.pki.certificateToPem(cert) };
+}
+
 // FHIR stub: /fhir/r4/metadata, /fhir/r4/Patient/synthetic-001,
 // POST /oauth/token (client_credentials AND backend_services — the assertion
 // signature is verified with the public key so the RS384 path is proven).
@@ -248,6 +263,34 @@ async function main() {
   await closeServer(tcpServer);
   const n4 = await runOne('net', 'port-closed', 'ehr', { host: '127.0.0.1', port: tcpPort, tls: false });
   check('net port down -> down', n4.status === 'down', n4.detail);
+
+  // ---- cert_expiration first-class service ---------------------------------
+  function certEv(predicate) { return posts.filter(ev => ev.service === 'cert_expiration').find(predicate); }
+  function certMeta(ev) { return ev?.observed?.cert; }
+  const validCert = makeCertMaterial({ endOffsetMs: 90 * 86400e3 });
+  const validServer = tls.createServer({ key: validCert.key, cert: validCert.cert }, (sock) => sock.end());
+  const validPort = await listen(validServer);
+  await runOne('net', 'tls-valid-cert', 'ehr', { host: '127.0.0.1', port: validPort, tls: true });
+  const v = certEv(ev => ev.check_name === 'tls-valid-cert:cert-expiry');
+  check('cert_expiration valid -> verified_ready', v?.status === 'verified_ready', JSON.stringify(v));
+  check('cert_expiration metadata only (subject/issuer/validity)', v && certMeta(v).subject && certMeta(v).issuer && certMeta(v).valid_to && !v.observed.cert.raw, JSON.stringify(certMeta(v)));
+  await closeServer(validServer);
+
+  const soonCert = makeCertMaterial({ endOffsetMs: 7 * 86400e3 });
+  const soonServer = tls.createServer({ key: soonCert.key, cert: soonCert.cert }, (sock) => sock.end());
+  const soonPort = await listen(soonServer);
+  await runOne('net', 'tls-soon-cert', 'ehr', { host: '127.0.0.1', port: soonPort, tls: true });
+  const s = certEv(ev => ev.check_name === 'tls-soon-cert:cert-expiry');
+  check('cert_expiration expiring soon -> degraded', s?.status === 'degraded', JSON.stringify(s));
+  await closeServer(soonServer);
+
+  const expiredCert = makeCertMaterial({ startOffsetMs: -20 * 86400e3, endOffsetMs: -1 * 86400e3 });
+  const expiredServer = tls.createServer({ key: expiredCert.key, cert: expiredCert.cert }, (sock) => sock.end());
+  const expiredPort = await listen(expiredServer);
+  await runOne('net', 'tls-expired-cert', 'ehr', { host: '127.0.0.1', port: expiredPort, tls: true });
+  const e = certEv(ev => ev.check_name === 'tls-expired-cert:cert-expiry');
+  check('cert_expiration expired -> down', e?.status === 'down', JSON.stringify(e));
+  await closeServer(expiredServer);
 
   // ---- loader negative cases ----------------------------------------------
   try { loadProfile({ profile_id: 'x', vendor: 'y', checks: [] }); check('loader rejects empty checks', false); }

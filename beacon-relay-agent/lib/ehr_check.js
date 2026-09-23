@@ -81,7 +81,63 @@ async function emitCheck(ctx, check, result, post) {
   const channelId = result.observed?.channel_name ?? null;
   if (channelId) ev.channel_id = channelId;
   if (result.tier) ev.tier_observed = result.tier;
-  return post(ev);
+  const main = await post(ev);
+  // TLS certificate expiration is a first-class critical service per
+  // CONTROLS_AND_IDENTITY §3. Whenever any adapter observes a peer cert
+  // (L2 TLS handshake), also emit a metadata-only cert_expiration event so
+  // the console can report expiry across all checked endpoints.
+  if (result.observed?.cert) {
+    await emitCertExpiration(ctx, check, result.observed.cert, Math.max(0, Math.round(result.latency_ms ?? 0)), post);
+  }
+  return main;
+}
+
+const CERT_EXPIRY_SOON_DAYS = 30;
+
+function certStatus(cert) {
+  const now = Date.now();
+  const validTo = cert.valid_to ? Date.parse(cert.valid_to) : null;
+  const validFrom = cert.valid_from ? Date.parse(cert.valid_from) : null;
+  if (validTo != null && now > validTo) {
+    return { status: 'down', detail: `Certificate expired (${cert.valid_to})` };
+  }
+  if (validFrom != null && now < validFrom) {
+    return { status: 'down', detail: `Certificate not yet valid (${cert.valid_from})` };
+  }
+  if (validTo != null && (validTo - now) < CERT_EXPIRY_SOON_DAYS * 86400e3) {
+    const days = Math.ceil((validTo - now) / 86400e3);
+    return { status: 'degraded', detail: `Certificate expires in ${days} day(s) (${cert.valid_to})` };
+  }
+  return { status: 'verified_ready', detail: `Certificate valid until ${cert.valid_to}` };
+}
+
+async function emitCertExpiration(ctx, check, cert, latencyMs, post) {
+  const { status, detail } = certStatus(cert);
+  // Metadata only: subject CN, issuer CN, validity window. Raw cert bytes and
+  // private keys are never logged or transmitted.
+  const metadata = {
+    subject: cert.subject ?? null,
+    issuer: cert.issuer ?? null,
+    valid_from: cert.valid_from ?? null,
+    valid_to: cert.valid_to ?? null,
+  };
+  return post({
+    event_id: crypto.randomUUID(),
+    device_id: ctx.deviceId,
+    site_id: ctx.siteId,
+    occurred_at: new Date().toISOString(),
+    kind: 'check_result',
+    service: 'cert_expiration',
+    status,
+    latency_ms: latencyMs,
+    confidence: 'high',
+    freshness_s: 0,
+    phi_mode: false,
+    detail,
+    observed: { cert: metadata },
+    adapter: check.adapter,
+    check_name: `${check.name}:cert-expiry`,
+  });
 }
 
 // runProfile — executes all enabled checks, emits one event per check, and

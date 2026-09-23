@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `c975e84` (agent/md-sync-2026-09-22, in sync with origin).
+**Current commit on `main`:** `32aad48` (agent/md-sync-2026-09-22; HEAD also includes channel-registry and TLS-cert-expiration work).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -66,6 +66,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   topology view, cross-site rollup gated to operations-manager/support-technician, and
   full-status detail panel all return them. Rule-based detail panel — no AI narration,
   per the §11 guardrail.
+- **TLS certificate expiration as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+  §3). The existing L2 TLS handshake now also emits a metadata-only `cert_expiration`
+  check_result (subject CN, issuer CN, valid_from, valid_to — no cert bytes or keys).
+  Status mapping: expired -> `down`, expiring within 30 days -> `degraded`, valid ->
+  `verified_ready`. Added to the canonical schema `service` enum and the Fleet Console
+  critical-service register. Covered by dedicated unit checks for expired / soon / valid.
 - **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
@@ -99,10 +105,10 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
 - **Network controls + Action Registry + Microsoft Graph Phase 1** (`CONTROLS_AND_IDENTITY`
-  §6): WAN/firewall/DNS/TLS-cert critical-service entries, wireless/VPN, backup/EDR status
-  reads, the Action Registry whitelist mechanism, and the read-only M365 account-health
-  adapter. The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
-  security-signal work, not this phase.
+  §6): WAN/firewall/DNS critical-service entries, wireless/VPN, backup/EDR status reads,
+  the Action Registry whitelist mechanism, and the read-only M365 account-health adapter.
+  The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
+  security-signal work, not this phase. TLS certificate expiration is now built separately.
 - **Fleet map + troubleshooting memory + ticketing export**
   (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §5): geographic fleet map (lat/lng), the
   deterministic case-based "similar past incidents" memory, and ticketing Tier-0
@@ -122,7 +128,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 17/17 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 21/21 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |

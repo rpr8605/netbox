@@ -124,19 +124,24 @@ export async function runNetCheck({ host, port, tls: wantTls = false }) {
   }
   if (wantTls) {
     const l2 = await tlsCheck(host, port);
+    // Include peer cert metadata whenever the handshake completes, even if the
+    // cert is expired/not-yet-valid, so the cert_expiration first-class service
+    // can report the actual validity window. No raw cert bytes or keys.
+    const observed = { l0: pingRes.skipped ? 'skipped' : (pingRes.ok ? 'ok' : 'fail'), l1: 'ok', l2: l2.ok ? 'ok' : 'fail' };
+    if (l2.cert) observed.cert = l2.cert;
     if (!l2.ok) {
       return {
         ok: false, tier: 'L1', status: 'degraded',
         latency_ms: Date.now() - started,
         detail: `TLS unhealthy on ${host}:${port} (${l2.detail ?? 'handshake failed'})`,
-        observed: { l0: pingRes.skipped ? 'skipped' : (pingRes.ok ? 'ok' : 'fail'), l1: 'ok', l2: 'fail' },
+        observed,
       };
     }
     return {
       ok: true, tier: 'L2', status: 'verified_ready',
       latency_ms: Date.now() - started,
       detail: `TLS ok on ${host}:${port}; cert CN=${l2.cert?.subject ?? '?'} valid_to=${l2.cert?.valid_to ?? '?'}`,
-      observed: { l0: pingRes.skipped ? 'skipped' : (pingRes.ok ? 'ok' : 'fail'), l1: 'ok', l2: 'ok', cert: l2.cert },
+      observed,
     };
   }
   return {
