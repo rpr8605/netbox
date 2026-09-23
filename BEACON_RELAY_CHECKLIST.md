@@ -4,7 +4,7 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `63e9a70` (agent/md-sync-2026-09-22).
+**Audited at commit:** `65ba54d` (agent/md-sync-2026-09-22).
 
 > **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
 
@@ -18,7 +18,9 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
-| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 6/6 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 13/13 |
+| Control-plane storage against PostgreSQL | `DATABASE_URL=postgres://... node --test scripts/test_device_lifecycle.js scripts/test_topology.js` | 20/20 |
+| SQLite-to-PostgreSQL migration | `DB_PATH=<sqlite> DATABASE_URL=postgres://... node control-plane/migrate.js` | 5 rows copied; verified in Postgres |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
@@ -85,7 +87,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ### §5 — Cloud Control Plane
 - Device registry + mTLS ingestion API — **DONE** (EHR E2E 23/23 through real mTLS).
 - Quarantine gate — **DONE** (device-sim + acceptance).
-- PostgreSQL storage — **PARTIAL**. Repo runs on SQLite (`db.js`, better-sqlite3) with a schema written for a driver swap; the actual Postgres/RDS migration is not done and TimescaleDB-vs-partitioning is untested.
+- PostgreSQL storage — **DONE**. `control-plane/src/db.js` is now an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for zero-ops local dev/tests. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL`; `control-plane/migrate.js` copies legacy SQLite data idempotently on first boot. Verified by running all DB-touching unit tests against Postgres and by migrating the existing SQLite `cp-data` volume (2023 rows) into the compose Postgres instance before startup.
 - RBAC five roles (support technician, customer IT admin, operations manager, security auditor, read-only executive) — **PARTIAL**. The role→permission map and per-route allow/deny are real and tested (alerting/RBAC suite 23/23), but Phase 2 has no auth — `role` arrives as a request attribute, not a verified principal. The Cognito/JWT layer is not built.
 - Audit log: append-only, immutable — **DONE** (trigger-enforced UPDATE/DELETE raise; tamper test fails; suite 23/23).
 
@@ -209,7 +211,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 Real dependencies where a NOT-STARTED/PARTIAL item blocks a DONE item's *completion* (not just "stuff left"):
 
-- **Postgres storage (PARTIAL) blocks the AWS control-plane work (NOT STARTED).** The AWS doc's RDS/Cognito/Fargate steps all assume the control plane's data layer; today it's SQLite. The AWS phase can't be honestly demoed until the storage target is settled.
+- **AWS control-plane work (NOT STARTED) is now unblocked by storage, but still not started.** PostgreSQL storage is DONE, so the AWS doc's RDS/Cognito/Fargate steps can proceed once AWS account setup begins.
 - **React frontend (PARTIAL) blocks nothing functionally but is a spec-named surface.** The console works as vanilla HTML, so this is a tech-choice gap, not a functional blocker — flagged, not a dependency.
 - **Secure-Tunneling transport (NOT STARTED) is the real remote-support byte pipe.** The broker (DONE) models the session; the actual tunnel transport is unbuilt, so the "time-limited outbound tunnel" claim is proven at the session-record level only.
 - **Live SaaS credentials for alert delivery (PARTIAL) block any real-world escalation proof.** The engine and escalation timing are fully tested; an actual SMS/email/webhook delivery has never run.

@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `63e9a70` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
+**Current commit on `main`:** `65ba54d` (agent/md-sync-2026-09-22; HEAD adds PostgreSQL storage for the control plane with a one-shot SQLite migration, in addition to the previously merged channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -91,6 +91,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   runbook attachment, required ack with automatic escalation on timeout, suppression/
   maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, SES email via
   `@aws-sdk/client-sesv2`, Slack/Teams webhook) wired as injected senders.
+- **PostgreSQL storage for the control plane** (`BUILD_SPEC` §5). `control-plane/src/db.js` is now an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL`; the image entrypoint runs `control-plane/migrate.js` to copy any legacy SQLite data idempotently before startup. Verified by running all DB-touching unit tests against Postgres and by migrating the existing SQLite `cp-data` volume (2023 rows) into the compose Postgres instance.
 - **RBAC completeness** (`BUILD_SPEC` §5). All five roles (support technician, customer IT
   admin, operations manager, security auditor, read-only executive) with per-route
   allow/deny proven.
@@ -205,7 +206,9 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
-| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 6/6 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 13/13 |
+| Control-plane storage against PostgreSQL | `DATABASE_URL=postgres://... node --test scripts/test_device_lifecycle.js scripts/test_topology.js` | 20/20 |
+| SQLite-to-PostgreSQL migration | `DB_PATH=<sqlite> DATABASE_URL=postgres://... node control-plane/migrate.js` | 5 rows copied; verified in Postgres |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
@@ -249,9 +252,7 @@ built image plus the harness container.
 - **The Epic Community Connect profile ships with its FHIR check `enabled: false` by
   default** (parent-org API grant is not guaranteed) — that's a deliberate product decision,
   not a bug; the `unknown`-not-`down` auth mapping exists because of it.
-- **SQLite is the dev store; Postgres is the spec's target.** The schema is written so the
-  migration is a driver swap, but the swap has not been done and the RDS/TimescaleDB
-  decision (per the AWS doc) is untested.
+- **PostgreSQL is now the production storage target; SQLite remains the zero-ops dev fallback.** The dual-driver layer is tested, and the one-shot SQLite-to-Postgres migration runs automatically in the Docker image entrypoint. The RDS/TimescaleDB partitioning decision (per the AWS doc) is still deferred until the AWS phase.
 - **`git push` history was rewritten** — see the note at the top. Clones need fetch+reset.
 - **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** Worked around by remapping the published host port to `10443` in `docker-compose.yml` and updating host-side test/seed defaults. The container port remains `9100` for compose-internal services.
 - **QEMU acceptance cannot run in Docker Desktop on Windows because `/dev/kvm` is unavailable.** `vm-harness/acceptance.sh` hardcodes `-enable-kvm`; two attempts failed identically. Options: run on a Linux host with KVM, modify the harness to fall back to TCG with longer timeouts, or use a WSL2/Docker setup that exposes KVM. See `.agent/attempts.md`.

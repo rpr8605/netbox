@@ -151,3 +151,20 @@
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
 - **Next:** PostgreSQL driver swap per `BUILD_SPEC` §5. Architect plan complete; implementation starts in next block. If it exceeds one checkpoint it will be broken into steps with a checkpoint between.
 - **Progress:** 78 of 99 CHECKLIST items complete (79%).
+
+## Checkpoint #14 | Block: $? | Total: $? | Cost/feature commit: $?
+
+- **Done:**
+  - PostgreSQL storage for the control plane (`BUILD_SPEC` §5): `control-plane/src/db.js` rewritten as an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for local dev/tests. All routes, alerting, incident memory, index.js, and RBAC preHandler updated to `await` DB calls. `control-plane/src/schema.js` holds the shared SQLite/Postgres DDL. `65ba54d`.
+  - SQLite-to-PostgreSQL migration: `control-plane/migrate.js` (and thin launcher `scripts/migrate_sqlite_to_postgres.js`) copies legacy SQLite data idempotently table-by-table with `ON CONFLICT DO NOTHING`. `65ba54d`.
+  - Docker composition: `docker-compose.yml` adds a `postgres` service, wires `DATABASE_URL` into the control-plane, and makes the control-plane depend on Postgres health. `control-plane/Dockerfile` uses an entrypoint that runs the migration before starting the server. `65ba54d`.
+  - Migration verified in compose: the existing SQLite `cp-data` volume (2023 rows) was copied into the new Postgres service before the control-plane started; full stack came up healthy.
+- **Tests:**
+  - Unit/no-Docker suites green on SQLite: EHR unit 43/43, agent loop 11/11, Step 1 signals 4/4, configurator 8/8, update client 9/9, topology 7/7, device lifecycle 13/13, demo seed 5/5, demo timeline 4/4.
+  - DB-touching suites green on PostgreSQL: `DATABASE_URL=postgres://... node --test scripts/test_device_lifecycle.js scripts/test_topology.js` 20/20.
+  - E2E against live compose stack with Postgres: device-swap E2E 7/7, alerting/RBAC/audit/support/ticketing/fleet-map/troubleshooting-memory/Action Registry 76/76, EHR E2E 23/23, OTA rollout 10/10.
+  - Migration smoke test: seeded SQLite file → `node control-plane/migrate.js` → verified rows in Postgres.
+- **Repeat check:** none.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
+- **Next:** AWS Organization + three accounts (`CLOUD_ARCHITECTURE_AWS` §6 step 1), now unblocked by Postgres storage. Alternatively, continue with any remaining `BUILD_SPEC` surfaces if AWS access is not ready.
+- **Progress:** 79 of 99 CHECKLIST items complete (80%), up from 78 of 99 (79%).
