@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'agent/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-and-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+          cd control-plane && npm ci && cd ..
+          cd beacon-relay-agent && npm ci && cd ..
+
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
+
+      - name: Run Python tests
+        run: npm run test:python
