@@ -1,18 +1,19 @@
 // beacon-relay-agent/lib/update.js
-// Responsibility: the OTA update client (spec §3 + BUILD_SPEC §8.7). Polls the
-// control plane for a new signed RAUC bundle, verifies the signature BEFORE
-// anything touches disk, applies it to the INACTIVE slot, and only marks it good
-// after a successful post-update health check — automatic rollback to the
-// previous slot otherwise. The staged-rollout path obeys the control plane's
-// percentage-based assignment.
+// Responsibility: the OTA update client. Polls the control plane for a new
+// signed RAUC bundle, writes it to /data, verifies the signature BEFORE
+// `rauc install`, applies it to the INACTIVE slot, reboots, and only marks the
+// new slot good after a successful post-reboot health check — automatic
+// rollback to the previous slot otherwise. The staged-rollout path obeys the
+// control plane's percentage-based assignment.
 // Called by: agent.js daemon on a slow cadence (default 5 min).
 //
 // SAFETY (do not weaken): the signature check via `rauc info --keyring` runs
 // on the downloaded bundle BEFORE `rauc install`. A bundle that fails
 // verification is never installed — that is the entire trust boundary between
-// "a release Ryan signed" and "arbitrary code on the device". The rollback
-// guarantee comes from RAUC's A/B slots: the new slot is only marked good after
-// a post-update boot + health check; a failed boot leaves the previous slot
+// "a release Ryan signed" and "arbitrary code on the device". The bundle file
+// is written before verification, then deleted if verification fails. The
+// rollback guarantee comes from RAUC's A/B slots: the new slot is only marked
+// good after a post-reboot health check; a failed boot leaves the previous slot
 // active.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -135,19 +136,17 @@ export async function performHealthCheck(ctx, fetchJson) {
 }
 
 // runUpdateCycle — one full pass: check -> download -> VERIFY -> apply ->
-// health-check -> mark-good/rollback. The ordering is load-bearing: verify is a
-// hard gate, not a log line. Returns a result object the caller can log/emit.
-// Never throws. Hooks (verifyBundle, applyBundle, markGood, rollback,
-// performHealthCheck) are injectable so tests can prove the policy paths
-// without a real RAUC installation.
+// reboot. The ordering is load-bearing: verify is a hard gate, not a log line.
+// The slot MUST NOT be marked good or bad in this cycle; those commands act on
+// the *currently booted* slot, which is still the OLD slot until after reboot
+// (H2). Returns a result object the caller can log/emit. Never throws. Hooks
+// (verifyBundle, applyBundle) are injectable so tests can prove the policy
+// paths without a real RAUC installation.
 export async function runUpdateCycle(ctx, deps = {}) {
   const {
     fetchJson, fetchBytes,
     verifyBundleFn = verifyBundle,
     applyBundleFn = applyBundle,
-    markGoodFn = markGood,
-    rollbackFn = rollback,
-    healthCheckFn = performHealthCheck,
   } = deps;
 
   const { updateAvailable, latestVersion } = await checkForUpdate(ctx, fetchJson);
@@ -177,18 +176,42 @@ export async function runUpdateCycle(ctx, deps = {}) {
     return { action: 'install-failed', version: latestVersion, reason: (applied.out ?? '').trim().slice(-400) };
   }
 
-  // Post-install health check before marking the new slot good. A failed check
-  // triggers automatic rollback to the previous known-good slot.
+  // Install succeeded. The only way to test the new slot is to boot it, so the
+  // cycle ends here and the caller triggers a reboot. Mark-good/mark-bad run
+  // post-boot against the NEW slot (H2).
+  return { action: 'installed-pending-reboot', version: latestVersion, reason: 'installed, rebooting into new slot' };
+}
+
+// finishUpdateBoot — post-reboot health check for the slot that just booted.
+// Must be called once after a reboot that was triggered by runUpdateCycle.
+//   - healthy: mark the booted (new) slot good and keep it as the default.
+//   - unhealthy: mark the booted (new) slot bad so RAUC falls back to the
+//     previous known-good slot on the next reboot, then reboot now.
+// Returns a result object the caller can log/emit.
+export async function finishUpdateBoot(ctx, deps = {}) {
+  const {
+    fetchJson,
+    healthCheckFn = performHealthCheck,
+    markGoodFn = markGood,
+    rollbackFn = rollback,
+    rebootFn = systemReboot,
+  } = deps;
+
   const health = await healthCheckFn(ctx, fetchJson);
-  if (!health.healthy) {
-    rollbackFn();
-    return { action: 'rolled-back', version: latestVersion, reason: `health check failed: ${health.detail}` };
+  if (health.healthy) {
+    const marked = markGoodFn();
+    return {
+      action: 'boot-marked-good',
+      reason: marked ? 'post-reboot health check passed, slot marked good' : 'health check passed, mark-good failed',
+    };
   }
 
-  const marked = markGoodFn();
-  return {
-    action: marked ? 'installed-good' : 'installed-pending',
-    version: latestVersion,
-    reason: marked ? 'health check passed, slot marked good' : 'health check passed, mark-good failed',
-  };
+  rollbackFn();
+  rebootFn();
+  return { action: 'boot-rolled-back', reason: `post-reboot health check failed: ${health.detail}` };
+}
+
+function systemReboot() {
+  try { execFileSync('systemctl', ['reboot'], { stdio: 'pipe' }); }
+  catch { /* non-fatal; log only */ }
 }

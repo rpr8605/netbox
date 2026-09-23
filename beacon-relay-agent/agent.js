@@ -25,7 +25,7 @@ import { loadProfile } from './lib/ehr_check.js';
 import { runNetCheck } from './lib/net_checks.js';
 import { runFhirCheck } from './lib/fhir_r4.js';
 import { runMirthCheck } from './lib/mirth_admin.js';
-import { runUpdateCycle, markGood } from './lib/update.js';
+import { runUpdateCycle, finishUpdateBoot, markGood } from './lib/update.js';
 
 const DEFAULTS = { renew_fraction: 0.55, heartbeat_ms: 10_000 };
 
@@ -216,8 +216,10 @@ if (PROFILE_PATH) {
 // --- OTA update client (spec §3) --------------------------------------------
 // Polls the control plane for a new signed RAUC bundle on a slow cadence. The
 // signature verify is a hard gate inside runUpdateCycle; a failed verify never
-// touches disk. mark-good runs only after a successful boot + health check.
+// touches disk. mark-good/mark-bad run AFTER the reboot, against the booted
+// slot, so a failed new slot falls back to the previous one (H2).
 const CURRENT_VERSION = (() => { try { return fs.readFileSync('/etc/beacon-relay-version', 'utf8').trim(); } catch { return '0.1.0'; } })();
+const UPDATE_PENDING_FLAG = '/data/.update-pending';
 async function updateTick() {
   try {
     const r = await runUpdateCycle(
@@ -237,11 +239,12 @@ async function updateTick() {
       },
     );
     if (r.action !== 'none') console.log(`agent: update ${r.action} ${r.version ?? ''} ${r.reason ?? ''}`.trim());
-    if (r.action === 'installed-good' || r.action === 'installed-pending') {
+    if (r.action === 'installed-pending-reboot') {
       // The verified bundle is in the inactive slot and RAUC has pointed
-      // grubenv at it — the only way to run the new slot is to boot it.
-      // runUpdateCycle already ran the post-install health check and either
-      // marked the slot good or left it pending a later mark-good after reboot.
+      // grubenv at it — the only way to test the new slot is to boot it.
+      // Mark-good/mark-bad are intentionally NOT called here; they act on the
+      // currently booted slot, which is still the old slot (H2).
+      fs.writeFileSync(UPDATE_PENDING_FLAG, new Date().toISOString(), { mode: 0o600 });
       console.log('agent: update installed; rebooting into new slot');
       try { execSync('systemctl reboot', { stdio: 'pipe' }); }
       catch (e) { console.log(`agent: reboot request failed (non-fatal): ${e.message}`); }
@@ -250,5 +253,23 @@ async function updateTick() {
 }
 setInterval(updateTick, CFG.update_interval_ms ?? 300_000);
 updateTick();
+
+// If the daemon started after an update-triggered reboot, run the post-boot
+// health check on the NEW slot and either mark it good or roll back to the
+// previous known-good slot (H2).
+if (fs.existsSync(UPDATE_PENDING_FLAG)) {
+  finishUpdateBoot(
+    { cpBase: CP, deviceId },
+    {
+      fetchJson: async (url) => (await api('GET', url, null, mTlsOpts())).body,
+    },
+  ).then(r => {
+    console.log(`agent: post-update boot ${r.action}: ${r.reason}`);
+    fs.rmSync(UPDATE_PENDING_FLAG, { force: true });
+  }).catch(e => {
+    console.log(`agent: post-update boot check failed (non-fatal): ${e.message}`);
+    fs.rmSync(UPDATE_PENDING_FLAG, { force: true });
+  });
+}
 
 console.log(`agent: daemon running; version=${CURRENT_VERSION}; heartbeat=${CFG.heartbeat_ms}ms; tpm=${isTpm}; renew@${CFG.renew_fraction}`);

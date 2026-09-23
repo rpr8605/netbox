@@ -67,8 +67,13 @@ check('U7. checkForUpdate passes device_id and reflects rollout gate',
   r5a.updateAvailable === true && r5b.updateAvailable === false,
   `available-in=${r5a.updateAvailable} available-out=${r5b.updateAvailable}`);
 
-// Case 6: a verified bundle + passing health check -> installed-good.
+// Case 6: a verified bundle + passing health check -> install succeeds and
+// the cycle requests a reboot. mark-good must NOT run in-cycle (H2); it runs
+// post-boot against the NEW slot.
 let installedPath = null;
+let markGoodInCycle = false;
+let rollbackInCycle = false;
+let healthCheckInCycle = false;
 const r6 = await runUpdateCycle(
   { cpBase: 'https://cp', currentVersion: '0.1.0', deviceId: crypto.randomUUID() },
   {
@@ -76,27 +81,43 @@ const r6 = await runUpdateCycle(
     fetchBytes: async () => Buffer.from('signed-bundle-bytes'),
     verifyBundleFn: () => true,
     applyBundleFn: (p) => { installedPath = p; return { ok: true, out: 'installed' }; },
-    healthCheckFn: () => ({ healthy: true, detail: 'ok' }),
-    markGoodFn: () => true,
+    healthCheckFn: () => { healthCheckInCycle = true; return { healthy: true, detail: 'ok' }; },
+    markGoodFn: () => { markGoodInCycle = true; return true; },
+    rollbackFn: () => { rollbackInCycle = true; return true; },
   },
 );
-check('U8. verified + healthy -> installed-good', r6.action === 'installed-good', r6.action);
+check('U8. verified + healthy -> installed-pending-reboot', r6.action === 'installed-pending-reboot', r6.action);
+check('U8a. no slot state change in-cycle', !markGoodInCycle && !rollbackInCycle && !healthCheckInCycle);
 
-// Case 7: a verified bundle + failing health check -> rolled-back.
-let rollbackCalled = false;
-const r7 = await runUpdateCycle(
-  { cpBase: 'https://cp', currentVersion: '0.1.0', deviceId: crypto.randomUUID() },
+// Case 7: post-boot health check success marks the booted (new) slot good.
+const { finishUpdateBoot } = await import('../beacon-relay-agent/lib/update.js');
+let postBootMarkGood = false;
+const r7 = await finishUpdateBoot(
+  { cpBase: 'https://cp', deviceId: crypto.randomUUID() },
   {
-    fetchJson: async () => ({ version: '0.2.0' }),
-    fetchBytes: async () => Buffer.from('signed-bundle-bytes'),
-    verifyBundleFn: () => true,
-    applyBundleFn: () => ({ ok: true, out: 'installed' }),
-    healthCheckFn: () => ({ healthy: false, detail: 'cp unreachable' }),
-    markGoodFn: () => true,
-    rollbackFn: () => { rollbackCalled = true; return true; },
+    fetchJson: async () => ({ ok: true }),
+    healthCheckFn: async () => ({ healthy: true, detail: 'ok' }),
+    markGoodFn: () => { postBootMarkGood = true; return true; },
+    rollbackFn: () => true,
+    rebootFn: () => {},
   },
 );
-check('U9. verified + unhealthy -> rolled-back', r7.action === 'rolled-back' && rollbackCalled, r7.action);
+check('U9. post-boot healthy -> mark-good on booted slot', r7.action === 'boot-marked-good' && postBootMarkGood, r7.action);
+
+// Case 8: post-boot health check failure marks the booted (new) slot bad and reboots.
+let postBootRollback = false;
+let postBootReboot = false;
+const r8 = await finishUpdateBoot(
+  { cpBase: 'https://cp', deviceId: crypto.randomUUID() },
+  {
+    fetchJson: async () => ({ ok: true }),
+    healthCheckFn: async () => ({ healthy: false, detail: 'cp unreachable' }),
+    markGoodFn: () => true,
+    rollbackFn: () => { postBootRollback = true; return true; },
+    rebootFn: () => { postBootReboot = true; },
+  },
+);
+check('U10. post-boot unhealthy -> mark-bad booted slot + reboot', r8.action === 'boot-rolled-back' && postBootRollback && postBootReboot, r8.action);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 const failed = results.filter(r => !r.ok);
