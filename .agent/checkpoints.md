@@ -214,4 +214,21 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
   3. C1 options note (operator auth identity-provider decision) per user instruction.
 - **Progress:** 9 of 15 review code findings closed (excluding maintainability list and H5 repo-setting). No CHECKLIST items added yet.
 
+## Checkpoint #17 | Block: $1.43 | Total: $700.79 | Cost/feature commit: $1.43
+
+- **Done (Batch 2 OTA correctness):**
+  - H2: removed in-cycle `mark-good`/`mark-bad` and post-install health check from `runUpdateCycle`; the cycle now verifies, installs, and returns `installed-pending-reboot`. Added `finishUpdateBoot` for post-reboot health check on the NEW slot: pass → `mark-good`, fail → `mark-bad` + reboot. Updated `beacon-relay-agent/agent.js` to write `/data/.update-pending` before reboot and call `finishUpdateBoot` on startup when the flag exists. Fixed false comments in `beacon-relay-agent/lib/update.js`. `bb449e5`.
+- **C1 options note:** `.agent/c1-auth-options.md` written with Cognito, Auth0/Okta, Entra ID, passkeys, and self-hosted Keycloak/Authentik pros/cons/cost; implementation of real operator auth remains blocked pending Ryan's IdP decision.
+- **Tests:**
+  - New H2 tests: 3/3 pass.
+  - Updated `scripts/test_update_client.js`: 11/11 pass (was 9 checks, 2 failed under old flow).
+  - Existing no-Docker suites re-run: EHR unit 48/48, agent loop 11/11, update client 11/11.
+- **Repeat check:** none.
+- **Blocked:** C1 implementation (pending IdP decision); QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant; live Mirth 3.x; PHI-mode design review; physical hardware-lifecycle steps.
+- **Next 3 (Batch 3 maintainability):**
+  1. Rewrite `README.md` and create `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`.
+  2. Move specs to `docs/specs/`, AI-process files to `.agent/` or `tools/`, delete the `(1)` duplicate after confirming superseded; update references.
+  3. Single `npm test` running all JS and Python suites; GitHub Actions workflow (tests, gitleaks, Semgrep, npm audit, pip-audit, Trivy); ESLint + Prettier + ruff configs and auto-fix commit; fix wrong comments and rename package.json scripts.
+- **Progress:** 10 of 15 review code findings closed. No CHECKLIST items added yet.
+
 
