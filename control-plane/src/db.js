@@ -5,6 +5,7 @@
 // a data-model change.
 // Called by: src/index.js at startup; src/routes/*.js for all reads/writes.
 import Database from 'better-sqlite3';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -138,13 +139,41 @@ CREATE TABLE IF NOT EXISTS alerts (
   site_id     TEXT NOT NULL,
   severity    TEXT NOT NULL,
   impact_stmt TEXT NOT NULL,
-  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','acked','escalated','resolved')),
+  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','acked','escalated','resolved','closed')),
   ack_deadline TEXT NOT NULL,
   acked_by    TEXT,
   acked_at    TEXT,
   current_tier INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   escalated_at TEXT
+);
+
+-- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2).
+-- incident_signature is captured automatically when an alert opens.
+-- resolution_record is filled by a human when the alert closes. Both are keyed
+-- to alert_id because the alert row is the existing incident record.
+CREATE TABLE IF NOT EXISTS incident_signatures (
+  signature_id    TEXT PRIMARY KEY,
+  alert_id        TEXT NOT NULL UNIQUE REFERENCES alerts(alert_id),
+  site_id         TEXT NOT NULL,
+  service         TEXT NOT NULL,
+  tier_at_failure TEXT,
+  status_transition TEXT,
+  vendor          TEXT,
+  interface_engine TEXT,
+  co_occurring_signals TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
+  time_of_day_bucket TEXT NOT NULL,
+  opened_at       TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS resolution_records (
+  record_id       TEXT PRIMARY KEY,
+  alert_id        TEXT NOT NULL UNIQUE REFERENCES alerts(alert_id),
+  root_cause_category TEXT NOT NULL,
+  root_cause_note TEXT,
+  action_taken    TEXT NOT NULL,
+  time_to_resolve_min INTEGER,
+  closed_by       TEXT NOT NULL,
+  closed_at       TEXT NOT NULL
 );
 
 -- Remote-support session broker (spec §7): outbound-only, JIT token, every
@@ -411,6 +440,105 @@ export function escalateAlert(alertId, newTier) {
 // ack window has lapsed.
 export function openUnackedPastDeadline(nowIso) {
   return db.prepare(`SELECT * FROM alerts WHERE status='open' AND ack_deadline < ?`).all(nowIso);
+}
+// closeAlert: mark an alert closed and record resolution metadata. Used by the
+// close-incident UI flow (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2).
+export function closeAlert(alertId) {
+  db.prepare(`UPDATE alerts SET status='closed' WHERE alert_id=?`).run(alertId);
+}
+
+// --- incident signatures / resolution records (troubleshooting memory) -------
+export function createIncidentSignature(sig) {
+  db.prepare(
+    `INSERT INTO incident_signatures (signature_id, alert_id, site_id, service, tier_at_failure,
+      status_transition, vendor, interface_engine, co_occurring_signals, time_of_day_bucket, opened_at)
+     VALUES (@signature_id, @alert_id, @site_id, @service, @tier_at_failure, @status_transition,
+             @vendor, @interface_engine, @co_occurring_signals, @time_of_day_bucket, @opened_at)`
+  ).run({
+    signature_id: crypto.randomUUID(),
+    vendor: null,
+    interface_engine: null,
+    co_occurring_signals: '[]',
+    ...sig,
+  });
+}
+export function getIncidentSignature(alertId) {
+  return db.prepare(`SELECT * FROM incident_signatures WHERE alert_id = ?`).get(alertId);
+}
+export function createResolutionRecord(rec) {
+  db.prepare(
+    `INSERT INTO resolution_records (record_id, alert_id, root_cause_category, root_cause_note,
+                                     action_taken, time_to_resolve_min, closed_by, closed_at)
+     VALUES (@record_id, @alert_id, @root_cause_category, @root_cause_note, @action_taken,
+             @time_to_resolve_min, @closed_by, @closed_at)`
+  ).run({
+    record_id: crypto.randomUUID(),
+    root_cause_note: null,
+    time_to_resolve_min: null,
+    ...rec,
+  });
+}
+export function getResolutionRecord(alertId) {
+  return db.prepare(`SELECT * FROM resolution_records WHERE alert_id = ?`).get(alertId);
+}
+// allClosedIncidents: every closed alert with its signature + resolution, used
+// by the deterministic matching function.
+export function allClosedIncidents() {
+  return db.prepare(
+    `SELECT a.alert_id, a.site_id, a.device_id, a.severity, a.created_at,
+            s.*, r.root_cause_category, r.root_cause_note, r.action_taken,
+            r.time_to_resolve_min, r.closed_by, r.closed_at
+     FROM alerts a
+     LEFT JOIN incident_signatures s ON s.alert_id = a.alert_id
+     LEFT JOIN resolution_records r ON r.alert_id = a.alert_id
+     WHERE a.status = 'closed'
+     ORDER BY a.created_at DESC`
+  ).all();
+}
+
+// captureIncidentSignature: compute and persist the signature the moment an
+// incident opens. Deterministic: only recorded facts from the latest events at
+// the site, no inferred prose.
+export function captureIncidentSignature({ alertId, siteId, service, vendor = 'unknown', openedAt }) {
+  const events = listEventsBySite(siteId, 500).filter(e => e.kind === 'check_result');
+  const byService = new Map();
+  for (const ev of events) {
+    if (!byService.has(ev.service)) byService.set(ev.service, ev);
+  }
+  const svcEvents = events.filter(e => e.service === service).sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+  const current = svcEvents[0];
+  const previous = svcEvents[1];
+  const currentStatus = current ? (JSON.parse(current.payload ?? '{}').status ?? 'unknown') : 'unknown';
+  const previousStatus = previous ? (JSON.parse(previous.payload ?? '{}').status ?? 'unknown') : 'unknown';
+  const statusTransition = `${previousStatus}->${currentStatus}`;
+  const tierAtFailure = current ? (JSON.parse(current.payload ?? '{}').tier_observed ?? null) : null;
+
+  const cooc = [];
+  for (const [svc, ev] of byService.entries()) {
+    if (svc === service) continue;
+    const p = JSON.parse(ev.payload ?? '{}');
+    const st = p.status ?? 'unknown';
+    if (st === 'degraded' || st === 'down') cooc.push(`${svc}:${st}`);
+  }
+
+  const engineRow = db.prepare(`SELECT engine FROM channels WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`).get(siteId);
+  const interfaceEngine = engineRow?.engine ?? 'none';
+
+  const hour = new Date(openedAt).getHours();
+  const bucket = hour >= 6 && hour < 18 ? 'business-hours' : hour >= 18 && hour < 22 ? 'after-hours' : 'overnight';
+
+  createIncidentSignature({
+    alert_id: alertId,
+    site_id: siteId,
+    service,
+    tier_at_failure: tierAtFailure,
+    status_transition: statusTransition,
+    vendor,
+    interface_engine: interfaceEngine,
+    co_occurring_signals: JSON.stringify(cooc),
+    time_of_day_bucket: bucket,
+    opened_at: openedAt,
+  });
 }
 
 // --- remote support sessions ------------------------------------------------

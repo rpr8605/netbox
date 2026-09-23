@@ -16,7 +16,7 @@ import crypto from 'node:crypto';
 export const ROLE_PERMISSIONS = {
   'support-technician': new Set([
     'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
-    'alerts:read', 'alerts:ack', 'support:request', 'support:open',
+    'alerts:read', 'alerts:ack', 'alerts:close', 'support:request', 'support:open',
   ]),
   'customer-it-admin': new Set([
     'devices:read', 'events:read', 'topology:read',
@@ -24,7 +24,7 @@ export const ROLE_PERMISSIONS = {
   ]),
   'operations-manager': new Set([
     'devices:read', 'devices:write', 'events:read', 'topology:read', 'topology:rollup',
-    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:rules:write', 'channels:write',
+    'alerts:read', 'alerts:fire', 'alerts:ack', 'alerts:close', 'alerts:rules:write', 'channels:write',
   ]),
   'security-auditor': new Set([
     'devices:read', 'events:read', 'topology:read', 'audit:read',

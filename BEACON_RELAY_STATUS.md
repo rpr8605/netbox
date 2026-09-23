@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `e3c864a` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, ticketing Tier-0, SES email-sender, and geographic fleet-map work).
+**Current commit on `main`:** `TBD` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, ticketing Tier-0, SES email-sender, geographic fleet-map, and troubleshooting-memory work).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -107,6 +107,15 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   see the whole fleet; customer-it-admin must supply their own `site_id` and sees
   only that pin. `public/fleet.html` renders the pins without external map libraries.
   Covered by the alerting/RBAC suite.
+- **Troubleshooting memory + similar-past-incidents panel** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY`
+  §2). `incident_signature` is captured automatically when an alert opens, from
+  recorded events only (status transition, tier, co-occurring degraded/down signals,
+  time-of-day bucket, interface engine). `POST /api/alerts/:id/close` captures the
+  human-filled `resolution_record`. `GET /api/alerts/:id/similar` runs a deterministic
+  weighted-overlap match against closed incidents and returns ranked matches with
+  root-cause/action distributions and per-incident links — or an empty list when
+  nothing clears the threshold. No LLM, no generated narration. Covered by the
+  alerting/RBAC suite.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -130,11 +139,8 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   the Action Registry whitelist mechanism, and the read-only M365 account-health adapter.
   The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
   security-signal work, not this phase. TLS certificate expiration is now built separately.
-- **Troubleshooting memory + Tier-1 ticketing**
-  (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §5): deterministic case-based "similar past
-  incidents" memory, and ticketing Tier-1 generic REST adapter. Not started.
-  Tier-0 copy-paste block + send-as-email and the geographic fleet map are now
-  built separately.
+- **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
+  Not started — explicitly deferred until a real customer names a specific system.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
   deferred — profiles only, when a real customer site justifies each.
@@ -156,7 +162,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map | `node scripts/test_alerting_rbac_audit_support.js` | 47/47 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 58/58 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.

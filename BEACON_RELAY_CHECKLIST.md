@@ -19,7 +19,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map | `node scripts/test_alerting_rbac_audit_support.js` | 47/47 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 58/58 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -186,10 +186,10 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ## BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md
 
 - Geographic fleet map (lat/lng on site profile, pins colored by status, same RBAC) — **DONE**. `sites` table stores `lat`/`lng`/`name`; enrollment tokens accept site metadata; `GET /api/fleet/map` returns one pin per site with overall status (worst of critical-service statuses, unknown treated as baseline); RBAC allows operations-manager/support-technician and restricts customer-it-admin to their own `site_id`; `public/fleet.html` renders the map. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
-- `incident_signature` capture on incident open — **NOT STARTED**.
-- `resolution_record` close-incident UI flow — **NOT STARTED**.
-- Troubleshooting-memory matching function (deterministic weighted overlap) — **NOT STARTED**.
-- "Similar past incidents" panel + cold-start-honest empty state — **NOT STARTED**.
+- `incident_signature` capture on incident open — **DONE**. Captured automatically when `fireAlert` creates an alert; computed from the latest event(s) for the service at the site (status transition, tier, co-occurring degraded/down signals, time-of-day bucket, interface engine). Covered by `node scripts/test_alerting_rbac_audit_support.js`.
+- `resolution_record` close-incident UI flow — **DONE**. `POST /api/alerts/:id/close` records `root_cause_category` (controlled list), `root_cause_note`, `action_taken`, `time_to_resolve_min`, `closed_by`; RBAC-gated to `support-technician` and `operations-manager`. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
+- Troubleshooting-memory matching function (deterministic weighted overlap) — **DONE**. `control-plane/src/incident_memory.js` implements a hand-tracable weighted score over closed incidents: service+vendor+status_transition (highest), service+status_transition (medium), co-occurring signals overlap, small bonuses for time-of-day and interface engine. No LLM or generated narration. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
+- "Similar past incidents" panel + cold-start-honest empty state — **DONE**. `GET /api/alerts/:id/similar` returns ranked matches, root-cause/action distributions, median time-to-resolve, and a link to each matched incident; returns empty matches when nothing clears the threshold. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 - Ticketing Tier 0 (copy-paste block + "send as email" via existing SES/SendGrid) — **DONE**. `GET /api/alerts/:id/ticket` returns plain-text + Markdown blocks; `POST .../ticket/email` sends via the existing SendGrid pipe (gracefully skipped when unconfigured). RBAC-gated (`alerts:read` to view, `alerts:ack` to send). Metadata-only — no raw events, payloads, keys, or cert contents. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 - Ticketing Tier 1 (generic REST adapter) — **NOT STARTED** (explicitly deferred until a customer names a system).
 

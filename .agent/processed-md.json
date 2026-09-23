@@ -18,7 +18,7 @@
     "BEACON_RELAY_CHECKLIST.md":  {
                                         "sha256":  "f3a98d7dabafe2a618381196f0dd0234a2c3b52ca21d01b970734774b3f3a898",
                                         "status":  "reference",
-                                        "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map marked DONE/progress; alerting 47/47",
+                                        "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory marked DONE/progress; alerting 58/58",
                                         "commits":  [
                                                         "107ac2f",
                                                         "a68b0f5",
@@ -100,7 +100,7 @@
     "BEACON_RELAY_STATUS.md":  {
                                      "sha256":  "f3c4b2b1d5ea6c709edd708922f58e74a9467ab105b8178729fcad5c77202463",
                                      "status":  "reference",
-                                     "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map DONE/progress; alerting 47/47",
+                                     "note":  "status doc; channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory DONE/progress; alerting 58/58",
                                      "commits":  [
                                                      "107ac2f",
                                                      "a68b0f5",
@@ -120,7 +120,7 @@
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
                                                                   "sha256":  "6df793116c91dc6e8fbbfe710f8d523cda0d532c06a31170c6663b77c0a46e7a",
                                                                   "status":  "reference",
-                                                                  "note":  "geographic fleet map and Tier-0 copy-paste+email built; troubleshooting memory/Tier-1 ticketing deferred",
+                                                                  "note":  "geographic fleet map, troubleshooting memory, and Tier-0 copy-paste+email built; Tier-1 ticketing deferred",
                                                                   "commits":  [
                                                                                   "831f71d",
                                                                                   "e3c864a"
@@ -195,7 +195,7 @@
     ".agent/checkpoints.md":  {
                                     "sha256":  "8dfebb163ff4b34367c8eed93ccdb7f883a71037519951f935b3e6c2b344f5fa",
                                     "status":  "reference",
-                                    "note":  "session checkpoint log; added checkpoints #5/#6/#7/#8/#9 (channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map)",
+                                    "note":  "session checkpoint log; added checkpoints #5/#6/#7/#8/#9/#10 (channel registry + TLS cert expiration + firewall + DNS + ticketing Tier 0 + SES + fleet map + troubleshooting memory)",
                                     "commits":  [
                                                     "fea0d33",
                                                     "c975e84",

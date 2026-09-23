@@ -15,7 +15,7 @@
 import crypto from 'node:crypto';
 import {
   getAlertRule, contactsFor, maxTier, createAlert, getAlert, ackAlert,
-  escalateAlert, openUnackedPastDeadline, appendAudit,
+  escalateAlert, openUnackedPastDeadline, appendAudit, captureIncidentSignature,
 } from './db.js';
 
 // Reject transport-jargon impact statements at the door — the console and the
@@ -50,11 +50,13 @@ export async function fireAlert({ ruleId, deviceId, siteId, deliver, auditActor 
     return { suppressed: true, reason: 'maintenance window' };
   }
   const alertId = crypto.randomUUID();
-  const ackDeadline = new Date(Date.now() + rule.ack_window_s * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  const openedAt = new Date();
+  const ackDeadline = new Date(openedAt.getTime() + rule.ack_window_s * 1000).toISOString().replace('T', ' ').slice(0, 19);
   createAlert({
     alert_id: alertId, rule_id: ruleId, device_id: deviceId, site_id: siteId,
     severity: rule.severity, impact_stmt: rule.impact_stmt, ack_deadline: ackDeadline,
   });
+  captureIncidentSignature({ alertId, siteId, service: rule.service, vendor: 'unknown', openedAt: openedAt.toISOString() });
   appendAudit({ auditId: crypto.randomUUID(), actor: auditActor, action: 'alert.fired', target: alertId, detail: `${rule.severity} ${rule.service}` });
   const contacts = contactsFor(rule.severity, 1);
   const deliveries = [];

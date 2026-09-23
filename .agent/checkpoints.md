@@ -100,3 +100,12 @@
 - **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (troubleshooting-memory `incident_signature`, WAN/ISP circuit health, Action Registry, or M365 Phase 1 read-only account health)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 67 of 99 CHECKLIST items complete (68%), up from 64 of 99 (65%)
+
+## Checkpoint #10 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - Troubleshooting memory (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §2): `incident_signature` captured automatically on alert open; `POST /api/alerts/:id/close` records `resolution_record`; deterministic weighted-overlap matching in `control-plane/src/incident_memory.js`; `GET /api/alerts/:id/similar` returns ranked matches + distributions + cold-start-honest empty state.
+- **Tests:** alerting/RBAC/audit/support/ticketing/SES/fleet-map/troubleshooting-memory 58/58, EHR unit 24/24, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (WAN/ISP circuit health, Action Registry, M365 Phase 1 read-only account health, or RAUC OTA staged rollout)
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
+- **Progress:** 71 of 99 CHECKLIST items complete (72%), up from 67 of 99 (68%)

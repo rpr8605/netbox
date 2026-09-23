@@ -6,12 +6,13 @@
 import crypto from 'node:crypto';
 import {
   listAlertRules, listAlerts, getAlert, getAlertRule, createAlertRule, createAlertContact,
-  listChannels,
+  listChannels, getIncidentSignature, closeAlert, createResolutionRecord, getResolutionRecord,
 } from '../db.js';
 import { fireAlert, acknowledgeAlert, validateImpactStatement } from '../alerting.js';
 import { deliver, sendSendGrid, sendSes } from '../deliver.js';
 import { requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
+import { findSimilarIncidents } from '../incident_memory.js';
 
 export default async function alertRoutes(app) {
   const cfg = app.config ?? {};
@@ -62,6 +63,50 @@ export default async function alertRoutes(app) {
     const out = await acknowledgeAlert({ alertId: req.params.id, actor: req.body?.actor ?? 'unknown' });
     if (!out.ok) return reply.code(400).send(out);
     return out;
+  });
+
+  // --- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2) ------
+  app.get('/api/alerts/:id/signature', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
+    const sig = getIncidentSignature(req.params.id);
+    if (!sig) return reply.code(404).send({ error: 'signature not found' });
+    return sig;
+  });
+
+  // Close an incident and record the human-filled resolution. The close is the
+  // only path that creates a resolution_record; nothing is inferred.
+  app.post('/api/alerts/:id/close', { preHandler: requirePerm('alerts:close', appendAudit) }, async (req, reply) => {
+    const alert = getAlert(req.params.id);
+    if (!alert) return reply.code(404).send({ error: 'alert not found' });
+    if (alert.status === 'closed') return reply.code(409).send({ error: 'alert already closed' });
+    const { root_cause_category, root_cause_note, action_taken, actor } = req.body ?? {};
+    if (!root_cause_category || !action_taken) {
+      return reply.code(400).send({ error: 'root_cause_category and action_taken required' });
+    }
+    const closedAt = new Date();
+    const openedAt = new Date(alert.created_at);
+    const timeToResolveMin = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
+    closeAlert(alert.alert_id);
+    createResolutionRecord({
+      alert_id: alert.alert_id,
+      root_cause_category,
+      root_cause_note: root_cause_note ?? null,
+      action_taken,
+      time_to_resolve_min: timeToResolveMin,
+      closed_by: actor ?? 'unknown',
+      closed_at: closedAt.toISOString(),
+    });
+    appendAudit({ auditId: crypto.randomUUID(), actor: actor ?? 'unknown', action: 'alert.closed', target: alert.alert_id });
+    return { alert_id: alert.alert_id, status: 'closed', time_to_resolve_min: timeToResolveMin };
+  });
+
+  // Deterministic similar-past-incidents panel. Returns an empty matches list
+  // when nothing clears the threshold — no weak guesses dressed up as matches.
+  app.get('/api/alerts/:id/similar', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
+    const alert = getAlert(req.params.id);
+    if (!alert) return reply.code(404).send({ error: 'alert not found' });
+    const sig = getIncidentSignature(req.params.id);
+    if (!sig) return reply.code(404).send({ error: 'signature not found' });
+    return findSimilarIncidents(sig, { excludeAlertId: req.params.id });
   });
 
   // --- Ticketing Tier 0 (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §3) ------------
