@@ -109,3 +109,12 @@
 - **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (WAN/ISP circuit health, Action Registry, M365 Phase 1 read-only account health, or RAUC OTA staged rollout)
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 71 of 99 CHECKLIST items complete (72%), up from 67 of 99 (68%)
+
+## Checkpoint #11 | Block: $37.61 | Total: $676.42 | Cost/commit: $37.61
+
+- **Done:**
+  - M365 Phase 1 read-only account health (`CONTROLS_AND_IDENTITY` §4): `m365_account_health` critical service + `m365` adapter, read-only Graph scopes, mock-tested. `e0834e2`.
+- **Tests:** EHR unit 32/32, alerting/RBAC/audit 76/76, OTA rollout 10/10, control-plane rebuilt with new schema.
+- **Next:** wireless AP health + VPN tunnel health, then backup/DR + AV/EDR read-only status, per `CONTROLS_AND_IDENTITY` §3 build order.
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant for M365 real-world validation.
+- **Progress:** 72 of 99 CHECKLIST items complete (73%), up from 71 of 99 (72%).

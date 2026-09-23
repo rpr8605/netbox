@@ -144,6 +144,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   metadata-only `check_result` events. Built and tested against mocks; live Entra ID test
   tenant required for real-world validation (logged in `.agent/open-questions.md`).
   Covered by `scripts/test_ehr_unit.js`.
+- **Site-level network/endpoint controls** (`CONTROLS_AND_IDENTITY` §3). New
+  `wireless_ap_health`, `vpn_tunnel_health`, `backup_dr_status`, and `av_edr_checkin`
+  critical services, plus a single generic `site_controls.js` adapter module. Each reads a
+  configured status source (HTTP(S) URL or local file) and emits metadata-only
+  `check_result` events; no write actions. Built and tested against mocks. Covered by
+  `scripts/test_ehr_unit.js`.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -163,9 +169,10 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
 - **Network controls + remaining identity-provider work** (`CONTROLS_AND_IDENTITY` §6):
-  wireless/VPN and backup/EDR status reads. TLS certificate expiration, firewall, DNS,
-  WAN/ISP health, the Action Registry, and the M365 Phase 1 read-only account-health
-  adapter are now built separately.
+  all first-class critical services in §3 are now built: WAN/ISP, firewall, DNS/DHCP
+  (DNS direct; DHCP inferred), TLS certificate expiration, wireless AP health, site-to-site
+  VPN tunnel health, backup/DR job status, and AV/EDR agent check-in. The Action Registry
+  and M365 Phase 1 read-only account-health adapter are also built.
 - **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
   Not started — explicitly deferred until a real customer names a specific system.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
@@ -180,7 +187,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 32/32 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 41/41 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |

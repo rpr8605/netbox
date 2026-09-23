@@ -368,6 +368,48 @@ async function main() {
   const m365NoCreds = await runOne('m365', 'm365-unconfigured', 'm365_account_health', {});
   check('M365 unconfigured -> unknown (not down)', m365NoCreds.status === 'unknown', JSON.stringify(m365NoCreds));
 
+  // ---- site-level network / endpoint controls ------------------------------
+  const wirelessOk = await runOne('wireless', 'wireless-ok', 'wireless_ap_health', {
+    mockData: { aps: [{ name: 'ap-1', status: 'up', clientCount: 12 }, { name: 'ap-2', status: 'up', clientCount: 8 }] },
+  });
+  check('Wireless AP all up -> verified_ready', wirelessOk.status === 'verified_ready', JSON.stringify(wirelessOk));
+  check('Wireless AP observed metadata only', wirelessOk.observed && wirelessOk.observed.ap_count === 2 && wirelessOk.observed.total_clients === 20, JSON.stringify(wirelessOk.observed));
+
+  const wirelessDegraded = await runOne('wireless', 'wireless-degraded', 'wireless_ap_health', {
+    mockData: { aps: [{ name: 'ap-1', status: 'up', clientCount: 12 }, { name: 'ap-2', status: 'down', clientCount: 0 }] },
+  });
+  check('Wireless AP one down -> degraded', wirelessDegraded.status === 'degraded', JSON.stringify(wirelessDegraded));
+
+  const vpnOk = await runOne('vpn', 'vpn-ok', 'vpn_tunnel_health', {
+    mockData: { interface_up: true, remote_reachable: true, remote_endpoint: '10.0.0.1:22' },
+  });
+  check('VPN tunnel up + reachable -> verified_ready', vpnOk.status === 'verified_ready', JSON.stringify(vpnOk));
+
+  const vpnDown = await runOne('vpn', 'vpn-down', 'vpn_tunnel_health', {
+    mockData: { interface_up: false, remote_reachable: false, remote_endpoint: '10.0.0.1:22' },
+  });
+  check('VPN tunnel interface down -> down', vpnDown.status === 'down', JSON.stringify(vpnDown));
+
+  const backupOk = await runOne('backup_dr', 'backup-ok', 'backup_dr_status', {
+    mockData: { status: 'success', last_success: new Date().toISOString() },
+  });
+  check('Backup/DR recent success -> verified_ready', backupOk.status === 'verified_ready', JSON.stringify(backupOk));
+
+  const backupStale = await runOne('backup_dr', 'backup-stale', 'backup_dr_status', {
+    mockData: { status: 'success', last_success: new Date(Date.now() - 96 * 3600e3).toISOString(), max_age_hours: 48 },
+  });
+  check('Backup/DR stale success -> degraded', backupStale.status === 'degraded', JSON.stringify(backupStale));
+
+  const avOk = await runOne('av_edr', 'av-ok', 'av_edr_checkin', {
+    mockData: { status: 'healthy', last_checkin: new Date().toISOString(), definitions_age_hours: 6 },
+  });
+  check('AV/EDR healthy -> verified_ready', avOk.status === 'verified_ready', JSON.stringify(avOk));
+
+  const avStale = await runOne('av_edr', 'av-stale', 'av_edr_checkin', {
+    mockData: { status: 'healthy', last_checkin: new Date(Date.now() - 48 * 3600e3).toISOString() },
+  });
+  check('AV/EDR check-in stale -> down', avStale.status === 'down', JSON.stringify(avStale));
+
   // ---- loader negative cases ----------------------------------------------
   try { loadProfile({ profile_id: 'x', vendor: 'y', checks: [] }); check('loader rejects empty checks', false); }
   catch { check('loader rejects empty checks', true); }

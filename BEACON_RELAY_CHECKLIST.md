@@ -13,7 +13,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 32/32 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 41/41 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
@@ -153,11 +153,10 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - WAN/ISP circuit health (dual-path, failover detection) — **DONE**. `wan` added to the canonical schema `service` enum and the critical-service register; `runWanCheck` tests primary/backup circuits against external targets and sets `observed.failover=true` when the backup is active. Covered by `node scripts/test_ehr_unit.js`.
 - Core firewall/router reachability as a first-class service — **DONE**. `firewall` added to the canonical schema `service` enum and the Fleet Console critical-service register; existing generic net checks can target a gateway with `service: 'firewall'`. Covered by `node scripts/test_ehr_unit.js`.
 - DNS/DHCP health — **PARTIAL**. DNS resolver check added (`dnsCheck` in `net_checks.js`, `dns` service enum + critical-service register); DHCP health remains inferred from monitored endpoints and is not yet a direct check.
-- Wireless AP health — **NOT STARTED**.
-- Site-to-site VPN tunnel health — **NOT STARTED**.
-- Backup/DR job status read — **NOT STARTED**.
-- TLS certificate expiration as a first-class service — **DONE**. `cert_expiration` is a first-class `service` in the canonical schema and critical-service register; every TLS check now also emits a metadata-only `cert_expiration` event (subject/issuer/validity only — no cert bytes or keys). Tests cover valid, expiring-soon (<30 days), and expired certs. Covered by `node scripts/test_ehr_unit.js`.
-- AV/EDR agent check-in — **NOT STARTED**.
+- Wireless AP health — **DONE against mocks**. Generic `wireless` adapter reads a controller status source (HTTP(S) URL or local file), parses common AP array shapes, and reports AP up/down counts and client totals as metadata-only events. Covered by `node scripts/test_ehr_unit.js`.
+- Site-to-site VPN tunnel health — **DONE against mocks**. Generic `vpn` adapter reads a tunnel status file and/or probes a far-side TCP endpoint; emits metadata-only `vpn_tunnel_health` events. Covered by `node scripts/test_ehr_unit.js`.
+- Backup/DR job status read — **DONE against mocks**. Generic `backup_dr` adapter reads a status source and maps last-success age to verified_ready/degraded/down. Covered by `node scripts/test_ehr_unit.js`.
+- AV/EDR agent check-in — **DONE against mocks**. Generic `av_edr` adapter reads a status source and reports protection state, last check-in age, and definition freshness. Covered by `node scripts/test_ehr_unit.js`.
 
 ### §2 — Action Registry
 - Per-site whitelist of approved action types + session-gating + audit — **DONE**. `action_registry` table stores approved `action_id`/`site_id` pairs with `requires_role`; `/api/action-registry/execute` refuses unregistered or under-privileged requests and issues a remote-support session bound to `action_id`. Every registration/execution is audit-logged. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
