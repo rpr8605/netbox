@@ -64,3 +64,12 @@
 - **Next:** AWS Organization + three accounts (blocked by missing AWS CLI/credentials) OR TLS-cert-expiration critical service
 - **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI)
 - **Progress:** 61 of 99 CHECKLIST items complete (62%), up from 60 of 99 (61%)
+
+## Checkpoint #6 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - TLS certificate expiration as a first-class critical service (`CONTROLS_AND_IDENTITY` §3): `cert_expiration` in schema + critical-service register, metadata-only events emitted from every TLS handshake, status mapping expired/down / soon/degraded / valid/verified_ready, unit tests for all three cases.
+- **Tests:** EHR unit 21/21, E2E 23/23, alerting/RBAC 33/33, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** Ticketing Tier 0 copy-paste block (`TOPOLOGY_…_MEMORY` §3)
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
+- **Progress:** 62 of 99 CHECKLIST items complete (63%), up from 61 of 99 (62%)

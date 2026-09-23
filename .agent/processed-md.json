@@ -15,9 +15,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_CHECKLIST.md":  {
-                                        "sha256":  "bc86bb18c41d6bbfd44194bd03c110d3c566db28f74f77e88077563c8ff8c7c3",
+                                        "sha256":  "c238d495e277624334c0a8d1c00ef2613581e950d4d39f77c446a48eb86e708f",
                                         "status":  "reference",
-                                        "note":  "status doc; channel registry source/destination marked DONE; EHR unit 17/17",
+                                        "note":  "status doc; channel registry + TLS cert expiration marked DONE; EHR unit 21/21",
                                         "commits":  [
                                                         "107ac2f",
                                                         "a68b0f5",
@@ -25,7 +25,8 @@
                                                         "fea0d33",
                                                         "c975e84",
                                                         "bb00146",
-                                                        "32aad48"
+                                                        "32aad48",
+                                                        "4678fc6"
                                                     ]
                                     },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -37,13 +38,13 @@
                                                                ]
                                                },
     "BEACON_RELAY_CONTROLS_AND_IDENTITY.md":  {
-                                                  "sha256":  "1365936b8c7925ddfe954bfb374f3dd077987104d56df6bb9c384dbb0ceffd5f",
-                                                  "status":  "reference",
-                                                  "note":  "network controls phase; not started per STATUS.md; deferred",
-                                                  "commits":  [
-
-                                                              ]
-                                              },
+                                                   "sha256":  "1365936b8c7925ddfe954bfb374f3dd077987104d56df6bb9c384dbb0ceffd5f",
+                                                   "status":  "reference",
+                                                   "note":  "network controls phase; TLS cert expiration (§3) implemented; remaining entries deferred",
+                                                   "commits":  [
+                                                                   "4678fc6"
+                                                               ]
+                                               },
     "BEACON_RELAY_EHR_INTEGRATIONS.md":  {
                                                "sha256":  "d8bca4518e4bafb179086bab2588e2435a7adde7001947b44ee5d3489722087e",
                                                "status":  "reference",
@@ -89,9 +90,9 @@
                                                    ]
                                    },
     "BEACON_RELAY_STATUS.md":  {
-                                    "sha256":  "8606f81b9f3ab1df081d13386168024ce6337667815a9921edd5934d4876080c",
+                                    "sha256":  "069275921571155a3e2cb5747a611c68807a603b24c2fea763592482b5f61732",
                                     "status":  "reference",
-                                    "note":  "status doc; channel registry source/destination graph endpoints DONE; EHR unit 17/17",
+                                    "note":  "status doc; channel registry + TLS cert expiration DONE; EHR unit 21/21",
                                     "commits":  [
                                                     "107ac2f",
                                                     "a68b0f5",
@@ -99,7 +100,8 @@
                                                     "fea0d33",
                                                     "c975e84",
                                                     "bb00146",
-                                                    "32aad48"
+                                                    "32aad48",
+                                                    "4678fc6"
                                                 ]
                                 },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -179,11 +181,12 @@
     ".agent/checkpoints.md":  {
                                    "sha256":  "cbe123d61775dd1f4a59418a3b82f6165543e11178242850b8b7fe1e142cfaa5",
                                    "status":  "reference",
-                                   "note":  "session checkpoint log; added checkpoint #5 (channel registry source/destination)",
+                                   "note":  "session checkpoint log; added checkpoints #5/#6 (channel registry + TLS cert expiration)",
                                    "commits":  [
                                                    "fea0d33",
                                                    "c975e84",
-                                                   "32aad48"
+                                                   "32aad48",
+                                                   "4678fc6"
                                                ]
                                },
     ".agent/open-questions.md":  {

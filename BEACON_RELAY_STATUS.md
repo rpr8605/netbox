@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `32aad48` (agent/md-sync-2026-09-22; HEAD also includes channel-registry and TLS-cert-expiration work).
+**Current commit on `main`:** `4678fc6` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, and ticketing Tier-0 work).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -86,6 +86,11 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 - **Remote-support session broker** (`BUILD_SPEC` §7). Admin requests → device picks up a
   JIT token over its existing outbound mTLS → opens an outbound, time-limited tunnel.
   Sessions close at their TTL (sweep-enforced); every session is audit-logged.
+- **Ticketing Tier 0 export** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3). `GET
+  /api/alerts/:id/ticket` returns plain-text and Markdown copy-paste blocks from the
+  alert's existing fields; `POST .../ticket/email` sends the block via the existing
+  SendGrid pipe. Works with any inbox/ticketing system, no vendor API. RBAC-gated and
+  metadata-only (no raw events, payloads, keys, or cert contents).
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -109,10 +114,11 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   the Action Registry whitelist mechanism, and the read-only M365 account-health adapter.
   The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
   security-signal work, not this phase. TLS certificate expiration is now built separately.
-- **Fleet map + troubleshooting memory + ticketing export**
+- **Fleet map + troubleshooting memory + Tier-1 ticketing**
   (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §5): geographic fleet map (lat/lng), the
-  deterministic case-based "similar past incidents" memory, and ticketing Tier-0
-  (copy-paste block + send-as-email). Not started.
+  deterministic case-based "similar past incidents" memory, and ticketing Tier-1
+  generic REST adapter. Not started. Tier-0 copy-paste block + send-as-email is now
+  built separately.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
   deferred — profiles only, when a real customer site justifies each.
@@ -134,7 +140,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 | `node scripts/test_alerting_rbac_audit_support.js` | 39/39 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.

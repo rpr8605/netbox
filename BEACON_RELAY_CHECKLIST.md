@@ -19,7 +19,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support | `node scripts/test_alerting_rbac_audit_support.js` | 33/33 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 | `node scripts/test_alerting_rbac_audit_support.js` | 39/39 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -190,7 +190,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - `resolution_record` close-incident UI flow — **NOT STARTED**.
 - Troubleshooting-memory matching function (deterministic weighted overlap) — **NOT STARTED**.
 - "Similar past incidents" panel + cold-start-honest empty state — **NOT STARTED**.
-- Ticketing Tier 0 (copy-paste block + "send as email" via existing SES/SendGrid) — **NOT STARTED**.
+- Ticketing Tier 0 (copy-paste block + "send as email" via existing SES/SendGrid) — **DONE**. `GET /api/alerts/:id/ticket` returns plain-text + Markdown blocks; `POST .../ticket/email` sends via the existing SendGrid pipe (gracefully skipped when unconfigured). RBAC-gated (`alerts:read` to view, `alerts:ack` to send). Metadata-only — no raw events, payloads, keys, or cert contents. Covered by `node scripts/test_alerting_rbac_audit_support.js`.
 - Ticketing Tier 1 (generic REST adapter) — **NOT STARTED** (explicitly deferred until a customer names a system).
 
 ---
@@ -216,7 +216,6 @@ No DONE item is *broken* by an unbuilt dependency — the current system is inte
 Small, unblocked, worth doing first:
 
 - **AWS Organization + three accounts** (`CLOUD_ARCHITECTURE_AWS` §6 step 1) — the doc is explicit that nothing else in it should build before this, and it's foundational like step-ca was; zero new device/EHR code.
-- **Ticketing Tier 0 copy-paste block** (`TOPOLOGY_…_MEMORY` §3) — renders data the incident already carries; no new backend, and it covers every hospital incl. inbox-only sites.
 - **SES email sender alongside SendGrid** (`BUILD_SPEC` §6) — the deliver.js email path is SendGrid-only today; the spec names SES *or* SendGrid, so this is a one-function addition on a proven rail, and closes the "SES not implemented" note.
 
 ---

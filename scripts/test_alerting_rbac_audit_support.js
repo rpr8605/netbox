@@ -225,10 +225,46 @@ async function partD() {
   check('D6. session closes at its time limit (not left open)', afterExpiry?.body?.state === 'expired', `state=${afterExpiry?.body?.state}`);
 }
 
+// ------------------------------------------------------- E. ticketing Tier 0 ---
+async function partE() {
+  console.log('--- E. ticketing Tier 0: copy-paste block + email action ---');
+  const rule = await api('POST', '/api/alert-rules', {
+    severity: 'P2', service: 'lab',
+    impact_stmt: 'Lab interface results delayed from this site',
+    runbook_url: 'https://runbooks.local/lab-delayed',
+    ack_window_s: 300,
+  });
+  const fire = await api('POST', '/api/alerts/fire?role=operations-manager', {
+    rule_id: rule.body.rule_id,
+    device_id: crypto.randomUUID(),
+    site_id: crypto.randomUUID(),
+  });
+  const alertId = fire.body.alertId;
+
+  // GET /api/alerts/:id/ticket returns plain-text + markdown copy-paste blocks.
+  const ticket = await api('GET', `/api/alerts/${alertId}/ticket?role=support-technician`);
+  check('E1. ticket block readable by support-technician', ticket.status === 200 && !!ticket.body.plain_text && !!ticket.body.markdown, JSON.stringify(ticket.body).slice(0, 120));
+  check('E2. ticket block contains severity, service, site, impact, runbook',
+    ticket.body.plain_text.includes('SEVERITY: P2') &&
+    ticket.body.plain_text.includes('SERVICE: lab') &&
+    ticket.body.plain_text.includes('IMPACT: Lab interface results delayed from this site') &&
+    ticket.body.plain_text.includes('RUNBOOK: https://runbooks.local/lab-delayed'),
+    ticket.body.plain_text);
+  check('E3. markdown table mirrors plain-text fields', ticket.body.markdown.includes('| SEVERITY | P2 |'), ticket.body.markdown);
+  check('E4. ticket read denied to security-auditor (no alerts:read)', (await api('GET', `/api/alerts/${alertId}/ticket?role=security-auditor`)).status === 403);
+
+  // POST /api/alerts/:id/ticket/email reuses the alerting SendGrid pipe. With
+  // no API key configured it returns sent:false with a reason, not a crash.
+  const email = await api('POST', `/api/alerts/${alertId}/ticket/email?role=support-technician`, { to: 'it-inbox@hospital.example', actor: 'tech-1' });
+  check('E5. ticket email action returns sent status without crashing', email.status === 200 && typeof email.body?.sent === 'boolean', JSON.stringify(email.body));
+  check('E6. ticket email skipped when SendGrid not configured', email.body?.sent === false, JSON.stringify(email.body));
+}
+
 await partA();
 await partB();
 await partC();
 await partD();
+await partE();
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} alerting/rbac/audit/support checks passed`);
 process.exit(failed.length ? 1 : 0);
