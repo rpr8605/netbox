@@ -94,6 +94,12 @@ export default async function topologyViewRoutes(app) {
       const p = JSON.parse(ev.payload ?? '{}');
       const reg = getChannel(chId);
       const chEvents = channelEvents.filter(e => e.channel_id === chId);
+      // The Mirth reader emits per-channel metadata (last message time, recent
+      // error count) inside observed.channels. Match by name/channel_id.
+      const observedChannels = p.observed?.channels ?? [];
+      const observedChannel = observedChannels.find(
+        c => c.name === chId || c.name === reg?.display_name || c.name === reg?.channel_id
+      );
       return {
         channel_id: chId,
         display_name: reg?.display_name ?? chId,
@@ -105,6 +111,8 @@ export default async function topologyViewRoutes(app) {
         detail: p.detail ?? null,
         occurred_at: ev.occurred_at,
         time_in_state_s: timeInState(chEvents, p.status ?? 'unknown'),
+        last_message_time: observedChannel?.last_message_time ?? null,
+        recent_error_count: observedChannel?.recent_error_count ?? null,
       };
     });
 

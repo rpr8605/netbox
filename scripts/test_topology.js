@@ -14,6 +14,7 @@ import Ajv from '../control-plane/node_modules/ajv/dist/ajv.js';
 import addFormats from '../control-plane/node_modules/ajv-formats/dist/index.js';
 import { listChannels, getChannel, upsertChannel, listEventsBySite, insertEvent,
          upsertDevice } from '../control-plane/src/db.js';
+import topologyViewRoutes from '../control-plane/src/routes/topology_view.js';
 
 const schema = JSON.parse(fs.readFileSync('schemas/beacon_relay_event.schema.json', 'utf8'));
 const ajv = new Ajv({ allErrors: true }); addFormats(ajv);
@@ -82,5 +83,32 @@ describe('rollup role gate (stub)', () => {
   it('denies other roles incl. customer-it-admin, security-auditor, readonly-exec', () => {
     for (const r of ['customer-it-admin', 'security-auditor', 'readonly-executive', ''])
       assert.ok(!ROLLUP_ROLES.has(r));
+  });
+});
+
+describe('full-status detail panel', () => {
+  it('surfaces last_message_time and recent_error_count from the Mirth reader', async () => {
+    const siteId = crypto.randomUUID();
+    const deviceId = crypto.randomUUID();
+    upsertDevice({ deviceId, siteId, state: 'active' });
+    upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
+    const observed = {
+      channels: [{
+        name: 'adt-to-lab', state: 'STARTED', connectors: [{ name: 'source', state: 'CONNECTED' }],
+        last_message_time: '2026-09-23T18:00:00.000Z', recent_error_count: 2,
+      }],
+    };
+    insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
+                  occurred_at: new Date().toISOString(), kind: 'check_result', service: 'adt',
+                  status: 'active', latency_ms: 1, confidence: 'high', freshness_s: 0,
+                  channel_id: 'adt-to-lab', phi_mode: false, detail: 'Mirth ok', observed });
+    const handlers = {};
+    const mockApp = { get: (...args) => { handlers[args[0]] = args[args.length - 1]; } };
+    await topologyViewRoutes(mockApp);
+    const result = await handlers['/api/sites/:id/full-status']({ params: { id: siteId } });
+    const ch = result.channels.find(c => c.channel_id === 'adt-to-lab');
+    assert.ok(ch, 'channel present in full-status');
+    assert.equal(ch.last_message_time, '2026-09-23T18:00:00.000Z');
+    assert.equal(ch.recent_error_count, 2);
   });
 });

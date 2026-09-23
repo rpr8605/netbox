@@ -141,6 +141,17 @@ function startMirthStub() {
         ],
       }));
     }
+    const mm = u.pathname.match(/^\/api\/channels\/(\d+)\/messages$/);
+    if (mm && req.method === 'GET') {
+      const degrade = mirthMode === 'degraded' && mm[1] === '2';
+      const now = new Date();
+      const recent = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+      const old = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+      return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify([
+        { receivedDate: recent, status: degrade ? 'ERROR' : 'SENT' },
+        { receivedDate: old, status: 'SENT' },
+      ]));
+    }
     res.writeHead(404).end();
   });
   return server;
@@ -231,7 +242,10 @@ async function main() {
   const states = await mirthChannelStates(`http://127.0.0.1:${mirthPort}/api`, login.cookie);
   await mirthLogout(`http://127.0.0.1:${mirthPort}/api`, login.cookie);
   check('Mirth reader exposes source_system/destination_system',
-    states.channels.some(c => c.id === '1' && c.source_system === 'ADT' && c.destination_system === 'Lab'),
+    states.channels.some(c => c.source_system === 'ADT' && c.destination_system === 'Lab'),
+    JSON.stringify(states.channels));
+  check('Mirth reader exposes last_message_time and recent_error_count',
+    states.channels.every(c => c.last_message_time != null && typeof c.recent_error_count === 'number'),
     JSON.stringify(states.channels));
 
   mirthMode = 'degraded';

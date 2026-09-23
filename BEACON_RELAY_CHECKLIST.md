@@ -13,11 +13,11 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 41/41 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 42/42 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
-| Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
+| Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
@@ -143,7 +143,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - `channel_id` optional on canonical event — **DONE** (topology 6/6).
 - Per-site topology view — **DONE**.
 - Cross-site rollup (ops-manager/support-technician only) — **DONE** (RBAC-gated).
-- Clicking an edge shows last-message time / recent error count / connector state — **PARTIAL**. The detail panel shows status/detail/time-in-state/co-occurring signals, but does not yet surface last-message-time or a recent-error-count from the Mirth reader.
+- Clicking an edge shows last-message time / recent error count / connector state — **DONE**. The Mirth reader now fetches metadata-only `/channels/{id}/messages?includeContent=false` to extract `last_message_time` and count ERROR statuses in the last 15 minutes. `topology_view.js` surfaces both in the per-channel full-status payload, and `public/topology.html` renders them in the detail panel. No message content or patient fields are read. Covered by `node --test scripts/test_topology.js` and `node scripts/test_ehr_unit.js`.
 
 ---
 

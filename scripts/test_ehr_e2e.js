@@ -128,6 +128,14 @@ function startMirthStub() {
         ],
       }));
     }
+    const mm = u.pathname.match(/^\/api\/channels\/(\d+)\/messages$/);
+    if (mm && req.method === 'GET') {
+      const now = new Date();
+      const recent = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+      return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify([
+        { receivedDate: recent, status: 'SENT' },
+      ]));
+    }
     res.writeHead(404).end();
   });
 }

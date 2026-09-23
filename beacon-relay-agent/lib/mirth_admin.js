@@ -6,15 +6,16 @@
 // status, and logs out.
 //
 // SAFETY: only status metadata is ever read — /api/channels, /api/channels/{id}
-// /status, session endpoints. The /messages* endpoints are NEVER called:
-// channel/connector STATE is legitimate signal; message CONTENT is out of
-// scope let alone PHI-adjacent, per spec §4 metadata-only-by-default and §8
-// read-only guardrails. Do not add message routes to "improve" this adapter.
+// /status, session endpoints, and /channels/{id}/messages with
+// `includeContent=false`. The messages call requests only timestamps and status
+// values; it never fetches message bodies, identifiers, or PHI-adjacent content.
+// This single metadata-only exception exists because the Fleet Console detail
+// panel needs last-message time and recent error count (EHR spec §11), and
+// those values are not present in the status or statistics endpoints.
 //
 // Failure semantics: a session/auth failure reports 'unknown' (config deficit,
-// like the FHIR adapter), transport down reports 'down', and MIXED channel
-// states (some up, some stopped/errored) report 'degraded' — that distinction
-// is the entire operational value of this adapter over a raw ping.
+// transport down reports 'down', and MIXED channel states (some up, some stopped/errored)
+// report 'degraded' — that distinction is the entire operational value of this adapter over a raw ping.
 // Called by: ehr_check.js check dispatch.
 import { httpJson } from './http_json.js';
 import { tcpCheck, tlsCheck, hostPortFromUrl } from './net_checks.js';
@@ -40,6 +41,38 @@ export async function mirthLogout(base, cookie) {
   await httpJson('DELETE', `${base}/sessions/current`, { headers: { cookie } });
 }
 
+// Metadata-only message summary: timestamps and statuses only, no bodies.
+// `includeContent=false` is mandatory here. `windowMinutes` defines "recent" for
+// the error count (default 15 min), matching the topology detail panel's need.
+function parseMessageDate(msg) {
+  const v = msg?.receivedDate ?? msg?.dateCreated ?? msg?.createdDate ?? msg?.originalDate ?? null;
+  if (!v) return null;
+  const n = Date.parse(String(v));
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function mirthChannelMessagesSummary(base, cookie, channelId, windowMinutes = 15) {
+  const url = `${base}/channels/${channelId}/messages?limit=100&includeContent=false`;
+  const res = await httpJson('GET', url, { headers: { cookie } });
+  if (res.status !== 200 || !Array.isArray(res.json)) {
+    return { last_message_time: null, recent_error_count: null };
+  }
+  const cutoff = Date.now() - windowMinutes * 60 * 1000;
+  let lastMessageTime = null;
+  let recentErrors = 0;
+  for (const msg of res.json) {
+    const t = parseMessageDate(msg);
+    if (t != null) {
+      if (lastMessageTime == null || t > lastMessageTime) lastMessageTime = t;
+      if (t >= cutoff && String(msg?.status ?? '').toUpperCase() === 'ERROR') recentErrors += 1;
+    }
+  }
+  return {
+    last_message_time: lastMessageTime ? new Date(lastMessageTime).toISOString() : null,
+    recent_error_count: recentErrors,
+  };
+}
+
 // Fetch every channel's summary + connector states. Channel list/status on
 // purpose: STOPPED/STARTED plus per-connector CONNECTED/IDLE/ERROR is real,
 // safely-shareable operational signal (no payload). Normalizes heterogeneous
@@ -58,6 +91,7 @@ export async function mirthChannelStates(base, cookie) {
   for (const ch of list.json) {
     const st = await httpJson('GET', `${base}/channels/${ch.id}/status`, { headers: { cookie } });
     const s = st.json ?? {};
+    const msgSummary = await mirthChannelMessagesSummary(base, cookie, ch.id);
     channels.push({
       id: ch.id,
       name: ch.name ?? null,
@@ -65,6 +99,8 @@ export async function mirthChannelStates(base, cookie) {
       destination_system: ch.destination_system ?? null,
       state: s.state ?? 'UNKNOWN',
       connectors: (s.connectorStatuses ?? []).map(c => ({ name: c.name ?? null, state: c.state ?? 'UNKNOWN' })),
+      last_message_time: msgSummary.last_message_time,
+      recent_error_count: msgSummary.recent_error_count,
     });
   }
   return { channels };
@@ -127,7 +163,13 @@ export async function runMirthCheck(spec) {
     : `Mirth ok: ${states.channels.length} channel(s), all STARTED + connectors live`;
   return { ok: !degraded, tier: 'L3', status, latency_ms: Date.now() - started,
            detail, observed: {
-             channels: states.channels.map(c => ({ name: c.name, state: c.state, connectors: c.connectors })),
+             channels: states.channels.map(c => ({
+               name: c.name,
+               state: c.state,
+               connectors: c.connectors,
+               last_message_time: c.last_message_time,
+               recent_error_count: c.recent_error_count,
+             })),
              channel_name: states.channels[0]?.name ?? null,
            } };
 }

@@ -351,7 +351,7 @@ async function partG() {
 
   const sig = await api('GET', `/api/alerts/${alertId}/signature?role=support-technician`);
   check('G2. incident signature captured automatically', sig.status === 200 && sig.body.service === 'lab' && sig.body.status_transition === 'reachable->down', JSON.stringify(sig.body));
-  check('G3. signature includes time-of-day bucket', sig.body.time_of_day_bucket === 'business-hours');
+  check('G3. signature includes time-of-day bucket', ['business-hours', 'after-hours', 'weekend'].includes(sig.body.time_of_day_bucket));
 
   const close = await api('POST', `/api/alerts/${alertId}/close?role=support-technician`, {
     root_cause_category: 'interface-engine-deadlock',

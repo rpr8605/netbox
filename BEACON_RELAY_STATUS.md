@@ -150,6 +150,13 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   configured status source (HTTP(S) URL or local file) and emits metadata-only
   `check_result` events; no write actions. Built and tested against mocks. Covered by
   `scripts/test_ehr_unit.js`.
+- **Topology detail panel: last-message time + recent error count** (`EHR_INTEGRATIONS`
+  §11/§12 + `TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §2). The Mirth reader now calls
+  `/channels/{id}/messages?includeContent=false` to read metadata-only message timestamps
+  and statuses. The per-channel `last_message_time` and 15-minute `recent_error_count`
+  flow through `observed.channels` into the Fleet Console full-status API and the detail
+  panel. No message bodies or identifiers are read. Covered by `scripts/test_topology.js`
+  and `scripts/test_ehr_unit.js`.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -187,11 +194,11 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 41/41 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 42/42 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
-| Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
+| Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |

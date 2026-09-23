@@ -175,6 +175,8 @@ function showPanel(node, data) {
     ${d.check_name ? `<div class="kv"><b>Check:</b> ${escapeHtml(d.check_name)}${d.adapter ? ` (${escapeHtml(d.adapter)})` : ''}</div>` : ''}
     ${d.latency_ms != null ? `<div class="kv"><b>Latency:</b> ${d.latency_ms}ms</div>` : ''}
     ${d.occurred_at ? `<div class="kv"><b>Last observed:</b> ${escapeHtml(d.occurred_at)}</div>` : ''}
+    ${node.kind === 'channel' && d.last_message_time ? `<div class="kv"><b>Last message time:</b> ${escapeHtml(d.last_message_time)}</div>` : ''}
+    ${node.kind === 'channel' && d.recent_error_count != null ? `<div class="kv"><b>Recent errors (15 min):</b> ${d.recent_error_count}</div>` : ''}
     <div id="cooc"><b>Co-occurring signals at this site</b> (also degraded/down):
       ${cooc.length ? '<ul>' + cooc.map(x => `<li>${escapeHtml(x.name)} — ${escapeHtml(x.status)} <i>(${x.kind})</i></li>`).join('') + '</ul>'
                     : '<div style="color:#95a5a6">none — this is the only node currently degraded/down</div>'}
