@@ -9,7 +9,7 @@
 // device cannot self-certify out of quarantine — an operator (Phase 8: an
 // RBAC'd one) must confirm, and the device must have presented a valid
 // step-ca-issued cert at least once (last_seen_at set by the mTLS gate).
-import { getDevice, listDevices, listEvents, upsertDevice } from '../db.js';
+import { getDevice, listDevices, listEvents, upsertDevice, replaceDevice } from '../db.js';
 import { requirePerm } from '../rbac.js';
 import { appendAudit } from '../db.js';
 
@@ -43,5 +43,22 @@ export default async function deviceRoutes(app) {
       certNotAfter: d.cert_not_after,
     });
     return { device_id: d.device_id, state: 'active' };
+  });
+
+  // Field-swap workflow: retire an old device and stand in a replacement device
+  // at the same site. Requires devices:write; audits the replacement.
+  app.post('/api/devices/:id/replace', { preHandler: requirePerm('devices:write', appendAudit) }, async (req, reply) => {
+    const oldDeviceId = req.params.id;
+    const { new_device_id, reason } = req.body ?? {};
+    if (!new_device_id || typeof new_device_id !== 'string') {
+      return reply.code(400).send({ error: 'new_device_id required' });
+    }
+    try {
+      const role = req.body?.role ?? req.query?.role ?? 'operations-manager';
+      const result = replaceDevice({ oldDeviceId, newDeviceId: new_device_id, reason, actor: role });
+      return result;
+    } catch (e) {
+      return reply.code(400).send({ error: e.message });
+    }
   });
 }

@@ -58,6 +58,11 @@ function pickMessageMeta(msg) {
   };
 }
 
+// mirthChannelMessagesSummary — metadata-only read of recent message timestamps
+// and statuses for one Mirth channel. Uses `includeContent=false` and an explicit
+// allowlist so no message bodies, identifiers, or other PHI-adjacent fields can
+// leak through even if the server ignores the flag. Returns
+// { last_message_time, recent_error_count }.
 export async function mirthChannelMessagesSummary(base, cookie, channelId, windowMinutes = 15) {
   const url = `${base}/channels/${channelId}/messages?limit=100&includeContent=false`;
   const res = await httpJson('GET', url, { headers: { cookie } });

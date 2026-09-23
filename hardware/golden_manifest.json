@@ -1,0 +1,61 @@
+{
+  "_comment": "Golden image manifest for the Beacon Relay edge appliance. This describes the reference hardware+software combination that every shipped unit must match or exceed. It is used by validate_golden_manifest.js to check a built image artifact.",
+  "manifest_version": "1.0",
+  "product": "Beacon Relay Edge Appliance",
+  "reference_hardware": {
+    "compute": "PROTECTLI-VP2410-4 or approved alternate",
+    "storage": "120 GB SATA/NVMe SSD minimum",
+    "tpm": "TPM 2.0 (discrete or fTPM) with SHA-256 PCR bank",
+    "network": "2x Ethernet minimum; optional USB/PCIe LTE modem for failover"
+  },
+  "required_capabilities": [
+    "uefi_64bit_boot",
+    "a_b_rootfs_slots",
+    "luks_encrypted_data_partition",
+    "tpm_sealed_luks_key_or_secure_software_fallback",
+    "outbound_mtuls_to_control_plane",
+    "rauc_signed_bundle_update",
+    "metadata_only_hl7_sidecar_default",
+    "local_downtime_mode_cache"
+  ],
+  "partition_layout": {
+    "boot_a": { "device": "/dev/sda2", "size_mb": 512, "filesystem": "ext4", "flags": ["boot", "ro"] },
+    "rootfs_a": { "device": "/dev/sda3", "size_mb": 4096, "filesystem": "ext4", "flags": ["ro", "rauc_slot_A"] },
+    "rootfs_b": { "device": "/dev/sda4", "size_mb": 4096, "filesystem": "ext4", "flags": ["ro", "rauc_slot_B"] },
+    "data": { "device": "/dev/sda5", "size_mb": "remainder", "filesystem": "luks+ext4", "flags": ["rw", "encrypted"] },
+    "bootloader": { "device": "/dev/sda1", "size_mb": 256, "filesystem": "fat32", "flags": ["esp", "boot"] }
+  },
+  "software": {
+    "os_base": "Debian minimal (bookworm)",
+    "kernel": "Linux 6.1 LTS",
+    "update_framework": "RAUC 1.8+",
+    "pki": "step-ca short-lived device certificates",
+    "agent_runtime": "Node.js (image pins a version; host/control-plane may run newer during dev)"
+  },
+  "artifact_requirements": {
+    "bundle_format": "raucb",
+    "bundle_signature": "CMS signed by release-signing root",
+    "disk_image": "raw .img with partition table matching layout above",
+    "checksums": "SHA256SUMS covering every artifact",
+    "manifest": "out/<version>/manifest.json emitted by pipeline/build.js"
+  },
+  "validation": {
+    "required_artifacts": [
+      "beacon-relay-disk.img",
+      "bundle.raucb",
+      "SHA256SUMS",
+      "manifest.json"
+    ],
+    "required_in_bundle": [
+      "rootfs.img",
+      "appfs.img",
+      "manifest.raucm"
+    ],
+    "boot_tests": [
+      "UEFI boots without error",
+      "First-boot provisioning generates device keypair and enrolls in quarantine",
+      "LUKS /data opens with TPM-sealed key or software fallback",
+      "Agent heartbeat reaches control plane after operator confirm"
+    ]
+  }
+}

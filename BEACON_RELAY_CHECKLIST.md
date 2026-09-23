@@ -18,6 +18,7 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
@@ -108,7 +109,10 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - Signed bundle builds + signature verifies — **DONE** (build.js VERIFY OK).
 - Staged rollout path (dev → test → pilot → broad), rollback-verified-with-broken-build — **DONE**. Control-plane rollout policy (`rollouts` table) supports stage + percentage; `deviceInRollout` assigns devices deterministically; `/api/releases/latest` gates visibility; update client runs post-install health check and rolls back on failure. Audit-logged (`rollout.created`, `rollout.activated`, `rollout.rejected`). SBOM generation remains deferred. Covered by `node scripts/test_update_client.js` and `node scripts/test_ota_rollout.js`.
 
-### §8.9 — PHI mode toggle + hardware lifecycle tooling — **NOT STARTED**.
+### §8.9 — PHI mode toggle + hardware lifecycle tooling
+
+- PHI-mode toggle — **DESIGN ONLY** (under review). Design note in `.agent/phi-mode-design.md`; no code implemented pending approval.
+- Hardware lifecycle tooling (no-hardware portion) — **DONE**. Added `hardware/bom.json` (reference components + approved alternates), `hardware/golden_manifest.json` (reference hardware/software requirements), `scripts/validate_golden_manifest.js` (software-only validation of a built manifest), `hardware/swap_procedure.md`, control-plane `POST /api/devices/:id/replace` workflow, and `scripts/swap_device.js`. Physical steps (secure wipe, TPM clear, alternate qualification, barcode scanning) are logged in `.agent/open-questions.md` as requiring real hardware. Covered by `node --test scripts/test_device_lifecycle.js`.
 
 ---
 

@@ -16,6 +16,17 @@ Container `beacon-relay-step-ca` is healthy after restart.
 
 The `m365_account_health` adapter (`beacon-relay-agent/lib/m365_account_health.js`) is built and tested against mocks only. It uses the four read-only scopes the spec requires (`User.Read.All`, `AuditLog.Read.All`, `Organization.Read.All`, `Reports.Read.All`) and emits metadata-only `check_result` events. A real Entra ID test tenant with admin consent for those scopes is required to prove the Graph calls and response shapes against production endpoints. No real hospital tenant should be used.
 
+## Hardware lifecycle — physical steps remain manual
+
+The software-side hardware-lifecycle tooling is built (BOM, golden-image manifest, manifest validator, and control-plane swap workflow). The following physical steps are intentionally out of scope until a real device or manufacturing partner is available:
+
+- Physical secure wipe / TPM clear on returned units.
+- Physical barcode/serial-number scanning and RMA label integration.
+- Factory burn-in, thermal, and power-cycle qualification of approved alternates.
+- Verifying that every approved alternate in `hardware/bom.json` actually boots the golden image and seals LUKS correctly.
+
+These are logged here rather than built ahead of demand.
+
 ## QEMU acceptance x3 — BLOCKED by missing KVM in Docker Desktop
 
 Two acceptance runs failed identically with `Could not access KVM kernel module: No such file or directory`. Docker Desktop on Windows does not expose `/dev/kvm` to containers, and `vm-harness/acceptance.sh` hardcodes `-enable-kvm`. Anti-loop rule applied: stopped after 2 failures. See `.agent/attempts.md` for options.

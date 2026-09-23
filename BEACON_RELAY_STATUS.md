@@ -185,7 +185,13 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
   deferred — profiles only, when a real customer site justifies each.
-- **PHI-mode toggle + hardware lifecycle tooling** (`BUILD_SPEC` §8.9). Not started.
+- **PHI-mode toggle + hardware lifecycle tooling** (`BUILD_SPEC` §8.9). PHI-mode toggle is
+  design-only (`.agent/phi-mode-design.md`) pending review. The no-hardware portion of
+  hardware lifecycle tooling is done: BOM with approved alternates (`hardware/bom.json`),
+  golden-image manifest (`hardware/golden_manifest.json`), manifest validator
+  (`scripts/validate_golden_manifest.js`), swap procedure doc, control-plane
+  `POST /api/devices/:id/replace` workflow, and `scripts/swap_device.js`. Physical steps
+  (secure wipe, TPM clear, alternate qualification) are logged in `.agent/open-questions.md`.
 
 ---
 
@@ -199,6 +205,7 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
 | OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |

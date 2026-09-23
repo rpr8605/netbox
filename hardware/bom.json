@@ -1,0 +1,63 @@
+{
+  "_comment": "Beacon Relay reference hardware BOM. This is the default build target; every alternate must satisfy the required_features list for its role. No patient data lives in this file.",
+  "product": "Beacon Relay Edge Appliance",
+  "revision": "1.0",
+  "last_updated": "2026-09-23",
+  "components": [
+    {
+      "role": "compute",
+      "required": true,
+      "primary": {
+        "mpn": "PROTECTLI-VP2410-4",
+        "description": "Intel Celeron J4125 quad-core mini-PC, 4 GB RAM, fanless",
+        "notes": "Reference SKU. Any alternate must expose a TPM 2.0 header or on-chip fTPM and support 64-bit UEFI boot."
+      },
+      "alternates": [
+        { "mpn": "PROTECTLI-VP2420-4", "description": "Intel Celeron N5105, 4 GB RAM, fanless", "notes": "Slightly faster TDP; validated boot and TPM path identical." },
+        { "mpn": "CUSTOM-N100-4", "description": "Intel N100, 4 GB RAM, M.2 NVMe", "notes": "Only approved if NVMe alternate SSD is also selected." }
+      ],
+      "required_features": ["x86_64", "uefi", "tpm2_or_ftpm", "2x_ethernet_min", "usb3"]
+    },
+    {
+      "role": "storage",
+      "required": true,
+      "primary": {
+        "mpn": "WDS120G2G0A",
+        "description": "Western Digital Green 120 GB 2.5\" SATA SSD",
+        "notes": "Minimum capacity for A/B rootfs + /data partition under LUKS."
+      },
+      "alternates": [
+        { "mpn": "CT120BX500SSD1", "description": "Crucial BX500 120 GB 2.5\" SATA SSD", "notes": "Capacity-equivalent drop-in." },
+        { "mpn": "SAMSUNG-PM991A-128", "description": "128 GB M.2 NVMe SSD", "notes": "For N100-based alternates that use M.2 instead of SATA." }
+      ],
+      "required_features": ["min_120gb", "sata_or_nvme_boot", "smart_capable"]
+    },
+    {
+      "role": "tpm",
+      "required": false,
+      "primary": {
+        "mpn": "INFINEON-SLB9670",
+        "description": "Infineon TPM 2.0 module (SPI)",
+        "notes": "Required on boards without fTPM. Linux tpm_crb/tpm_tis driver support mandatory."
+      },
+      "alternates": [
+        { "mpn": "NUVOTON-NPCT750", "description": "Nuvoton TPM 2.0 module", "notes": "Equivalent SPI TPM." }
+      ],
+      "required_features": ["tpm2_0", "pcr_bank_sha256"]
+    },
+    {
+      "role": "cellular_modem",
+      "required": false,
+      "primary": {
+        "mpn": "QUECTEL-EC25-AF",
+        "description": "Quectel EC25-AF LTE Cat-4 modem (USB mini-PCIe)",
+        "notes": "Used for LTE failover where wired WAN is unavailable or unreliable."
+      },
+      "alternates": [
+        { "mpn": "QUECTEL-EG25-G", "description": "Quectel EG25-G global LTE modem", "notes": "Use for non-US deployments." },
+        { "mpn": "SIERRA-WP7607", "description": "Sierra Wireless WP7607 LTE modem", "notes": "Approved where the hospital already standardizes on Sierra." }
+      ],
+      "required_features": ["usb_or_pcie", "mbim_or_qmi", "linux_driver_in_kernel"]
+    }
+  ]
+}

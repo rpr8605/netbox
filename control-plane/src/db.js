@@ -40,6 +40,17 @@ CREATE TABLE IF NOT EXISTS devices (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Hardware lifecycle: record field swaps so a site's device history is
+-- auditable and the old identity is never silently reused.
+CREATE TABLE IF NOT EXISTS device_replacements (
+  old_device_id TEXT NOT NULL REFERENCES devices(device_id),
+  new_device_id TEXT NOT NULL REFERENCES devices(device_id),
+  site_id       TEXT NOT NULL,
+  reason        TEXT,
+  replaced_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (old_device_id, new_device_id)
+);
+
 CREATE TABLE IF NOT EXISTS sites (
   site_id     TEXT PRIMARY KEY,
   name        TEXT,
@@ -279,6 +290,45 @@ export function touchDevice(deviceId) {
 export function recordCertPresentation(deviceId, serial, notAfter) {
   db.prepare(`UPDATE devices SET cert_serial = ?, cert_not_after = ? WHERE device_id = ?`)
     .run(serial, notAfter, deviceId);
+}
+
+// replaceDevice — field-swap workflow (hardware lifecycle, BUILD_SPEC §8.9).
+// Retires the old device, ensures the new device is assigned to the same site in
+// quarantine, records the replacement pair, and audits the action. This is the
+// no-hardware control-plane side of a physical swap; the physical steps live in
+// hardware/swap_procedure.md.
+export function replaceDevice({ oldDeviceId, newDeviceId, reason, actor }) {
+  const oldDevice = getDevice(oldDeviceId);
+  if (!oldDevice) throw new Error('old device not found');
+  let newDevice = getDevice(newDeviceId);
+  if (!newDevice) {
+    // Create the replacement device in quarantine at the same site if it has not
+    // yet checked in. It will be confirmed after physical install.
+    upsertDevice({ deviceId: newDeviceId, siteId: oldDevice.site_id, state: 'quarantine' });
+    newDevice = getDevice(newDeviceId);
+  }
+  if (newDevice.site_id !== oldDevice.site_id) {
+    throw new Error('replacement device belongs to a different site');
+  }
+  db.prepare(`UPDATE devices SET state = 'revoked' WHERE device_id = ?`).run(oldDeviceId);
+  db.prepare(
+    `INSERT OR REPLACE INTO device_replacements (old_device_id, new_device_id, site_id, reason)
+     VALUES (?, ?, ?, ?)`
+  ).run(oldDeviceId, newDeviceId, oldDevice.site_id, reason ?? null);
+  appendAudit({
+    auditId: crypto.randomUUID(),
+    actor: actor ?? 'system',
+    action: 'device.replaced',
+    target: oldDeviceId,
+    detail: JSON.stringify({ old_device_id: oldDeviceId, new_device_id: newDeviceId, site_id: oldDevice.site_id, reason: reason ?? '' }),
+  });
+  return {
+    old_device_id: oldDeviceId,
+    new_device_id: newDeviceId,
+    site_id: oldDevice.site_id,
+    old_state: 'revoked',
+    new_state: newDevice.state,
+  };
 }
 
 // Persist one canonical event; the full JSON is kept in payload (metadata-only)
