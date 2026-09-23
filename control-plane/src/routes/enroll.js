@@ -11,7 +11,7 @@
 // raw token is useless after redemption (used_at gate in db.js).
 import crypto from 'node:crypto';
 import forge from 'node-forge';
-import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice, setDeviceKeyFp } from '../db.js';
+import { createEnrollmentToken, consumeEnrollmentToken, upsertDevice, setDeviceKeyFp, upsertSite } from '../db.js';
 import { mintStepCaToken, caBootstrap } from '../ca.js';
 import { publicKeyFingerprint } from './retrust.js';
 
@@ -19,7 +19,7 @@ export default async function enrollRoutes(app) {
   // Operator endpoint. Phase 1: bound to localhost by the server config; Phase 8
   // puts real RBAC in front of this (spec §5) — do not expose before then.
   app.post('/api/enroll/tokens', async (req, reply) => {
-    const { device_id, site_id, ttl_minutes = 60 } = req.body ?? {};
+    const { device_id, site_id, ttl_minutes = 60, name, lat, lng } = req.body ?? {};
     if (!device_id || !site_id) {
       return reply.code(400).send({ error: 'device_id and site_id required' });
     }
@@ -32,6 +32,11 @@ export default async function enrollRoutes(app) {
     // that shows up with a valid cert but no registry row is refused later;
     // quarantine-by-default is the safety property (spec §2).
     upsertDevice({ deviceId: device_id, siteId: site_id, state: 'quarantine' });
+    // Optional site metadata for the geographic fleet map (TOPOLOGY_…_MEMORY §1).
+    // Lat/lng are optional at enrollment time; the console can update them later.
+    if (name != null || lat != null || lng != null) {
+      upsertSite({ siteId: site_id, name, lat, lng });
+    }
     return { device_id, site_id, enrollment_token: token, expires_at: expiresAt };
   });
 

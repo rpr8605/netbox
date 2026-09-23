@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// scripts/test_alerting_rbac_audit_support.js — Prompt 4 proof, four parts:
+// scripts/test_alerting_rbac_audit_support.js — Prompt 4 proof, now six parts:
 //   A. Alerting & escalation: fire a P1 (from a broken-feed case), show it
 //      ESCALATES to a second contact after the ack window lapses with NO ack
 //   B. RBAC completeness: all five roles, allow AND deny proven per boundary
 //   C. Audit log: append-only; a tamper attempt (UPDATE/DELETE) FAILS
 //   D. Support broker: request -> device opens tunnel with JIT token ->
 //      session closes at its time limit (not left open)
+//   E. Ticketing Tier 0: copy-paste block + email action (SES/SendGrid), PHI guard
+//   F. Geographic fleet map: lat/lng site pins with RBAC
 // Run: node scripts/test_alerting_rbac_audit_support.js  (control plane up)
 import crypto from 'node:crypto';
 import forge from '../control-plane/node_modules/node-forge/lib/index.js';
@@ -21,8 +23,8 @@ const insecure = new Agent({ connect: { rejectUnauthorized: false } });
 // enrollDevice — full real enrollment so we get a device mTLS cert. The support
 // broker's /open endpoint authenticates the DEVICE by its cert, so the test
 // needs a real one, not a stub.
-async function enrollDevice(deviceId, siteId) {
-  const tok = await api('POST', '/api/enroll/tokens', { device_id: deviceId, site_id: siteId });
+async function enrollDevice(deviceId, siteId, siteMeta = {}) {
+  const tok = await api('POST', '/api/enroll/tokens', { device_id: deviceId, site_id: siteId, ...siteMeta });
   const keys = forge.pki.rsa.generateKeyPair(2048);
   const keyPem = forge.pki.privateKeyToPem(keys.privateKey);
   const redeem = await api('POST', '/api/enroll/redeem', { enrollment_token: tok.body.enrollment_token, public_key_pem: forge.pki.publicKeyToPem(keys.publicKey) });
@@ -260,10 +262,57 @@ async function partE() {
   check('E5. ticket email action returns sent status without crashing', email.status === 200 && typeof email.body?.sent === 'boolean', JSON.stringify(email.body));
   check('E6. ticket email skipped when SendGrid not configured', email.body?.sent === false, JSON.stringify(email.body));
 
+  // PHI guard: the ticket block is intentionally metadata-only. It must never
+  // silently include observed payloads, raw event bodies, channel details, or
+  // other fields that could carry patient-adjacent data. This test fails if any
+  // of those shapes appear in the outbound copy-paste block.
+  const phiPatterns = [/observed\s*[:=]/i, /payload\s*[:=]/i, /raw\s*[:=]/i, /body\s*[:=]/i, /message\s*content/i, /patient/i, /mrn/i, /ssn/i];
+  const phiHit = phiPatterns.find(p => p.test(ticket.body.plain_text) || p.test(ticket.body.markdown));
+  check('E7. ticket block contains no PHI-shaped fields', !phiHit, phiHit?.source ?? 'none');
+
   // Direct SES sender returns skipped when credentials absent — proves the path
   // exists and fails safe rather than throwing.
   const sesSkip = await sendSes({ to: 'it@hospital.example', subject: 't', text: 'b' });
-  check('E7. SES sender skipped when not configured', sesSkip.skipped === true, JSON.stringify(sesSkip));
+  check('E8. SES sender skipped when not configured', sesSkip.skipped === true, JSON.stringify(sesSkip));
+}
+
+// ------------------------------------------------------- F. fleet map --------
+async function partF() {
+  console.log('--- F. geographic fleet map ---');
+  const siteId = crypto.randomUUID();
+  const deviceId = crypto.randomUUID();
+  const devMtls = await enrollDevice(deviceId, siteId, { name: 'Demo Rural Hospital', lat: 39.5, lng: -98.35 });
+  await api('POST', '/api/heartbeat', null, devMtls); // records cert presentation
+  await api('POST', `/api/devices/${deviceId}/confirm?role=operations-manager`, {});
+  // Seed one event so the site has a computed status. Must use the device's own
+  // mTLS cert and the device must be active (not quarantine) for ingestion.
+  const evResp = await api('POST', '/api/events', {
+    event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
+    occurred_at: new Date().toISOString(), kind: 'check_result', service: 'ehr',
+    status: 'active', latency_ms: 20, confidence: 'high', freshness_s: 0, phi_mode: false,
+    detail: 'FHIR ok', observed: {}, adapter: 'fhir', check_name: 'fhir-poll',
+  }, devMtls);
+  check('F0. event ingestion accepted', evResp.status === 202, JSON.stringify(evResp.body));
+
+  const fleetOps = await api('GET', '/api/fleet/map?role=operations-manager');
+  check('F1. fleet map returns sites for operations-manager', fleetOps.status === 200 && fleetOps.body.sites.some(s => s.site_id === siteId), JSON.stringify(fleetOps.body));
+  const pin = fleetOps.body.sites.find(s => s.site_id === siteId);
+  check('F2. fleet map pin has lat/lng/name/status', pin && pin.lat === 39.5 && pin.lng === -98.35 && pin.name === 'Demo Rural Hospital' && pin.status === 'active', JSON.stringify(pin));
+
+  const fleetTech = await api('GET', '/api/fleet/map?role=support-technician');
+  check('F3. fleet map returns sites for support-technician', fleetTech.status === 200 && fleetTech.body.sites.some(s => s.site_id === siteId));
+
+  const fleetCustDenied = await api('GET', '/api/fleet/map?role=customer-it-admin');
+  check('F4. fleet map denies customer-it-admin without site_id', fleetCustDenied.status === 403);
+
+  const fleetCustAllowed = await api('GET', `/api/fleet/map?role=customer-it-admin&site_id=${siteId}`);
+  check('F5. customer-it-admin sees only their own site pin', fleetCustAllowed.status === 200 && fleetCustAllowed.body.sites.length === 1 && fleetCustAllowed.body.sites[0].site_id === siteId, JSON.stringify(fleetCustAllowed.body));
+
+  // The Fleet Map HTML page must not be reachable without a declared role.
+  const htmlNoRole = await api('GET', '/fleet.html');
+  const htmlWithRole = await api('GET', '/fleet.html?role=operations-manager');
+  check('F6. fleet.html denies anonymous access', htmlNoRole.status === 403);
+  check('F7. fleet.html allows access with a declared role', htmlWithRole.status === 200 && typeof htmlWithRole.body === 'string' && htmlWithRole.body.includes('Fleet Map'));
 }
 
 await partA();
@@ -271,6 +320,7 @@ await partB();
 await partC();
 await partD();
 await partE();
+await partF();
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} alerting/rbac/audit/support checks passed`);
 process.exit(failed.length ? 1 : 0);

@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS devices (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS sites (
+  site_id     TEXT PRIMARY KEY,
+  name        TEXT,
+  lat         REAL,                       -- geographic fleet map latitude
+  lng         REAL,                       -- geographic fleet map longitude
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS enrollment_tokens (
   token_hash  TEXT PRIMARY KEY,
   device_id   TEXT NOT NULL,
@@ -239,6 +247,31 @@ export function listEvents(deviceId, limit = 50) {
   return db.prepare(
     `SELECT * FROM events WHERE device_id = ? ORDER BY occurred_at DESC LIMIT ?`
   ).all(deviceId, limit);
+}
+
+// --- sites (fleet map metadata) ---------------------------------------------
+// upsertSite: create or update a site's display name and map coordinates.
+// Called when an enrollment token is created with location data, or from the
+// console when an operator edits a site.
+export function upsertSite({ siteId, name = null, lat = null, lng = null }) {
+  db.prepare(
+    `INSERT INTO sites (site_id, name, lat, lng)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(site_id) DO UPDATE SET
+       name = excluded.name,
+       lat = excluded.lat,
+       lng = excluded.lng`
+  ).run(siteId, name, lat, lng);
+}
+
+// getSite: one site record, or undefined.
+export function getSite(siteId) {
+  return db.prepare(`SELECT * FROM sites WHERE site_id = ?`).get(siteId);
+}
+
+// listSites: all known sites.
+export function listSites() {
+  return db.prepare(`SELECT * FROM sites ORDER BY created_at DESC`).all();
 }
 
 // Pin a device's public-key fingerprint at enrollment redeem. The IS-NULL

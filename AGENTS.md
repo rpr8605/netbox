@@ -114,6 +114,13 @@ applies to any of Ryan's other products just as well. Copy and adapt rather than
 scratch for a new repo.*
 
 
+## Cost reporting
+
+- **Do not report dollar amounts, total cost, or cost-per-commit** in checkpoint summaries,
+  status docs, or chat. Block `$` and `Total $` from `opencode stats`-style output and any
+  per-commit cost figures. Progress is reported as test counts and CHECKLIST completion
+  percentage only.
+
 ## Model routing (paste this section into AGENTS.md)
 
 You have three helper subagents. Use them to keep cost down. Delegation is required, not optional.

@@ -82,3 +82,21 @@
 - **Next:** SES email sender alongside SendGrid (`BUILD_SPEC` §6), then next unblocked CHECKLIST items in spec priority order
 - **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
 - **Progress:** 63 of 99 CHECKLIST items complete (64%), up from 62 of 99 (63%)
+
+## Checkpoint #8 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - SES email sender alongside SendGrid (`BUILD_SPEC` §6): `sendSes()` using `@aws-sdk/client-sesv2`, SES-first then SendGrid fallback, ticket email endpoint updated, skip-when-unconfigured test.
+- **Tests:** alerting/RBAC/audit/support/ticketing/SES 40/40, EHR unit 21/21, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (geographic fleet map, incident_signature, or remaining network controls)
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
+- **Progress:** 64 of 99 CHECKLIST items complete (65%), up from 63 of 99 (64%)
+
+## Checkpoint #9 | Block: $? | Total: $? | Cost/commit: $?
+
+- **Done:**
+  - Geographic fleet map (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §1): `sites` table with `lat`/`lng`/`name`; enrollment tokens accept optional site metadata; `GET /api/fleet/map` with RBAC (ops/support full fleet, customer-it-admin single site); overall site status = worst of critical-service statuses with unknown as baseline; `public/fleet.html` renders pins.
+- **Tests:** alerting/RBAC/audit/support/ticketing/SES/fleet-map 47/47, EHR unit 24/24, E2E 23/23, topology 6/6, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
+- **Next:** next highest-priority unblocked CHECKLIST items in spec priority order (troubleshooting-memory `incident_signature`, WAN/ISP circuit health, Action Registry, or M365 Phase 1 read-only account health)
+- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI)
+- **Progress:** 67 of 99 CHECKLIST items complete (68%), up from 64 of 99 (65%)

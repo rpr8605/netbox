@@ -84,6 +84,17 @@ const app = Fastify({
   trustProxy: false,
 });
 
+// Console pages should not be reachable without at least a declared role, even
+// though Phase 2 has no real identity layer. The Fleet Map page is protected
+// here; the data endpoint enforces the same RBAC as the rollup gate.
+app.get('/fleet.html', { preHandler: (req, reply, done) => {
+  const role = req.query?.role;
+  if (!role) return reply.code(403).send({ error: 'role required' });
+  done();
+} }, async (req, reply) => {
+  return reply.sendFile('fleet.html');
+});
+
 await app.register(fastifyStatic, { root: path.join(__dirname, '..', 'public') });
 await app.register(enrollRoutes);
 await app.register(deviceRoutes);

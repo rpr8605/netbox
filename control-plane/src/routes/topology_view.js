@@ -13,7 +13,10 @@
 // job, not Beacon Relay's.) The "co-occurring signals" list is a mechanical
 // co-occurrence: other nodes at the SAME site currently degraded/down,
 // presented as facts without asserting causation.
-import { listEventsBySite, listChannels, getChannel } from '../db.js';
+import crypto from 'node:crypto';
+import { listEventsBySite, listChannels, getChannel, listSites } from '../db.js';
+import { can } from '../rbac.js';
+import { appendAudit } from '../db.js';
 
 // The critical-service register — the canonical schema's service enum is the
 // register of record. Ordered by operational criticality for display.
@@ -120,5 +123,54 @@ export default async function topologyViewRoutes(app) {
       degraded_or_down: degradedOrDown,
       tier_meaning: TIER_MEANING,
     };
+  });
+
+  // Geographic fleet map (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §1). Returns
+  // one pin per site with lat/lng and the site's current overall status (worst
+  // of its critical-service statuses). RBAC: ops-manager/support-technician see
+  // the whole fleet; customer-it-admin must pass their own site_id and sees only
+  // that pin.
+  const STATUS_WEIGHT = { down: 5, degraded: 4, active: 3, verified_ready: 2, reachable: 1, unknown: 0 };
+  function worstStatus(statuses) {
+    let worst = null;
+    for (const s of statuses) {
+      if (s === 'unknown') continue; // unknown is the baseline; it must not drown out known-good states.
+      if (worst == null || (STATUS_WEIGHT[s] ?? -1) > (STATUS_WEIGHT[worst] ?? -1)) worst = s;
+    }
+    return worst ?? 'unknown';
+  }
+  app.get('/api/fleet/map', { preHandler: async (req, reply) => {
+    const role = req.query?.role ?? req.body?.role ?? null;
+    const requestedSite = req.query?.site_id ?? null;
+    if (can(role, 'topology:rollup')) return;
+    // customer-it-admin may see only their own site pin.
+    if (role === 'customer-it-admin' && requestedSite) return;
+    appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
+    return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks fleet map access` });
+  } }, async (req) => {
+    const role = req.query?.role ?? req.body?.role ?? null;
+    const requestedSite = req.query?.site_id ?? null;
+    const sites = [];
+    for (const site of listSites()) {
+      if (role === 'customer-it-admin' && site.site_id !== requestedSite) continue;
+      // Overall site status = worst latest status among critical services at this site.
+      const events = listEventsBySite(site.site_id, 500);
+      const checkResults = events.filter(e => e.kind === 'check_result');
+      const byService = latestPer(checkResults, e => e.service);
+      const statuses = CRITICAL_SERVICES.map(svc => {
+        const ev = byService.get(svc);
+        if (!ev) return 'unknown';
+        const p = JSON.parse(ev.payload ?? '{}');
+        return p.status ?? 'unknown';
+      });
+      sites.push({
+        site_id: site.site_id,
+        name: site.name ?? site.site_id,
+        lat: site.lat,
+        lng: site.lng,
+        status: worstStatus(statuses),
+      });
+    }
+    return { sites };
   });
 }

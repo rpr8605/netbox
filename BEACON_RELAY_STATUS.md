@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `831f71d` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, ticketing Tier-0, and SES email-sender work).
+**Current commit on `main`:** `01910a6` (agent/md-sync-2026-09-22; HEAD through DNS first-class service; geographic fleet-map commit follows in this same push).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -72,6 +72,14 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   Status mapping: expired -> `down`, expiring within 30 days -> `degraded`, valid ->
   `verified_ready`. Added to the canonical schema `service` enum and the Fleet Console
   critical-service register. Covered by dedicated unit checks for expired / soon / valid.
+- **Core firewall/router reachability as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+  §3). `firewall` added to the canonical schema `service` enum and the critical-service
+  register; existing generic TCP/TLS net checks can target a gateway with `service: 'firewall'`.
+  No new adapter needed — the network-check rail is reused.
+- **DNS health as a first-class critical service** (`CONTROLS_AND_IDENTITY` §3). `dns` added to
+  the schema `service` enum and critical-service register; new `dnsCheck` adapter queries a
+  site-configured resolver for a known-good hostname and reports `active`/`down`. DHCP health
+  is still inferred from monitored endpoints, not a direct check.
 - **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
@@ -91,6 +99,14 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   alert's existing fields; `POST .../ticket/email` sends the block via the existing
   SendGrid pipe. Works with any inbox/ticketing system, no vendor API. RBAC-gated and
   metadata-only (no raw events, payloads, keys, or cert contents).
+- **Geographic fleet map** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §1). `sites` table
+  stores `lat`/`lng`/`name`; enrollment tokens accept optional site metadata;
+  `GET /api/fleet/map` returns one pin per site with overall status computed as the
+  worst of the site's critical-service statuses (unknown is the baseline, not a
+  downgrade). RBAC mirrors the rollup gate: operations-manager/support-technician
+  see the whole fleet; customer-it-admin must supply their own `site_id` and sees
+  only that pin. `public/fleet.html` renders the pins without external map libraries.
+  Covered by the alerting/RBAC suite.
 - **Rootfs/agent-source integrity** (this pass's earlier fix). `pipeline/build.js` copies
   the repo-root `beacon-relay-agent/` into the staged tree at build time and hard-fails if any
   required agent file is missing; `pipeline/stages/30-agent.sh` re-gates on presence inside
@@ -114,10 +130,10 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   the Action Registry whitelist mechanism, and the read-only M365 account-health adapter.
   The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
   security-signal work, not this phase. TLS certificate expiration is now built separately.
-- **Fleet map + troubleshooting memory + Tier-1 ticketing**
-  (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §5): geographic fleet map (lat/lng), the
-  deterministic case-based "similar past incidents" memory, and ticketing Tier-1
-  generic REST adapter. Not started. Tier-0 copy-paste block + send-as-email is now
+- **Troubleshooting memory + Tier-1 ticketing**
+  (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §5): deterministic case-based "similar past
+  incidents" memory, and ticketing Tier-1 generic REST adapter. Not started.
+  Tier-0 copy-paste block + send-as-email and the geographic fleet map are now
   built separately.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
   Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC. Deliberately
@@ -134,13 +150,13 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 21/21 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 24/24 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip | `node scripts/test_alerting_rbac_audit_support.js` | 40/40 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map | `node scripts/test_alerting_rbac_audit_support.js` | 47/47 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.
