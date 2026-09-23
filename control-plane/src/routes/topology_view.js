@@ -20,7 +20,7 @@ import { appendAudit } from '../db.js';
 
 // The critical-service register — the canonical schema's service enum is the
 // register of record. Ordered by operational criticality for display.
-const CRITICAL_SERVICES = ['ehr', 'adt', 'lab', 'pharmacy', 'imaging', 'eprescribe', 'internet', 'phone', 'printing', 'custom', 'cert_expiration', 'firewall', 'dns'];
+const CRITICAL_SERVICES = ['ehr', 'adt', 'lab', 'pharmacy', 'imaging', 'eprescribe', 'internet', 'phone', 'printing', 'custom', 'cert_expiration', 'firewall', 'dns', 'wan'];
 
 // Static tier meanings — the L0-L4 definitions from spec §3, as display text.
 // Rule-based: this is a lookup table, not generated narration.

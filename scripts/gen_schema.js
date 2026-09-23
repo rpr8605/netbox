@@ -10,6 +10,9 @@ const { createRequire } = await import('node:module');
 import fs from 'node:fs';
 const require = createRequire(import.meta.url);
 const schema = JSON.parse(fs.readFileSync('schemas/beacon_relay_event.schema.json', 'utf8'));
+const serviceEnum = schema.definitions.service.enum;
+const tsServices = serviceEnum.map(s => `'${s}'`).join(' | ');
+const pyServices = serviceEnum.map(s => `"${s}"`).join(', ');
 
 // ---------- TypeScript ----------
 let ts = `/* eslint-disable */
@@ -24,8 +27,7 @@ export type BeaconRelayEvent = {
   /** ISO 8601 date-time */
   occurred_at: string;
   kind: 'check_result' | 'hl7_metadata' | 'heartbeat' | 'update_event' | 'security_signal';
-  service: 'ehr' | 'adt' | 'lab' | 'pharmacy' | 'imaging' |
-  'eprescribe' | 'internet' | 'phone' | 'printing' | 'custom';
+  service: ${tsServices};
   tier_observed?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
   status?: 'reachable' | 'verified_ready' | 'active' | 'degraded' | 'down' | 'unknown';
   signal?: 'unusual' | 'advisory' | 'verified_unusual';
@@ -91,8 +93,7 @@ class BeaconRelayEvent(TypedDict, total=False):
     occurred_at: str  # ISO 8601 date-time, UTC
     kind: Literal["check_result", "hl7_metadata", "heartbeat", "update_event", "security_signal"]
     service: Literal[
-        "ehr", "adt", "lab", "pharmacy", "imaging",
-        "eprescribe", "internet", "phone", "printing", "custom"
+        ${pyServices}
     ]
     tier_observed: Optional[Literal["L0", "L1", "L2", "L3", "L4"]]
     status: Optional[Literal["reachable", "verified_ready", "active", "degraded", "down", "unknown"]]

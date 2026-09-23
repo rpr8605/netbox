@@ -305,6 +305,35 @@ async function main() {
   check('cert_expiration expired -> down', e?.status === 'down', JSON.stringify(e));
   await closeServer(expiredServer);
 
+  // ---- WAN/ISP circuit health as first-class critical service --------------
+  const wanPrimary = net.createServer(() => {});
+  const wanPrimaryPort = await listen(wanPrimary);
+  const wanBackup = net.createServer(() => {});
+  const wanBackupPort = await listen(wanBackup);
+
+  const wanPrimaryOnly = await runOne('wan', 'primary-only', 'wan', {
+    circuits: [{ name: 'primary', targets: [{ host: '127.0.0.1', port: wanPrimaryPort, method: 'tcp' }] }],
+  });
+  check('WAN primary up -> reachable/L1', wanPrimaryOnly.status === 'reachable' && wanPrimaryOnly.tier === 'L1', JSON.stringify(wanPrimaryOnly));
+
+  await closeServer(wanPrimary);
+  const wanFailover = await runOne('wan', 'failover', 'wan', {
+    circuits: [
+      { name: 'primary', targets: [{ host: '127.0.0.1', port: wanPrimaryPort, method: 'tcp' }] },
+      { name: 'backup', targets: [{ host: '127.0.0.1', port: wanBackupPort, method: 'tcp' }] },
+    ],
+  });
+  check('WAN primary down + backup up -> degraded/failover', wanFailover.status === 'degraded' && wanFailover.observed?.failover === true, JSON.stringify(wanFailover));
+
+  await closeServer(wanBackup);
+  const wanDown = await runOne('wan', 'both-down', 'wan', {
+    circuits: [
+      { name: 'primary', targets: [{ host: '127.0.0.1', port: wanPrimaryPort, method: 'tcp' }] },
+      { name: 'backup', targets: [{ host: '127.0.0.1', port: wanBackupPort, method: 'tcp' }] },
+    ],
+  });
+  check('WAN both circuits down -> down', wanDown.status === 'down', JSON.stringify(wanDown));
+
   // ---- loader negative cases ----------------------------------------------
   try { loadProfile({ profile_id: 'x', vendor: 'y', checks: [] }); check('loader rejects empty checks', false); }
   catch { check('loader rejects empty checks', true); }

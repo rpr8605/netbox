@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `c0f2a6f` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, ticketing Tier-0, SES email-sender, geographic fleet-map, and troubleshooting-memory work).
+**Current commit on `main`:** `ae9b2ed` (agent/md-sync-2026-09-22; HEAD includes channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -80,6 +80,12 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   the schema `service` enum and critical-service register; new `dnsCheck` adapter queries a
   site-configured resolver for a known-good hostname and reports `active`/`down`. DHCP health
   is still inferred from monitored endpoints, not a direct check.
+- **WAN/ISP circuit health as a first-class critical service** (`CONTROLS_AND_IDENTITY`
+  §1/§3). `wan` added to the schema `service` enum and critical-service register; new
+  `runWanCheck` adapter tests each configured circuit against external targets, reports
+  `reachable` when healthy, `degraded` when the primary circuit is down but a backup circuit
+  has taken over (`observed.failover = true`), and `down` when both fail. Falls back from
+  ICMP ping to TCP when the image does not ship a ping binary.
 - **Alerting & escalation engine** (`BUILD_SPEC` §6). Severity tiers, owner/contact
   mapping, plain-language impact statements (transport jargon rejected at the door),
   runbook attachment, required ack with automatic escalation on timeout, suppression/
@@ -135,10 +141,10 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   services, IoT Jobs (OTA), Secure Tunneling, QLDB/S3-Object-Lock audit export, Step
   Functions escalation. None of it is built.
 - **Network controls + Action Registry + Microsoft Graph Phase 1** (`CONTROLS_AND_IDENTITY`
-  §6): WAN/firewall/DNS critical-service entries, wireless/VPN, backup/EDR status reads,
-  the Action Registry whitelist mechanism, and the read-only M365 account-health adapter.
-  The existing `beacon-relay-agent/lib/graph.js` is only the earlier Step-1 Graph
-  security-signal work, not this phase. TLS certificate expiration is now built separately.
+  §6): wireless/VPN, backup/EDR status reads, the Action Registry whitelist mechanism, and
+  the read-only M365 account-health adapter. The existing `beacon-relay-agent/lib/graph.js`
+  is only the earlier Step-1 Graph security-signal work, not this phase. TLS certificate
+  expiration, firewall, DNS, and WAN/ISP health are now built separately.
 - **Ticketing Tier-1 generic REST adapter** (`TOPOLOGY_AND_TROUBLESHOOTING_MEMORY` §3).
   Not started — explicitly deferred until a real customer names a specific system.
 - **Remaining EHR vendor profiles** (`EHR_INTEGRATIONS` §5 rows 5–15): Healthland, MEDHOST,
@@ -156,13 +162,13 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 | Suite | Command | Result |
 |---|---|---|
 | Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 24/24 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 27/27 |
 | Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 58/58 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.

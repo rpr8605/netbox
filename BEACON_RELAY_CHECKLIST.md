@@ -4,7 +4,7 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `c0f2a6f` (agent/md-sync-2026-09-22, in sync with origin).
+**Audited at commit:** `ae9b2ed` (agent/md-sync-2026-09-22).
 
 > **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
 
@@ -13,13 +13,13 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 24/24 |
+| EHR adapters unit | `node scripts/test_ehr_unit.js` | 27/27 |
 | Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate) | `node --test scripts/test_topology.js` | 6/6 |
 | EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 58/58 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory | `node scripts/test_alerting_rbac_audit_support.js` | 68/68 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -148,7 +148,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ## BEACON_RELAY_CONTROLS_AND_IDENTITY.md
 
 ### §1/§3 — site network controls as first-class critical services
-- WAN/ISP circuit health (dual-path, failover detection) — **NOT STARTED**.
+- WAN/ISP circuit health (dual-path, failover detection) — **DONE**. `wan` added to the canonical schema `service` enum and the critical-service register; `runWanCheck` tests primary/backup circuits against external targets and sets `observed.failover=true` when the backup is active. Covered by `node scripts/test_ehr_unit.js`.
 - Core firewall/router reachability as a first-class service — **DONE**. `firewall` added to the canonical schema `service` enum and the Fleet Console critical-service register; existing generic net checks can target a gateway with `service: 'firewall'`. Covered by `node scripts/test_ehr_unit.js`.
 - DNS/DHCP health — **PARTIAL**. DNS resolver check added (`dnsCheck` in `net_checks.js`, `dns` service enum + critical-service register); DHCP health remains inferred from monitored endpoints and is not yet a direct check.
 - Wireless AP health — **NOT STARTED**.

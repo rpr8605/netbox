@@ -178,3 +178,88 @@ export async function runNetCheck({ host, port, tls: wantTls = false }) {
     observed: { l0: pingRes.skipped ? 'skipped' : (pingRes.ok ? 'ok' : 'fail'), l1: 'ok' },
   };
 }
+
+// WAN/ISP circuit health (CONTROLS_AND_IDENTITY §1/§3). Tests each configured
+// circuit against one or more external targets. The primary circuit must be up
+// for "healthy"; if it fails and a backup circuit is up, the status is
+// "degraded" with observed.failover=true. If both fail, status is "down".
+//
+// The image may not ship a ping binary, so the default method is "tcp" against
+// a well-known port (e.g., the ISP's DNS resolver or a public anycast target).
+// A "ping" method is supported where the binary exists, but it never fakes
+// reachability when absent — it falls back to any TCP target in the same
+// circuit and records that in observed.
+export async function runWanCheck(params) {
+  const started = Date.now();
+  const circuits = params?.circuits ?? [];
+  if (!circuits.length) {
+    return { ok: false, status: 'unknown', detail: 'no WAN circuits configured', observed: {} };
+  }
+  const circuitResults = [];
+  for (const c of circuits) {
+    const targets = c.targets ?? [];
+    let best = null;
+    for (const t of targets) {
+      let res;
+      if (t.method === 'ping') {
+        res = ping(t.host);
+        if (res.skipped && t.port != null) {
+          // Honest fallback: no ping binary on this image, so probe the TCP target.
+          res = await tcpCheck(t.host, t.port);
+          res.method = 'tcp-fallback';
+        }
+      } else {
+        res = await tcpCheck(t.host, t.port ?? 53, t.timeout_ms ?? 2000);
+      }
+      if (best == null || (res.ok && !best.ok)) best = res;
+      if (best.ok) break; // first reachable target is enough for the circuit
+    }
+    const up = best?.ok === true;
+    circuitResults.push({
+      name: c.name ?? 'unnamed',
+      up,
+      detail: up ? (best.detail ?? 'reachable') : (best?.detail ?? 'no targets'),
+      latency_ms: best?.latency_ms ?? null,
+      method: best?.method ?? (c.method ?? 'tcp'),
+    });
+  }
+  const primary = circuitResults[0];
+  const backup = circuitResults.slice(1);
+  const backupUp = backup.some(c => c.up);
+  const allUp = primary.up && backup.every(c => c.up);
+  const anyUp = primary.up || backupUp;
+  const observed = { circuits: circuitResults };
+  if (!primary.up && backupUp) observed.failover = true;
+
+  if (allUp) {
+    return {
+      ok: true, tier: 'L1', status: 'reachable',
+      latency_ms: Date.now() - started,
+      detail: `WAN ${primary.name} up${backup.length ? '; backup(s) up' : ''}`,
+      observed,
+    };
+  }
+  if (!primary.up && backupUp) {
+    return {
+      ok: false, tier: 'L1', status: 'degraded',
+      latency_ms: Date.now() - started,
+      detail: `WAN ${primary.name} down; backup circuit active`,
+      observed,
+    };
+  }
+  if (anyUp) {
+    // Primary up but a backup is down — still healthy, just note it.
+    return {
+      ok: true, tier: 'L1', status: 'reachable',
+      latency_ms: Date.now() - started,
+      detail: `WAN ${primary.name} up; backup circuit down`,
+      observed,
+    };
+  }
+  return {
+    ok: false, tier: null, status: 'down',
+    latency_ms: Date.now() - started,
+    detail: `WAN primary and backup circuits down`,
+    observed,
+  };
+}
