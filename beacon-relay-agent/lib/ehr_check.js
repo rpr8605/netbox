@@ -18,12 +18,12 @@
 // down. Confidence is derived: 'low' for unknown, 'high' for direct reads.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { runNetCheck } from './net_checks.js';
+import { runNetCheck, dnsCheck } from './net_checks.js';
 import { runFhirCheck } from './fhir_r4.js';
 import { runMirthCheck } from './mirth_admin.js';
 import { postEvent } from './post_event.js';
 
-const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck };
+const ADAPTERS = { net: runNetCheck, fhir: runFhirCheck, mirth: runMirthCheck, dns: dnsCheck };
 
 // loadProfile — parse + validate one config profile document. Throws on ANY
 // structural violation rather than skipping entries: a profile is site

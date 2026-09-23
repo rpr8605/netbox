@@ -271,6 +271,12 @@ async function main() {
   check('firewall service reachable/L1', fw.status === 'reachable' && fw.tier === 'L1', JSON.stringify(fw));
   await closeServer(fwServer);
 
+  // ---- DNS health as first-class critical service --------------------------
+  const d1 = await runOne('dns', 'dns-ok', 'dns', { dns_server: '1.1.1.1', hostname: 'example.com' });
+  check('dns service active against Cloudflare resolver', d1.status === 'active', d1.detail);
+  const d2 = await runOne('dns', 'dns-bad-resolver', 'dns', { dns_server: '127.0.0.1', hostname: 'example.com' });
+  check('dns service down with unreachable resolver', d2.status === 'down', d2.detail);
+
   // ---- cert_expiration first-class service ---------------------------------
   function certEv(predicate) { return posts.filter(ev => ev.service === 'cert_expiration').find(predicate); }
   function certMeta(ev) { return ev?.observed?.cert; }

@@ -13,6 +13,7 @@
 // L0 reports skipped:true rather than faking reachability.
 import net from 'node:net';
 import tls from 'node:tls';
+import dns from 'node:dns';
 import { execFileSync } from 'node:child_process';
 
 // L0 — ICMP echo via the system ping binary. Returns ok:false+skipped:true
@@ -89,6 +90,32 @@ export function tlsCheck(host, port, timeoutMs = 3000) {
     });
     sock.once('timeout', () => { sock.destroy(); resolve({ ok: false, detail: 'tls handshake timeout', latency_ms: timeoutMs }); });
     sock.once('error', e => resolve({ ok: false, detail: String(e.code ?? e.message ?? e), latency_ms: Date.now() - started }));
+  });
+}
+
+// DNS resolver health: query a specific resolver for a known-good hostname.
+// Uses Node's Resolver with an explicit server list so the check targets the
+// site's configured DNS, not the appliance's local resolver. No payload is read;
+// only whether the resolver answers with at least one A record matters.
+export function dnsCheck({ dns_server, hostname, timeoutMs = 3000 }) {
+  return new Promise(resolve => {
+    const started = Date.now();
+    if (!dns_server || !hostname) {
+      return resolve({ ok: false, status: 'unknown', detail: 'dns_server and hostname required' });
+    }
+    const resolver = new dns.Resolver();
+    resolver.setServers([dns_server]);
+    const timer = setTimeout(() => {
+      resolver.cancel();
+      resolve({ ok: false, status: 'down', detail: `DNS ${dns_server} query timeout`, latency_ms: timeoutMs });
+    }, timeoutMs);
+    resolver.resolve(hostname, (err, addresses) => {
+      clearTimeout(timer);
+      if (err) {
+        return resolve({ ok: false, status: 'down', detail: `DNS ${dns_server} failed: ${err.code ?? err.message}`, latency_ms: Date.now() - started });
+      }
+      resolve({ ok: true, status: 'active', detail: `DNS ${dns_server} resolved ${hostname} to ${addresses[0]}`, observed: { resolver: dns_server, hostname, answer: addresses[0] }, latency_ms: Date.now() - started });
+    });
   });
 }
 
