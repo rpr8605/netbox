@@ -24,20 +24,33 @@ function postJson(urlStr, body, headers = {}) {
   });
 }
 
-function guardEmailPhi({ subject, text }) {
-  const subj = scanPhi(subject);
-  if (!subj.ok) return { skipped: true, reason: `PHI detected in subject (${subj.type}); email not sent` };
-  const body = scanPhi(text);
-  if (!body.ok) return { skipped: true, reason: `PHI detected in body (${body.type}); email not sent` };
+function guardChannelPhi(text, channel) {
+  const r = scanPhi(text);
+  if (!r.ok) return { skipped: true, reason: `PHI detected in ${channel} (${r.type}); message not sent` };
   return null;
+}
+
+function escapeXml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export function buildVoiceTwiml(body) {
+  return `<Response><Say>${escapeXml(body)}</Say></Response>`;
 }
 
 // Twilio SMS/voice. Form-encoded per Twilio's API. Voice uses a TwiML message.
 export async function sendTwilio({ accountSid, authToken, from, to, body, voice = false }) {
   if (!accountSid || !authToken) return { skipped: true, reason: 'twilio not configured' };
+  const phi = guardChannelPhi(body, voice ? 'voice' : 'sms');
+  if (phi) return phi;
   const path = `/2010-04-01/Accounts/${accountSid}/${voice ? 'Calls' : 'Messages'}.json`;
   const form = new URLSearchParams(voice
-    ? { From: from, To: to, Twiml: `<Response><Say>${body}</Say></Response>` }
+    ? { From: from, To: to, Twiml: buildVoiceTwiml(body) }
     : { From: from, To: to, Body: body });
   return new Promise(resolve => {
     const req = https.request({
@@ -58,7 +71,7 @@ export async function sendTwilio({ accountSid, authToken, from, to, body, voice 
 // SendGrid email.
 export async function sendSendGrid({ apiKey, from, to, subject, text }) {
   if (!apiKey) return { skipped: true, reason: 'sendgrid not configured' };
-  const phi = guardEmailPhi({ subject, text });
+  const phi = guardChannelPhi(subject, 'email subject') ?? guardChannelPhi(text, 'email body');
   if (phi) return phi;
   return postJson('https://api.sendgrid.com/v3/mail/send', {
     personalizations: [{ to: [{ email: to }] }],
@@ -71,7 +84,7 @@ export async function sendSendGrid({ apiKey, from, to, subject, text }) {
 // fallback. Credentials are scoped to SES only — no broader AWS access.
 export async function sendSes({ accessKeyId, secretAccessKey, region, from, to, subject, text }) {
   if (!accessKeyId || !secretAccessKey || !region) return { skipped: true, reason: 'ses not configured' };
-  const phi = guardEmailPhi({ subject, text });
+  const phi = guardChannelPhi(subject, 'email subject') ?? guardChannelPhi(text, 'email body');
   if (phi) return phi;
   try {
     const { SESv2Client, SendEmailCommand } = await import('@aws-sdk/client-sesv2');
@@ -90,6 +103,8 @@ export async function sendSes({ accessKeyId, secretAccessKey, region, from, to, 
 // Slack/Teams incoming webhook — one JSON POST, both platforms accept it.
 export async function sendWebhook({ webhookUrl, text }) {
   if (!webhookUrl) return { skipped: true, reason: 'webhook not configured' };
+  const phi = guardChannelPhi(text, 'webhook');
+  if (phi) return phi;
   return postJson(webhookUrl, { text });
 }
 
