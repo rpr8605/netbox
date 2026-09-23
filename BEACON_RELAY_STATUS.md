@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `65ba54d` (agent/md-sync-2026-09-22; HEAD adds PostgreSQL storage for the control plane with a one-shot SQLite migration, in addition to the previously merged channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory work, and PHI guard).
+**Current commit on `main`:** `503e165` (agent/md-sync-2026-09-22; this session added migration safety marker + `.migrated` rename, `.env`/`.env.example` secret handling, PostgreSQL as the default test database, a readiness audit, and DHCP as a first-class critical service; previous work includes PostgreSQL storage, channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory, and PHI guard).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -76,10 +76,14 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   §3). `firewall` added to the canonical schema `service` enum and the critical-service
   register; existing generic TCP/TLS net checks can target a gateway with `service: 'firewall'`.
   No new adapter needed — the network-check rail is reused.
-- **DNS health as a first-class critical service** (`CONTROLS_AND_IDENTITY` §3). `dns` added to
-  the schema `service` enum and critical-service register; new `dnsCheck` adapter queries a
-  site-configured resolver for a known-good hostname and reports `active`/`down`. DHCP health
-  is still inferred from monitored endpoints, not a direct check.
+- **DNS/DHCP health as first-class critical services** (`CONTROLS_AND_IDENTITY` §3). `dns`
+  added to the schema `service` enum and critical-service register; new `dnsCheck` adapter
+  queries a site-configured resolver for a known-good hostname and reports `active`/`down`.
+  `dhcp_health` added to the service enum and critical-service register; new
+  `runDhcpHealthCheck` adapter reads from a hospital-exposed DHCP status source and reports
+  `verified_ready`/`degraded`/`down`/`unknown`, falling back to `unknown` when no source is
+  configured so endpoint health can be inferred. Covered by
+  `node --env-file=.env scripts/test_ehr_unit.js`.
 - **WAN/ISP circuit health as a first-class critical service** (`CONTROLS_AND_IDENTITY`
   §1/§3). `wan` added to the schema `service` enum and critical-service register; new
   `runWanCheck` adapter tests each configured circuit against external targets, reports
@@ -91,7 +95,8 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   runbook attachment, required ack with automatic escalation on timeout, suppression/
   maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, SES email via
   `@aws-sdk/client-sesv2`, Slack/Teams webhook) wired as injected senders.
-- **PostgreSQL storage for the control plane** (`BUILD_SPEC` §5). `control-plane/src/db.js` is now an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL`; the image entrypoint runs `control-plane/migrate.js` to copy any legacy SQLite data idempotently before startup. Verified by running all DB-touching unit tests against Postgres and by migrating the existing SQLite `cp-data` volume (2023 rows) into the compose Postgres instance.
+- **PostgreSQL storage + migration safety for the control plane** (`BUILD_SPEC` §5). `control-plane/src/db.js` is an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; the image entrypoint runs `control-plane/migrate.js` to copy legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
+- **PostgreSQL as the default for test suites.** `.env` (gitignored) and `.env.example` set `DATABASE_URL` to the isolated `beacon_relay_test` database by default; `npm run test:db:reset` recreates it. DB-touching tests now run against Postgres unless `DATABASE_URL` is explicitly unset for SQLite-specific coverage.
 - **RBAC completeness** (`BUILD_SPEC` §5). All five roles (support technician, customer IT
   admin, operations manager, security auditor, read-only executive) with per-route
   allow/deny proven.
@@ -200,19 +205,19 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 
 | Suite | Command | Result |
 |---|---|---|
-| Documentation audit | `node audit_docs.cjs .` | 89 files scanned, 0 missing header, 0 missing doc comment, 213 exports |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 42/42 |
-| Device agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
-| Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
+| Documentation audit | `node audit_docs.cjs .` | 97 files scanned, 0 missing header, 4 pre-existing missing doc comments |
+| EHR adapters unit | `node --env-file=.env scripts/test_ehr_unit.js` | 48/48 |
+| Device agent loop (monitor + self-monitor + downtime) | `node --env-file=.env scripts/test_agent_loop.js` | 11/11 |
+| Step 1 Graph signals | `node --env-file=.env scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
-| Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
-| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 13/13 |
-| Control-plane storage against PostgreSQL | `DATABASE_URL=postgres://... node --test scripts/test_device_lifecycle.js scripts/test_topology.js` | 20/20 |
-| SQLite-to-PostgreSQL migration | `DB_PATH=<sqlite> DATABASE_URL=postgres://... node control-plane/migrate.js` | 5 rows copied; verified in Postgres |
-| EHR E2E through the real stack (incl. feed-down, public sandbox) | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
-| OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
-| OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
+| Topology (channel registry, RBAC rollup gate, detail panel) | `node --env-file=.env --test scripts/test_topology.js` | 7/7 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --env-file=.env --test scripts/test_device_lifecycle.js` | 13/13 |
+| SQLite-to-PostgreSQL migration safety | `node --env-file=.env --test control-plane/test/migrate.once.test.js` | 1/1 (deleted row not resurrected after restart) |
+| Control-plane storage + migration against PostgreSQL | `npm run test:db:reset && node --env-file=.env --test scripts/test_device_lifecycle.js scripts/test_topology.js control-plane/test/migrate.once.test.js` | 21/21 |
+| EHR E2E through the real stack (incl. feed-down, public sandbox) | `node --env-file=.env scripts/test_ehr_e2e.js` | 23/23 |
+| Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node --env-file=.env scripts/test_alerting_rbac_audit_support.js` | 76/76 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 9/9 |
+| OTA staged rollout control-plane policy + audit | `node --env-file=.env scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
 Prereqs for the E2E-style suites: `docker compose up -d step-ca control-plane` first. `step-ca` is healthy; control-plane host port is remapped to `10443` because Windows reserves `9100`.
@@ -252,10 +257,12 @@ built image plus the harness container.
 - **The Epic Community Connect profile ships with its FHIR check `enabled: false` by
   default** (parent-org API grant is not guaranteed) — that's a deliberate product decision,
   not a bug; the `unknown`-not-`down` auth mapping exists because of it.
-- **PostgreSQL is now the production storage target; SQLite remains the zero-ops dev fallback.** The dual-driver layer is tested, and the one-shot SQLite-to-Postgres migration runs automatically in the Docker image entrypoint. The RDS/TimescaleDB partitioning decision (per the AWS doc) is still deferred until the AWS phase.
+- **PostgreSQL is now the production storage target; SQLite remains the zero-ops dev fallback.** The dual-driver layer is tested, and the SQLite-to-Postgres migration is guarded by a marker row in `schema_migrations` and renames the SQLite source to `*.migrated` after the first successful run. The default test database is now `beacon_relay_test` via `.env`; `npm run test:db:reset` recreates it. The RDS/TimescaleDB partitioning decision (per the AWS doc) is still deferred until the AWS phase.
 - **`git push` history was rewritten** — see the note at the top. Clones need fetch+reset.
+- **`.env` is now required for local compose and default test runs.** Copy `.env.example` to `.env` before `docker compose up` or `npm test`. `.env` is gitignored and must never be committed.
 - **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** Worked around by remapping the published host port to `10443` in `docker-compose.yml` and updating host-side test/seed defaults. The container port remains `9100` for compose-internal services.
 - **QEMU acceptance cannot run in Docker Desktop on Windows because `/dev/kvm` is unavailable.** `vm-harness/acceptance.sh` hardcodes `-enable-kvm`; two attempts failed identically. Options: run on a Linux host with KVM, modify the harness to fall back to TCG with longer timeouts, or use a WSL2/Docker setup that exposes KVM. See `.agent/attempts.md`.
+- **A readiness audit mapping ten security/readiness areas is in `.agent/readiness-audit.md`.** It marks security approval pack, contracts/insurance, and several PARTIAL areas as MISSING/gapped; the next build session should prioritize those gaps before any real hospital deployment.
 - A handful of test/harness scripts write state to `os.tmpdir()` on the host (monitor
   state, downtime cache, the tamper-test DB). They clean up, but a killed process can leave
   a temp file; harmless, and they're all gitignored paths or temp dirs.
@@ -264,16 +271,13 @@ built image plus the harness container.
 
 ## 4. Single next recommended step
 
-**Start `BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §6, step 1: stand up the AWS Organization with
-the three accounts (prod, sim/staging, security/log-archive).** The doc is explicit that
-nothing else in it should be built before that exists, and every later hosting step
-(IoT Core CA registration, RDS+Cognito, ECS Fargate) depends on the account boundary. It is
-the lowest-risk, highest-leverage next move, and it requires no new device or EHR work.
+**AWS is blocked this session, so the next unblocked work is the security gaps surfaced by `.agent/readiness-audit.md` and the independent review (`Beacon_Relay_Code_Review_2026-09-23.md`).** The highest-value, smallest unblocked fixes are:
+1. Device-side server certificate pinning (`beacon-relay-agent/agent.js`) so the device verifies the control plane.
+2. Strict version validation + `execFileSync` (no shell) in the OTA update path.
+3. Atomic enrollment-token / retrust-challenge consumption (`UPDATE ... RETURNING`).
+4. Route-level auth policy test that fails on any ungated route.
 
-(The runner-up, if AWS access isn't ready yet: the network-controls phase in
-`BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §6 step 1 — register the WAN/firewall/DNS/TLS-cert checks as
-first-class critical services, which reuses the already-built generic network-check adapter
-with no new adapter code.)
+(When AWS access is available, return to `BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md` §6 step 1: stand up the AWS Organization with the three accounts.)
 
 ---
 

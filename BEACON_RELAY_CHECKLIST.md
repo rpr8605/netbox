@@ -4,27 +4,28 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `65ba54d` (agent/md-sync-2026-09-22).
+**Audited at commit:** `503e165` (agent/md-sync-2026-09-22).
 
-> **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass. QEMU acceptance was not re-run yet; it is queued for the next block.
+> **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass against PostgreSQL. QEMU acceptance was not re-run yet; it is blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md`.
 
 ## Test evidence on this commit (re-run during this audit)
 
 | Suite | Command | Result |
 |---|---|---|
 | Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| EHR adapters unit | `node scripts/test_ehr_unit.js` | 42/42 |
-| Agent loop (monitor + self-monitor + downtime) | `node scripts/test_agent_loop.js` | 11/11 |
-| Step 1 Graph signals | `node scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
+| Doc audit | `node audit_docs.cjs .` | 97 files, 0 missing header, 4 pre-existing missing doc comments |
+| EHR adapters unit | `node --env-file=.env scripts/test_ehr_unit.js` | 48/48 |
+| Agent loop (monitor + self-monitor + downtime) | `node --env-file=.env scripts/test_agent_loop.js` | 11/11 |
+| Step 1 Graph signals | `node --env-file=.env scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
-| Topology (channel registry, RBAC rollup gate, detail panel) | `node --test scripts/test_topology.js` | 7/7 |
-| Device lifecycle / hardware tooling (no-hardware) | `node --test scripts/test_device_lifecycle.js` | 13/13 |
-| Control-plane storage against PostgreSQL | `DATABASE_URL=postgres://... node --test scripts/test_device_lifecycle.js scripts/test_topology.js` | 20/20 |
-| SQLite-to-PostgreSQL migration | `DB_PATH=<sqlite> DATABASE_URL=postgres://... node control-plane/migrate.js` | 5 rows copied; verified in Postgres |
-| EHR E2E through real stack | `node scripts/test_ehr_e2e.js` | 23/23 |
-| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node scripts/test_alerting_rbac_audit_support.js` | 76/76 |
-| OTA update client (signed bundles, staged rollout, rollback) | `node scripts/test_update_client.js` | 9/9 |
-| OTA staged rollout control-plane policy + audit | `node scripts/test_ota_rollout.js` | 10/10 |
+| Topology (channel registry, RBAC rollup gate, detail panel) | `node --env-file=.env --test scripts/test_topology.js` | 7/7 |
+| Device lifecycle / hardware tooling (no-hardware) | `node --env-file=.env --test scripts/test_device_lifecycle.js` | 13/13 |
+| SQLite-to-PostgreSQL migration safety | `node --env-file=.env --test control-plane/test/migrate.once.test.js` | 1/1 (deleted row not resurrected after restart) |
+| Control-plane storage + migration against PostgreSQL | `npm run test:db:reset && node --env-file=.env --test scripts/test_device_lifecycle.js scripts/test_topology.js control-plane/test/migrate.once.test.js` | 21/21 |
+| EHR E2E through real stack | `node --env-file=.env scripts/test_ehr_e2e.js` | 23/23 |
+| Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node --env-file=.env scripts/test_alerting_rbac_audit_support.js` | 76/76 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 9/9 |
+| OTA staged rollout control-plane policy + audit | `node --env-file=.env scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
 Prereq for the network suites: `docker compose up -d step-ca control-plane`. step-ca is healthy; control-plane host port remapped to `10443` because Windows reserves `9100`.
@@ -47,7 +48,10 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 ### Open questions / blockers for this checklist
 
-- None. KF3 and the port-9100 blocker are resolved; see `.agent/open-questions.md`.
+- AWS Organization + three accounts remains blocked on Ryan's side; skipped per session instructions.
+- QEMU acceptance x3 remains blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md`.
+- PHI-mode toggle remains design-only (`.agent/phi-mode-design.md`) pending review; not implemented per session instructions.
+- `.env` is now required for `docker compose up` and for the default Postgres test suite; `.env.example` is committed.
 
 ---
 
@@ -87,7 +91,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ### §5 — Cloud Control Plane
 - Device registry + mTLS ingestion API — **DONE** (EHR E2E 23/23 through real mTLS).
 - Quarantine gate — **DONE** (device-sim + acceptance).
-- PostgreSQL storage — **DONE**. `control-plane/src/db.js` is now an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for zero-ops local dev/tests. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL`; `control-plane/migrate.js` copies legacy SQLite data idempotently on first boot. Verified by running all DB-touching unit tests against Postgres and by migrating the existing SQLite `cp-data` volume (2023 rows) into the compose Postgres instance before startup.
+- PostgreSQL storage — **DONE**. `control-plane/src/db.js` is now an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for zero-ops local dev/tests. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; `control-plane/migrate.js` copies legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
 - RBAC five roles (support technician, customer IT admin, operations manager, security auditor, read-only executive) — **PARTIAL**. The role→permission map and per-route allow/deny are real and tested (alerting/RBAC suite 23/23), but Phase 2 has no auth — `role` arrives as a request attribute, not a verified principal. The Cognito/JWT layer is not built.
 - Audit log: append-only, immutable — **DONE** (trigger-enforced UPDATE/DELETE raise; tamper test fails; suite 23/23).
 
@@ -158,7 +162,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ### §1/§3 — site network controls as first-class critical services
 - WAN/ISP circuit health (dual-path, failover detection) — **DONE**. `wan` added to the canonical schema `service` enum and the critical-service register; `runWanCheck` tests primary/backup circuits against external targets and sets `observed.failover=true` when the backup is active. Covered by `node scripts/test_ehr_unit.js`.
 - Core firewall/router reachability as a first-class service — **DONE**. `firewall` added to the canonical schema `service` enum and the Fleet Console critical-service register; existing generic net checks can target a gateway with `service: 'firewall'`. Covered by `node scripts/test_ehr_unit.js`.
-- DNS/DHCP health — **PARTIAL**. DNS resolver check added (`dnsCheck` in `net_checks.js`, `dns` service enum + critical-service register); DHCP health remains inferred from monitored endpoints and is not yet a direct check.
+- DNS/DHCP health — **DONE**. DNS resolver check added (`dnsCheck` in `net_checks.js`, `dns` service enum + critical-service register); DHCP health direct check added (`runDhcpHealthCheck` in `site_controls.js`, `dhcp_health` service enum + critical-service register). The DHCP adapter reads from a hospital-exposed status source where available; otherwise it returns `unknown` so health is inferred from monitored endpoints, matching the spec. Covered by `node --env-file=.env scripts/test_ehr_unit.js`.
 - Wireless AP health — **DONE against mocks**. Generic `wireless` adapter reads a controller status source (HTTP(S) URL or local file), parses common AP array shapes, and reports AP up/down counts and client totals as metadata-only events. Covered by `node scripts/test_ehr_unit.js`.
 - Site-to-site VPN tunnel health — **DONE against mocks**. Generic `vpn` adapter reads a tunnel status file and/or probes a far-side TCP endpoint; emits metadata-only `vpn_tunnel_health` events. Covered by `node scripts/test_ehr_unit.js`.
 - Backup/DR job status read — **DONE against mocks**. Generic `backup_dr` adapter reads a status source and maps last-success age to verified_ready/degraded/down. Covered by `node scripts/test_ehr_unit.js`.
