@@ -27,7 +27,7 @@ const ALLOWED_BY_STATE = {
   active: new Set(['check_result', 'hl7_metadata', 'heartbeat', 'update_event', 'security_signal']),
 };
 
-async function deviceFromCert(req, reply) {
+export async function deviceFromCert(req, reply) {
   const cert = req.socket.getPeerCertificate();
   if (!req.socket.authorized || !cert?.subject?.CN) {
     reply.code(401).send({ error: 'valid client certificate required' });

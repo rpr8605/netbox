@@ -8,10 +8,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  getDevice, getActiveRollout, createRollout, listRollouts, activateRollout,
+  getActiveRollout, createRollout, listRollouts, activateRollout,
   offeredVersion, appendAudit,
 } from '../db.js';
 import { requirePerm } from '../rbac.js';
+import { deviceFromCert } from './events.js';
 
 const OUT_ROOT = process.env.RELEASES_DIR ?? 'out';
 
@@ -53,19 +54,12 @@ export default async function releaseRoutes(app) {
     return { version, built_at: m.built_at };
   });
 
-  // The signed bundle bytes. mTLS-gated: only an enrolled device may pull it.
+  // The signed bundle bytes. mTLS-gated: only an enrolled, non-revoked device
+  // may pull it. Reuses deviceFromCert from events.js so the bundle path and
+  // the event-ingestion path have identical trust decisions (M5).
   app.get('/api/releases/:version/bundle', {
     config: { auth: 'device' },
-  }, async (req, reply) => {
-    const cert = req.socket.getPeerCertificate?.();
-    if (!req.socket.authorized || !cert?.subject?.CN || !(await getDevice(cert.subject.CN))) {
-      return reply.code(403).send({ error: 'enrolled device cert required' });
-    }
-    const p = path.join(OUT_ROOT, req.params.version, 'beacon-relay.raucb');
-    if (!fs.existsSync(p)) return reply.code(404).send({ error: 'no bundle for that version' });
-    reply.header('content-type', 'application/octet-stream');
-    return reply.send(fs.createReadStream(p));
-  });
+  }, bundleHandler);
 
   // -------------------------------------------------------------------------
   // Staged rollout management (operations-manager only). Each action is
@@ -113,4 +107,13 @@ export default async function releaseRoutes(app) {
     });
     return active;
   });
+}
+
+export async function bundleHandler(req, reply) {
+  const device = await deviceFromCert(req, reply);
+  if (!device) return;
+  const p = path.join(OUT_ROOT, req.params.version, 'beacon-relay.raucb');
+  if (!fs.existsSync(p)) return reply.code(404).send({ error: 'no bundle for that version' });
+  reply.header('content-type', 'application/octet-stream');
+  return reply.send(fs.createReadStream(p));
 }
