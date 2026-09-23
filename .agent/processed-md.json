@@ -2,8 +2,9 @@
     "AGENTS.md":  {
                       "sha256":  "73bb146bf6ac777173d45dec0c5909fd946656ee703256730f83cd3852c56062",
                       "status":  "reference",
+                      "note":  "standing operating rules; added cost-reporting block (no $/Total $/per-commit cost in output)",
                       "commits":  [
-
+                                      "e3c864a"
                                   ]
                   },
     "BEACON_RELAY_BUILD_SPEC.md":  {
@@ -30,7 +31,8 @@
                                                         "360ec6d",
                                                         "01910a6",
                                                         "831f71d",
-                                                        "75c5ee9"
+                                                        "75c5ee9",
+                                                        "e3c864a"
                                                     ]
                                     },
     "BEACON_RELAY_CLOUD_ARCHITECTURE_AWS.md":  {
@@ -111,7 +113,8 @@
                                                      "360ec6d",
                                                      "01910a6",
                                                      "831f71d",
-                                                     "75c5ee9"
+                                                     "75c5ee9",
+                                                     "e3c864a"
                                                  ]
                                  },
     "BEACON_RELAY_TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md":  {
@@ -119,7 +122,8 @@
                                                                   "status":  "reference",
                                                                   "note":  "geographic fleet map and Tier-0 copy-paste+email built; troubleshooting memory/Tier-1 ticketing deferred",
                                                                   "commits":  [
-                                                                                  "831f71d"
+                                                                                  "831f71d",
+                                                                                  "e3c864a"
                                                                               ]
                                                               },
     "README(2).md":  {
@@ -200,7 +204,8 @@
                                                     "360ec6d",
                                                     "01910a6",
                                                     "831f71d",
-                                                    "75c5ee9"
+                                                    "75c5ee9",
+                                                    "e3c864a"
                                                 ]
                                 },
     ".agent/open-questions.md":  {
