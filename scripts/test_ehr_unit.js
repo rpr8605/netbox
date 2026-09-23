@@ -264,6 +264,13 @@ async function main() {
   const n4 = await runOne('net', 'port-closed', 'ehr', { host: '127.0.0.1', port: tcpPort, tls: false });
   check('net port down -> down', n4.status === 'down', n4.detail);
 
+  // ---- core firewall/router reachability as first-class critical service ---
+  const fwServer = net.createServer(() => {});
+  const fwPort = await listen(fwServer);
+  const fw = await runOne('net', 'firewall-tcp', 'firewall', { host: '127.0.0.1', port: fwPort, tls: false });
+  check('firewall service reachable/L1', fw.status === 'reachable' && fw.tier === 'L1', JSON.stringify(fw));
+  await closeServer(fwServer);
+
   // ---- cert_expiration first-class service ---------------------------------
   function certEv(predicate) { return posts.filter(ev => ev.service === 'cert_expiration').find(predicate); }
   function certMeta(ev) { return ev?.observed?.cert; }
