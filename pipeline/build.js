@@ -32,6 +32,8 @@ const REQUIRED_AGENT_FILES = [
   'lib/issue_cert.js', 'lib/tpm.js',
   // EHR/EMR integration layer (EHR spec §2 adapters + orchestrator)
   'lib/http_json.js', 'lib/net_checks.js', 'lib/fhir_r4.js', 'lib/mirth_admin.js', 'lib/ehr_check.js',
+  // Site network/identity controls (CONTROLS_AND_IDENTITY §3 + §4)
+  'lib/m365_account_health.js', 'lib/site_controls.js',
 ];
 const missing = REQUIRED_AGENT_FILES.filter(f => !fs.existsSync(path.join(AGENT_DST, f)));
 if (missing.length) {

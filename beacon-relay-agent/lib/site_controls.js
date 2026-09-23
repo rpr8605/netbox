@@ -118,6 +118,10 @@ function interpretWireless(data, latencyMs, source) {
   return { status: 'verified_ready', detail: `all ${aps.length} AP(s) up, ${totalClients} client(s)`, observed, latency_ms: latencyMs };
 }
 
+// runWirelessApCheck — read-only wireless AP health.
+// Params: controller_url or source (http(s) URL or file path), optional auth_token,
+//         optional mockData for tests.
+// Returns: { status, detail, observed, latency_ms }.
 export async function runWirelessApCheck(params = {}) {
   const controllerUrl = params.controller_url;
   if (!params.mockData && !controllerUrl && !params.source) {
@@ -152,6 +156,9 @@ function interpretVpn(data, latencyMs) {
   return { status: 'verified_ready', detail: 'VPN tunnel interface up and far-side endpoint reachable', observed, latency_ms: latencyMs };
 }
 
+// runVpnTunnelCheck — read-only site-to-site VPN tunnel health.
+// Params: status_file_path and/or remote_host + remote_port; optional mockData.
+// Returns: { status, detail, observed, latency_ms }.
 export async function runVpnTunnelCheck(params = {}) {
   const statusFile = params.status_file_path;
   const remoteHost = params.remote_host;
@@ -234,6 +241,9 @@ function interpretBackupDr(data, latencyMs) {
   return { status: 'unknown', detail: 'Backup/DR status unclear', observed, latency_ms: latencyMs };
 }
 
+// runBackupDrStatusCheck — read-only backup/DR job status.
+// Params: source (http(s) URL or file path), optional mockData.
+// Returns: { status, detail, observed, latency_ms }.
 export async function runBackupDrStatusCheck(params = {}) {
   if (!params.mockData && !params.source) {
     return { status: 'unknown', detail: 'Backup/DR status source not configured', observed: {}, latency_ms: 0 };
@@ -280,6 +290,9 @@ function interpretAvEdr(data, latencyMs) {
   return { status: 'unknown', detail: 'AV/EDR status unclear', observed, latency_ms: latencyMs };
 }
 
+// runAvEdrCheckinCheck — read-only AV/EDR agent check-in status.
+// Params: source (http(s) URL or file path), optional mockData.
+// Returns: { status, detail, observed, latency_ms }.
 export async function runAvEdrCheckinCheck(params = {}) {
   if (!params.mockData && !params.source) {
     return { status: 'unknown', detail: 'AV/EDR status source not configured', observed: {}, latency_ms: 0 };
