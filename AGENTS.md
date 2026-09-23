@@ -116,10 +116,10 @@ scratch for a new repo.*
 
 ## Cost reporting
 
-- **Do not report dollar amounts, total cost, or cost-per-commit** in checkpoint summaries,
-  status docs, or chat. Block `$` and `Total $` from `opencode stats`-style output and any
-  per-commit cost figures. Progress is reported as test counts and CHECKLIST completion
-  percentage only.
+- Dollar amounts from `opencode stats` may be reported **only in checkpoint reports**
+  (block spend, total spend, cost per commit). Redact `$` and `Total $` everywhere else,
+  including casual chat and ad-hoc command output. Progress outside checkpoint reports is
+  reported as test counts and CHECKLIST completion percentage only.
 
 ## Model routing (paste this section into AGENTS.md)
 
