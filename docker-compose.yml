@@ -1,5 +1,5 @@
 # docker-compose.yml — Phase 1 local stack
-# step-ca (private CA) + control-plane (Fastify API + console) + device simulator.
+# step-ca (private CA) + PostgreSQL + control-plane (Fastify API + console) + device simulator.
 # All services are local-only; no real hospital data, no real HL7 feed.
 services:
   step-ca:
@@ -24,6 +24,23 @@ services:
       timeout: 3s
       retries: 20
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: beacon-relay-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-beacon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beacon}
+      POSTGRES_DB: ${POSTGRES_DB:-beacon_relay}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-beacon} -d $${POSTGRES_DB:-beacon_relay}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   control-plane:
     build:
       context: .
@@ -40,6 +57,9 @@ services:
       CA_FINGERPRINT: ${CA_FINGERPRINT:-}
       PROVISIONER_NAME: ${PROVISIONER_NAME:-beacon-relay-device}
       PROVISIONER_PRIVATE_JWK_PATH: /run/secrets/provisioner_private_jwk
+      # Production storage is PostgreSQL. The legacy DB_PATH is kept only for
+      # the one-time migration script; new installs write straight to Postgres.
+      DATABASE_URL: postgres://${POSTGRES_USER:-beacon}:${POSTGRES_PASSWORD:-beacon}@postgres:5432/${POSTGRES_DB:-beacon_relay}
       DB_PATH: /data/beacon-relay.db
       # The OTA release surface (routes/releases.js) reads the build's out/
       # tree for the latest-version pointer and the signed bundle bytes.
@@ -59,6 +79,8 @@ services:
       - "${CONTROL_PLANE_HOST_PORT:-10443}:9100"
     depends_on:
       step-ca:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   device-sim:
@@ -81,3 +103,4 @@ volumes:
   pki-certs:
   pki-secrets:
   cp-data:
+  pg-data:

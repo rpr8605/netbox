@@ -30,7 +30,7 @@ export default async function alertRoutes(app) {
     const v = validateImpactStatement(impact_stmt);
     if (!v.ok) return reply.code(400).send({ error: v.error });
     const rule_id = crypto.randomUUID();
-    createAlertRule({ rule_id, severity, service, impact_stmt, runbook_url, ack_window_s, maintenance_start, maintenance_end });
+    await createAlertRule({ rule_id, severity, service, impact_stmt, runbook_url, ack_window_s, maintenance_start, maintenance_end });
     return { rule_id, severity, service };
   });
 
@@ -41,7 +41,7 @@ export default async function alertRoutes(app) {
       return reply.code(400).send({ error: 'severity, tier, channel, address required' });
     }
     const contact_id = crypto.randomUUID();
-    createAlertContact({ contact_id, severity, tier, channel, address });
+    await createAlertContact({ contact_id, severity, tier, channel, address });
     return { contact_id };
   });
 
@@ -68,7 +68,7 @@ export default async function alertRoutes(app) {
 
   // --- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2) ------
   app.get('/api/alerts/:id/signature', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
-    const sig = getIncidentSignature(req.params.id);
+    const sig = await getIncidentSignature(req.params.id);
     if (!sig) return reply.code(404).send({ error: 'signature not found' });
     return sig;
   });
@@ -76,7 +76,7 @@ export default async function alertRoutes(app) {
   // Close an incident and record the human-filled resolution. The close is the
   // only path that creates a resolution_record; nothing is inferred.
   app.post('/api/alerts/:id/close', { preHandler: requirePerm('alerts:close', appendAudit) }, async (req, reply) => {
-    const alert = getAlert(req.params.id);
+    const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     if (alert.status === 'closed') return reply.code(409).send({ error: 'alert already closed' });
     const { root_cause_category, root_cause_note, action_taken, actor } = req.body ?? {};
@@ -93,8 +93,8 @@ export default async function alertRoutes(app) {
     const closedAt = new Date();
     const openedAt = new Date(alert.created_at);
     const timeToResolveMin = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
-    closeAlert(alert.alert_id);
-    createResolutionRecord({
+    await closeAlert(alert.alert_id);
+    await createResolutionRecord({
       alert_id: alert.alert_id,
       root_cause_category,
       root_cause_note: root_cause_note ?? null,
@@ -103,16 +103,16 @@ export default async function alertRoutes(app) {
       closed_by: actor ?? 'unknown',
       closed_at: closedAt.toISOString(),
     });
-    appendAudit({ auditId: crypto.randomUUID(), actor: actor ?? 'unknown', action: 'alert.closed', target: alert.alert_id });
+    await appendAudit({ auditId: crypto.randomUUID(), actor: actor ?? 'unknown', action: 'alert.closed', target: alert.alert_id });
     return { alert_id: alert.alert_id, status: 'closed', time_to_resolve_min: timeToResolveMin };
   });
 
   // Deterministic similar-past-incidents panel. Returns an empty matches list
   // when nothing clears the threshold — no weak guesses dressed up as matches.
   app.get('/api/alerts/:id/similar', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
-    const alert = getAlert(req.params.id);
+    const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
-    const sig = getIncidentSignature(req.params.id);
+    const sig = await getIncidentSignature(req.params.id);
     if (!sig) return reply.code(404).send({ error: 'signature not found' });
     return findSimilarIncidents(sig, { excludeAlertId: req.params.id });
   });
@@ -121,9 +121,9 @@ export default async function alertRoutes(app) {
   // Copy-paste-ready incident block. No vendor API, no credentials — works with
   // any ticketing system or plain inbox that accepts text/Markdown.
   app.get('/api/alerts/:id/ticket', { preHandler: requirePerm('alerts:read', appendAudit) }, async (req, reply) => {
-    const alert = getAlert(req.params.id);
+    const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
-    const rule = getAlertRule(alert.rule_id);
+    const rule = await getAlertRule(alert.rule_id);
     return formatTicketBlock(alert, rule);
   });
 
@@ -131,11 +131,11 @@ export default async function alertRoutes(app) {
   // not configured, returns {sent:false, reason:'sendgrid not configured'} rather
   // than throwing, so a missing integration does not crash the console.
   app.post('/api/alerts/:id/ticket/email', { preHandler: requirePerm('alerts:ack', appendAudit) }, async (req, reply) => {
-    const alert = getAlert(req.params.id);
+    const alert = await getAlert(req.params.id);
     if (!alert) return reply.code(404).send({ error: 'alert not found' });
     const to = req.body?.to;
     if (!to || typeof to !== 'string') return reply.code(400).send({ error: 'to address required' });
-    const rule = getAlertRule(alert.rule_id);
+    const rule = await getAlertRule(alert.rule_id);
     const block = formatTicketBlock(alert, rule);
     const from = cfg.sendgrid?.from ?? cfg.ses?.from ?? process.env.SENDGRID_FROM ?? process.env.SES_FROM ?? 'alerts@beacon-relay.local';
     let blockPhi = { ok: true };
@@ -144,14 +144,14 @@ export default async function alertRoutes(app) {
       if (!r.ok) { blockPhi = r; break; }
     }
     if (!blockPhi.ok) {
-      appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email.phi_blocked', target: alert.alert_id, detail: `${blockPhi.type}` });
+      await appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email.phi_blocked', target: alert.alert_id, detail: `${blockPhi.type}` });
       return { sent: false, reason: `PHI detected in ticket block (${blockPhi.type}); email not sent` };
     }
     let result = await sendSendGrid({ apiKey: cfg.sendgrid?.apiKey ?? process.env.SENDGRID_API_KEY, from, to, subject: block.title, text: block.plain_text });
     if (result.skipped) {
       result = await sendSes({ ...cfg.ses, from, to, subject: block.title, text: block.plain_text });
     }
-    appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email', target: alert.alert_id, detail: `to=${to} sent=${!(result.skipped || result.status >= 400)}` });
+    await appendAudit({ auditId: crypto.randomUUID(), actor: req.body?.actor ?? 'unknown', action: 'alert.ticket.email', target: alert.alert_id, detail: `to=${to} sent=${!(result.skipped || result.status >= 400)}` });
     if (result.skipped) return { sent: false, reason: result.reason };
     return { sent: result.status >= 200 && result.status < 300, result };
   });

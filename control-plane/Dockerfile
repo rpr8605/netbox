@@ -9,6 +9,9 @@ COPY control-plane/package.json control-plane/package-lock.json* ./
 RUN npm install --omit=dev
 COPY control-plane/src ./src
 COPY control-plane/public ./public
+COPY control-plane/entrypoint.sh ./entrypoint.sh
+COPY control-plane/migrate.js ./migrate.js
 COPY schemas/beacon_relay_event.schema.json ./schemas/beacon_relay_event.schema.json
+RUN chmod +x ./entrypoint.sh
 EXPOSE 9100
-CMD ["node", "src/index.js"]
+ENTRYPOINT ["./entrypoint.sh"]

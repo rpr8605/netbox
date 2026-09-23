@@ -32,7 +32,7 @@ function rollupAllowed(role, reply) {
 // Group event rows into topology view per channel. Unregistered channel_ids
 // surface the raw id with an explicit 'unregistered' hint — the registry is a
 // naming convenience, never a gate.
-function toTopology(events) {
+async function toTopology(events) {
   const byChannel = new Map();
   for (const ev of events) {
     const chId = ev.channel_id ?? null;
@@ -43,7 +43,7 @@ function toTopology(events) {
   }
   const channels = [];
   for (const [chId, evs] of byChannel) {
-    const reg = getChannel(chId);
+    const reg = await getChannel(chId);
     channels.push({
       channel_id: chId,
       display_name: reg?.display_name ?? chId,
@@ -67,7 +67,7 @@ export default async function channelRoutes(app) {
     if (!channel_id || !display_name || !engine) {
       return reply.code(400).send({ error: 'channel_id, display_name, engine required' });
     }
-    upsertChannel({ channelId: channel_id, displayName: display_name, engine, siteId: site_id, sourceSystem: source_system, destinationSystem: destination_system });
+    await upsertChannel({ channelId: channel_id, displayName: display_name, engine, siteId: site_id, sourceSystem: source_system, destinationSystem: destination_system });
     return { channel_id, display_name, engine, site_id: site_id ?? null, source_system: source_system ?? null, destination_system: destination_system ?? null };
   });
   app.get('/api/channels', async () => listChannels());
@@ -92,9 +92,9 @@ export default async function channelRoutes(app) {
   // Per-site topology: newest check_result per channel at one site.
   app.get('/api/sites/:id/topology', async (req) => {
     const siteId = req.params.id;
-    const evs = listEventsBySite(siteId, 200);
+    const evs = await listEventsBySite(siteId, 200);
     const newest = newestPerChannel(evs);
-    const topo = toTopology(newest);
+    const topo = await toTopology(newest);
     return { site_id: siteId, channels: topo };
   });
 
@@ -104,11 +104,11 @@ export default async function channelRoutes(app) {
     if (!rollupAllowed(role, reply)) return;
     // Gather each registered device's recent events and fold by site/channel.
     const all = [];
-    for (const device of listDevices()) {
-      for (const ev of listEvents(device.device_id, 50)) all.push(ev);
+    for (const device of await listDevices()) {
+      for (const ev of await listEvents(device.device_id, 50)) all.push(ev);
     }
     const newest = newestPerChannel(all);
-    const topo = toTopology(newest);
+    const topo = await toTopology(newest);
     // summarize counts per status for the ops roll-up header
     const summary = topo.reduce((acc, c) => { acc[c.newest.status] = (acc[c.newest.status] ?? 0) + 1; return acc; }, {});
     return { summary, channels: topo };

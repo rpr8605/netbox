@@ -29,12 +29,13 @@ export default async function releaseRoutes(app) {
     const m = readManifest();
     if (!m) return reply.code(404).send({ error: 'no release published' });
     const deviceId = req.query?.device_id ?? null;
-    const version = deviceId ? offeredVersion(deviceId, m.version) : m.version;
+    const version = deviceId ? await offeredVersion(deviceId, m.version) : m.version;
     if (!version) {
-      appendAudit({
+      const active = await getActiveRollout();
+      await appendAudit({
         auditId: crypto.randomUUID(), actor: deviceId ?? 'unknown-device',
         action: 'rollout.rejected', target: m.version,
-        detail: `device not in active rollout ${getActiveRollout()?.rollout_id ?? 'none'}`,
+        detail: `device not in active rollout ${active?.rollout_id ?? 'none'}`,
       });
       return reply.code(204).send();
     }
@@ -44,7 +45,7 @@ export default async function releaseRoutes(app) {
   // The signed bundle bytes. mTLS-gated: only an enrolled device may pull it.
   app.get('/api/releases/:version/bundle', async (req, reply) => {
     const cert = req.socket.getPeerCertificate?.();
-    if (!req.socket.authorized || !cert?.subject?.CN || !getDevice(cert.subject.CN)) {
+    if (!req.socket.authorized || !cert?.subject?.CN || !(await getDevice(cert.subject.CN))) {
       return reply.code(403).send({ error: 'enrolled device cert required' });
     }
     const p = path.join(OUT_ROOT, req.params.version, 'beacon-relay.raucb');
@@ -66,8 +67,8 @@ export default async function releaseRoutes(app) {
     if (percentage < 0 || percentage > 100) {
       return reply.code(400).send({ error: 'percentage must be 0-100' });
     }
-    const rolloutId = createRollout({ version, stage, percentage });
-    appendAudit({
+    const rolloutId = await createRollout({ version, stage, percentage });
+    await appendAudit({
       auditId: crypto.randomUUID(), actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
       action: 'rollout.created', target: rolloutId, detail: `${version} ${stage} ${percentage}%`,
     });
@@ -79,10 +80,10 @@ export default async function releaseRoutes(app) {
   });
 
   app.post('/api/releases/rollouts/:id/activate', { preHandler: requirePerm('releases:manage', appendAudit) }, async (req, reply) => {
-    const changes = activateRollout(req.params.id);
+    const changes = await activateRollout(req.params.id);
     if (!changes) return reply.code(404).send({ error: 'rollout not found' });
-    const active = getActiveRollout();
-    appendAudit({
+    const active = await getActiveRollout();
+    await appendAudit({
       auditId: crypto.randomUUID(), actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
       action: 'rollout.activated', target: req.params.id,
       detail: `${active.version} ${active.stage} ${active.percentage}%`,

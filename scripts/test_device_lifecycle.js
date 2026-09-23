@@ -22,30 +22,33 @@ const role = 'operations-manager';
 const publicJwk = JSON.parse(fs.readFileSync('pki-config/provisioner/public_jwk.json', 'utf8')).public;
 
 describe('device replacement workflow', () => {
-  it('retires old device, creates replacement in quarantine, and audits', () => {
+  it('retires old device, creates replacement in quarantine, and audits', async () => {
     const siteId = crypto.randomUUID();
     const oldId = crypto.randomUUID();
     const newId = crypto.randomUUID();
-    upsertDevice({ deviceId: oldId, siteId, state: 'active' });
-    const beforeAudit = listAudit(1000).length;
-    const result = replaceDevice({ oldDeviceId: oldId, newDeviceId: newId, reason: 'SSD failure', actor: role });
+    await upsertDevice({ deviceId: oldId, siteId, state: 'active' });
+    const beforeAudit = (await listAudit(1000)).length;
+    const result = await replaceDevice({ oldDeviceId: oldId, newDeviceId: newId, reason: 'SSD failure', actor: role });
     assert.equal(result.old_device_id, oldId);
     assert.equal(result.new_device_id, newId);
     assert.equal(result.old_state, 'revoked');
-    assert.equal(getDevice(oldId).state, 'revoked');
-    assert.equal(getDevice(newId).state, 'quarantine');
-    assert.equal(getDevice(newId).site_id, siteId);
-    const audit = listAudit(1000).find(a => a.action === 'device.replaced');
+    assert.equal((await getDevice(oldId)).state, 'revoked');
+    assert.equal((await getDevice(newId)).state, 'quarantine');
+    assert.equal((await getDevice(newId)).site_id, siteId);
+    const audit = (await listAudit(1000)).find(a => a.action === 'device.replaced');
     assert.ok(audit, 'device.replaced audit entry present');
     assert.ok(audit.detail.includes(newId));
   });
 
-  it('rejects replacement when new device belongs to a different site', () => {
+  it('rejects replacement when new device belongs to a different site', async () => {
     const oldId = crypto.randomUUID();
     const newId = crypto.randomUUID();
-    upsertDevice({ deviceId: oldId, siteId: crypto.randomUUID(), state: 'active' });
-    upsertDevice({ deviceId: newId, siteId: crypto.randomUUID(), state: 'quarantine' });
-    assert.throws(() => replaceDevice({ oldDeviceId: oldId, newDeviceId: newId, reason: 'x', actor: role }), /different site/);
+    await upsertDevice({ deviceId: oldId, siteId: crypto.randomUUID(), state: 'active' });
+    await upsertDevice({ deviceId: newId, siteId: crypto.randomUUID(), state: 'quarantine' });
+    await assert.rejects(
+      replaceDevice({ oldDeviceId: oldId, newDeviceId: newId, reason: 'x', actor: role }),
+      /different site/
+    );
   });
 
   it('API route wires devices:write permission', async () => {
@@ -128,13 +131,13 @@ describe('step-ca revocation token', () => {
 });
 
 describe('revoked serial registry', () => {
-  it('records and looks up a revoked certificate serial', () => {
+  it('records and looks up a revoked certificate serial', async () => {
     const deviceId = crypto.randomUUID();
-    upsertDevice({ deviceId, siteId: crypto.randomUUID(), state: 'active' });
-    recordRevokedSerial('a1b2', deviceId, 'replace');
-    assert.ok(isSerialRevoked('a1b2'));
-    assert.ok(isSerialRevoked('0xA1B2'));
-    assert.ok(!isSerialRevoked('9999'));
+    await upsertDevice({ deviceId, siteId: crypto.randomUUID(), state: 'active' });
+    await recordRevokedSerial('a1b2', deviceId, 'replace');
+    assert.ok(await isSerialRevoked('a1b2'));
+    assert.ok(await isSerialRevoked('0xA1B2'));
+    assert.ok(!(await isSerialRevoked('9999')));
   });
 });
 

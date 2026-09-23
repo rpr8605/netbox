@@ -113,7 +113,7 @@ await app.register(actionRegistryRoutes);
 // design: there is no route that mutates audit_log, and the db triggers make
 // UPDATE/DELETE raise.
 app.get('/api/audit', { preHandler: requirePerm('audit:read', appendAudit) }, async (req) => {
-  return listAudit(Number(req.query?.limit ?? 100));
+  return await listAudit(Number(req.query?.limit ?? 100));
 });
 
 app.get('/api/health', async () => ({ ok: true, ca_fingerprint: root.fingerprint }));
@@ -130,7 +130,7 @@ app.get('/api/demo', async () => ({ demo: DEMO_MODE }));
 const SWEEP_MS = Number(process.env.SWEEP_INTERVAL_MS ?? 5000);
 setInterval(() => {
   sweepEscalations({ deliver: (c, a) => deliver(c, a, app.config ?? {}) }).catch(() => {});
-  sweepSupportSessions();
+  sweepSupportSessions().catch(() => {});
 }, SWEEP_MS);
 
 await app.listen({ port: PORT, host: BIND_HOST });

@@ -1,601 +1,501 @@
 // control-plane/src/db.js
-// Responsibility: SQLite persistence for the device registry, enrollment tokens,
-// and ingested events. Phase 1/2 uses SQLite for zero-ops local dev; the schema
-// is written so a later migration to PostgreSQL (spec §5) is a driver swap, not
-// a data-model change.
+// Responsibility: persistence for the device registry, enrollment tokens,
+// and ingested events. Supports PostgreSQL in production (spec §5) and
+// SQLite for zero-ops local dev / unit tests. The public API is async so
+// callers do not need to know which driver is underneath.
 // Called by: src/index.js at startup; src/routes/*.js for all reads/writes.
-import Database from 'better-sqlite3';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalSerial } from './ca.js';
+import { SQLITE_SCHEMA, PG_SCHEMA, PG_ALTER_COLUMNS, SQLITE_ALTER_COLUMNS } from './schema.js';
 
-const DB_PATH = process.env.DB_PATH ?? './data/beacon-relay.db';
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const DATABASE_URL = process.env.DATABASE_URL;
+const DB_PATH = process.env.DB_PATH ?? (process.env.NODE_ENV === 'test' ? ':memory:' : './data/beacon-relay.db');
+const isPg = !!DATABASE_URL;
 
-// The single process-wide SQLite handle (WAL + foreign keys on). Every route
-// shares this one connection; nothing opens its own.
-export const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let sqliteDb = null;
+let pgPool = null;
 
-// Guarded idempotent migrations: columns added after the initial topology work;
-// existing dev volumes get an ALTER TABLE ADD COLUMN once at startup. Wrapped
-// because an already-migrated DB would throw 'duplicate column name'.
-try { db.exec(`ALTER TABLE events ADD COLUMN channel_id TEXT;`); } catch { /* already present */ }
-try { db.exec(`ALTER TABLE channels ADD COLUMN site_id TEXT;`); } catch { /* already present */ }
-try { db.exec(`ALTER TABLE channels ADD COLUMN source_system TEXT;`); } catch { /* already present */ }
-try { db.exec(`ALTER TABLE channels ADD COLUMN destination_system TEXT;`); } catch { /* already present */ }
-try { db.exec(`ALTER TABLE support_sessions ADD COLUMN action_id TEXT;`); } catch { /* already present */ }
+// Backward-compat: tests that need direct driver access (e.g. the audit
+// tamper test) can destructure `db`. For Postgres this is the Pool; for
+// SQLite it is the better-sqlite3 Database instance.
+export let db = null;
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS devices (
-  device_id      TEXT PRIMARY KEY,
-  site_id        TEXT NOT NULL,
-  state          TEXT NOT NULL CHECK (state IN ('quarantine','active','revoked')),
-  cert_serial    TEXT,
-  cert_not_after TEXT,
-  device_key_fp  TEXT,                    -- sha256 of RSA public-key DER, pinned at enrollment
-  enrolled_at    TEXT,
-  last_seen_at   TEXT,
-  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Hardware lifecycle: record field swaps so a site's device history is
--- auditable and the old identity is never silently reused.
-CREATE TABLE IF NOT EXISTS device_replacements (
-  old_device_id TEXT NOT NULL REFERENCES devices(device_id),
-  new_device_id TEXT NOT NULL REFERENCES devices(device_id),
-  site_id       TEXT NOT NULL,
-  reason        TEXT,
-  replaced_at   TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (old_device_id, new_device_id)
-);
-
--- Revoked certificate serials: the authoritative step-ca revocation is
--- passive, so the control plane also records the serial of any cert revoked
--- by the swap workflow. deviceFromCert rejects these serials before any
--- DB device-state check, making the next connection attempt fail.
-CREATE TABLE IF NOT EXISTS revoked_serials (
-  serial      TEXT PRIMARY KEY,
-  device_id   TEXT NOT NULL REFERENCES devices(device_id),
-  source      TEXT NOT NULL,
-  revoked_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS sites (
-  site_id     TEXT PRIMARY KEY,
-  name        TEXT,
-  lat         REAL,                       -- geographic fleet map latitude
-  lng         REAL,                       -- geographic fleet map longitude
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS enrollment_tokens (
-  token_hash  TEXT PRIMARY KEY,
-  device_id   TEXT NOT NULL,
-  site_id     TEXT NOT NULL,
-  expires_at  TEXT NOT NULL,
-  used_at     TEXT,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS retrust_challenges (
-  challenge_hash TEXT PRIMARY KEY,
-  device_id      TEXT NOT NULL,
-  expires_at     TEXT NOT NULL,
-  used_at        TEXT,
-  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS events (
-  event_id    TEXT PRIMARY KEY,
-  device_id   TEXT NOT NULL REFERENCES devices(device_id),
-  site_id     TEXT NOT NULL,
-  occurred_at TEXT NOT NULL,
-  kind        TEXT NOT NULL,
-  service     TEXT,
-  tier        TEXT,
-  status      TEXT,
-  latency_ms  INTEGER,
-  confidence  TEXT,
-  freshness_s INTEGER,
-  phi_mode    INTEGER NOT NULL DEFAULT 0,
-  channel_id  TEXT,                      -- optional interface-engine channel tag (topology)
-  payload     TEXT NOT NULL,             -- full canonical JSON, metadata-only
-  received_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_events_device_time ON events(device_id, occurred_at DESC);
-
--- Interface channel registry: the stable mapping from a channel_id (what the
--- agent tags on check_results) to display name, engine, and the two graph
--- endpoints that turn a channel list into an edge list. Writes go through
--- routes/channels.js; reads happen here and in topology_view.js.
-CREATE TABLE IF NOT EXISTS channels (
-  channel_id          TEXT PRIMARY KEY,
-  display_name        TEXT NOT NULL,
-  engine              TEXT NOT NULL,
-  site_id             TEXT,               -- which site this edge belongs to
-  source_system       TEXT,               -- graph node at one end of the edge
-  destination_system  TEXT,               -- graph node at the other end of the edge
-  created_at          TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Append-only audit log (spec §5): every login, config change, software
--- update, access grant, and remote-support session. The immutability is
--- enforced by the DATABASE, not by policy — there are no UPDATE/DELETE
--- helpers for this table, and a trigger below makes any attempt raise.
-CREATE TABLE IF NOT EXISTS audit_log (
-  audit_id    TEXT PRIMARY KEY,
-  occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
-  actor       TEXT NOT NULL,
-  action      TEXT NOT NULL,
-  target      TEXT,
-  detail      TEXT
-);
-CREATE TRIGGER IF NOT EXISTS audit_log_no_update BEFORE UPDATE ON audit_log
-  BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
-CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log
-  BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
-
--- Alerting / escalation engine state.
-CREATE TABLE IF NOT EXISTS alert_rules (
-  rule_id      TEXT PRIMARY KEY,
-  severity     TEXT NOT NULL CHECK (severity IN ('P1','P2','P3')),
-  service      TEXT NOT NULL,
-  impact_stmt  TEXT NOT NULL,        -- plain language, never a port/protocol string
-  runbook_url  TEXT,
-  ack_window_s INTEGER NOT NULL DEFAULT 300,
-  maintenance_start TEXT,            -- ISO; when set, alerts in the window are suppressed
-  maintenance_end   TEXT
-);
-CREATE TABLE IF NOT EXISTS alert_contacts (
-  contact_id  TEXT PRIMARY KEY,
-  severity    TEXT NOT NULL,
-  tier        INTEGER NOT NULL,      -- 1 = first paged, 2 = escalated-to, ...
-  channel     TEXT NOT NULL,         -- sms | voice | email | slack | teams
-  address     TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS alerts (
-  alert_id    TEXT PRIMARY KEY,
-  rule_id     TEXT NOT NULL REFERENCES alert_rules(rule_id),
-  device_id   TEXT NOT NULL,
-  site_id     TEXT NOT NULL,
-  severity    TEXT NOT NULL,
-  impact_stmt TEXT NOT NULL,
-  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','acked','escalated','resolved','closed')),
-  ack_deadline TEXT NOT NULL,
-  acked_by    TEXT,
-  acked_at    TEXT,
-  current_tier INTEGER NOT NULL DEFAULT 1,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  escalated_at TEXT
-);
-
--- Troubleshooting memory (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2).
--- incident_signature is captured automatically when an alert opens.
--- resolution_record is filled by a human when the alert closes. Both are keyed
--- to alert_id because the alert row is the existing incident record.
-CREATE TABLE IF NOT EXISTS incident_signatures (
-  signature_id    TEXT PRIMARY KEY,
-  alert_id        TEXT NOT NULL UNIQUE REFERENCES alerts(alert_id),
-  site_id         TEXT NOT NULL,
-  service         TEXT NOT NULL,
-  tier_at_failure TEXT,
-  status_transition TEXT,
-  vendor          TEXT,
-  interface_engine TEXT,
-  co_occurring_signals TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
-  time_of_day_bucket TEXT NOT NULL,
-  opened_at       TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS resolution_records (
-  record_id       TEXT PRIMARY KEY,
-  alert_id        TEXT NOT NULL UNIQUE REFERENCES alerts(alert_id),
-  root_cause_category TEXT NOT NULL,
-  root_cause_note TEXT,
-  action_taken    TEXT NOT NULL,
-  time_to_resolve_min INTEGER,
-  closed_by       TEXT NOT NULL,
-  closed_at       TEXT NOT NULL
-);
-
--- OTA staged rollout policy (BUILD_SPEC §8.7). A version can have multiple
--- stage rows (dev, test, pilot, broad) but only one active rollout at a time
--- governs what devices see on /api/releases/latest.
-CREATE TABLE IF NOT EXISTS rollouts (
-  rollout_id  TEXT PRIMARY KEY,
-  version     TEXT NOT NULL,
-  stage       TEXT NOT NULL CHECK (stage IN ('dev','test','pilot','broad')),
-  percentage  INTEGER NOT NULL CHECK (percentage >= 0 AND percentage <= 100),
-  active      INTEGER NOT NULL DEFAULT 0,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Action Registry (CONTROLS_AND_IDENTITY §2): per-site whitelist of approved
--- action types. Each execution requires a live human-initiated session issued
--- through the remote-support session broker below.
-CREATE TABLE IF NOT EXISTS action_registry (
-  action_id     TEXT NOT NULL,
-  site_id       TEXT NOT NULL,
-  requires_role TEXT NOT NULL,
-  requires_session INTEGER NOT NULL DEFAULT 1,
-  max_scope     TEXT,
-  enabled       INTEGER NOT NULL DEFAULT 1,
-  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-  PRIMARY KEY (action_id, site_id)
-);
-
--- Remote-support session broker (spec §7): outbound-only, JIT token, every
--- session audit-logged. No standing SSH port, no shared credential.
--- action_id links a session to an Action Registry entry when the session was
--- issued for a specific approved action.
-CREATE TABLE IF NOT EXISTS support_sessions (
-  session_id  TEXT PRIMARY KEY,
-  device_id   TEXT NOT NULL,
-  requested_by TEXT NOT NULL,
-  token_hash  TEXT NOT NULL,
-  expires_at  TEXT NOT NULL,
-  action_id   TEXT,
-  opened_at   TEXT,
-  closed_at   TEXT,
-  state       TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','open','closed','expired')),
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-`);
-
-// Store a one-time enrollment token by HASH — the plaintext token is handed to
-// the operator/device and never persisted, so reading the DB can't mint enrollments.
-export function createEnrollmentToken({ tokenHash, deviceId, siteId, expiresAt }) {
-  db.prepare(
-    `INSERT INTO enrollment_tokens (token_hash, device_id, site_id, expires_at)
-     VALUES (?, ?, ?, ?)`
-  ).run(tokenHash, deviceId, siteId, expiresAt);
+if (isPg) {
+  const { Pool } = await import('pg');
+  pgPool = new Pool({ connectionString: DATABASE_URL });
+  db = pgPool;
+} else {
+  // SQLite is loaded lazily so the module still parses when pg is selected.
+  const { default: Database } = await import('better-sqlite3');
+  fs.mkdirSync(path.dirname(DB_PATH === ':memory:' ? './data/dummy' : DB_PATH), { recursive: true });
+  sqliteDb = new Database(DB_PATH);
+  sqliteDb.pragma('journal_mode = WAL');
+  sqliteDb.pragma('foreign_keys = ON');
+  db = sqliteDb;
 }
 
-// Redeem a one-time token: returns the row and burns it iff present, unexpired,
-// and unused, else null. Single-use is the enrollment anti-replay guarantee.
-export function consumeEnrollmentToken(tokenHash) {
-  // Atomic: mark used only if present, unexpired, and unused. Returns the row or null.
-  const row = db.prepare(
-    `SELECT * FROM enrollment_tokens
-     WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`
-  ).get(tokenHash);
+// SQLite uses ? placeholders; Postgres uses $n. Convert the SQLite-shaped
+// queries we write by hand so we do not have to maintain two copies of every
+// simple statement.
+function pgize(sql) {
+  let s = sql.replace(/datetime\('now'\)/gi, "NOW()::TEXT");
+  if (/^INSERT OR IGNORE INTO/i.test(s)) {
+    s = s.replace(/^INSERT OR IGNORE INTO/i, 'INSERT INTO') + ' ON CONFLICT DO NOTHING';
+  }
+  let n = 0;
+  s = s.replace(/\?/g, () => `$${++n}`);
+  return s;
+}
+
+async function exec(sqliteSql, pgSql) {
+  const sql = isPg ? (pgSql ?? pgize(sqliteSql)) : sqliteSql;
+  if (!sql) return;
+  if (isPg) {
+    await pgPool.query(sql);
+  } else {
+    sqliteDb.exec(sql);
+  }
+}
+
+async function run(sqliteSql, pgSql, params = []) {
+  if (isPg) {
+    const res = await pgPool.query(pgSql ?? pgize(sqliteSql), params);
+    return { changes: res.rowCount };
+  }
+  const info = sqliteDb.prepare(sqliteSql).run(...params);
+  return { changes: info.changes, lastInsertRowid: info.lastInsertRowid };
+}
+
+async function get(sqliteSql, pgSql, params = []) {
+  if (isPg) {
+    const res = await pgPool.query(pgSql ?? pgize(sqliteSql), params);
+    return res.rows[0];
+  }
+  return sqliteDb.prepare(sqliteSql).get(...params);
+}
+
+async function all(sqliteSql, pgSql, params = []) {
+  if (isPg) {
+    const res = await pgPool.query(pgSql ?? pgize(sqliteSql), params);
+    return res.rows;
+  }
+  return sqliteDb.prepare(sqliteSql).all(...params);
+}
+
+// ---------------------------------------------------------------------------
+// Schema
+// ---------------------------------------------------------------------------
+
+// Guarded idempotent migrations for columns added after the initial topology work.
+// Postgres path uses ADD COLUMN IF NOT EXISTS; SQLite path wraps ALTER in try/catch
+// because older versions do not support IF NOT EXISTS.
+// Serialize schema creation on Postgres so parallel test processes (node --test)
+// do not race on CREATE TABLE IF NOT EXISTS, which can raise 23505 even with
+// IF NOT EXISTS. The advisory lock is specific to Beacon Relay.
+const SCHEMA_LOCK_ID = 123456789;
+if (isPg) {
+  await pgPool.query(`SELECT pg_advisory_lock(${SCHEMA_LOCK_ID})`);
+  try {
+    await exec(null, PG_SCHEMA);
+    await exec(PG_ALTER_COLUMNS, null);
+  } finally {
+    await pgPool.query(`SELECT pg_advisory_unlock(${SCHEMA_LOCK_ID})`).catch(() => {});
+  }
+} else {
+  for (const col of SQLITE_ALTER_COLUMNS) {
+    try { sqliteDb.exec(col); } catch { /* already present */ }
+  }
+  sqliteDb.exec(SQLITE_SCHEMA);
+}
+
+// ---------------------------------------------------------------------------
+// Device registry
+// ---------------------------------------------------------------------------
+
+export async function createEnrollmentToken({ tokenHash, deviceId, siteId, expiresAt }) {
+  await run(
+    `INSERT INTO enrollment_tokens (token_hash, device_id, site_id, expires_at) VALUES (?, ?, ?, ?)`,
+    null,
+    [tokenHash, deviceId, siteId, expiresAt]
+  );
+}
+
+export async function consumeEnrollmentToken(tokenHash) {
+  const row = await get(
+    `SELECT * FROM enrollment_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`,
+    null,
+    [tokenHash]
+  );
   if (!row) return null;
-  db.prepare(`UPDATE enrollment_tokens SET used_at = datetime('now') WHERE token_hash = ?`)
-    .run(tokenHash);
+  await run(
+    `UPDATE enrollment_tokens SET used_at = datetime('now') WHERE token_hash = ?`,
+    null,
+    [tokenHash]
+  );
   return row;
 }
 
-// Insert or refresh a device's registry row; enrolled_at survives re-upserts
-// so re-provisioning can't erase enrollment history.
-export function upsertDevice({ deviceId, siteId, state, certSerial, certNotAfter }) {
-  db.prepare(
-    `INSERT INTO devices (device_id, site_id, state, cert_serial, cert_not_after, enrolled_at)
-     VALUES (@deviceId, @siteId, @state, @certSerial, @certNotAfter, datetime('now'))
-     ON CONFLICT(device_id) DO UPDATE SET
-       state = excluded.state,
-       cert_serial = excluded.cert_serial,
-       cert_not_after = excluded.cert_not_after,
-       enrolled_at = COALESCE(devices.enrolled_at, excluded.enrolled_at)`
-  ).run({ deviceId, siteId, state, certSerial, certNotAfter });
+export async function upsertDevice({ deviceId, siteId, state, certSerial, certNotAfter }) {
+  if (isPg) {
+    await pgPool.query(
+      `INSERT INTO devices (device_id, site_id, state, cert_serial, cert_not_after, enrolled_at)
+       VALUES ($1, $2, $3, $4, $5, NOW()::TEXT)
+       ON CONFLICT(device_id) DO UPDATE SET
+         state = EXCLUDED.state,
+         cert_serial = EXCLUDED.cert_serial,
+         cert_not_after = EXCLUDED.cert_not_after,
+         enrolled_at = COALESCE(devices.enrolled_at, EXCLUDED.enrolled_at)`,
+      [deviceId, siteId, state, certSerial ?? null, certNotAfter ?? null]
+    );
+  } else {
+    sqliteDb.prepare(
+      `INSERT INTO devices (device_id, site_id, state, cert_serial, cert_not_after, enrolled_at)
+       VALUES (@deviceId, @siteId, @state, @certSerial, @certNotAfter, datetime('now'))
+       ON CONFLICT(device_id) DO UPDATE SET
+         state = excluded.state,
+         cert_serial = excluded.cert_serial,
+         cert_not_after = excluded.cert_not_after,
+         enrolled_at = COALESCE(devices.enrolled_at, excluded.enrolled_at)`
+    ).run({ deviceId, siteId, state, certSerial, certNotAfter });
+  }
 }
 
-// Fetch one device row by id; undefined when the device is unknown.
-export function getDevice(deviceId) {
-  return db.prepare(`SELECT * FROM devices WHERE device_id = ?`).get(deviceId);
+export async function getDevice(deviceId) {
+  return get(`SELECT * FROM devices WHERE device_id = ?`, null, [deviceId]);
 }
 
-// Every registered device, newest first — the fleet-console list source.
-export function listDevices() {
-  return db.prepare(`SELECT * FROM devices ORDER BY created_at DESC`).all();
+export async function listDevices() {
+  return all(`SELECT * FROM devices ORDER BY created_at DESC`, null);
 }
 
-// Stamp last_seen_at on any authenticated contact from the device.
-export function touchDevice(deviceId) {
-  db.prepare(`UPDATE devices SET last_seen_at = datetime('now') WHERE device_id = ?`).run(deviceId);
+export async function touchDevice(deviceId) {
+  await run(`UPDATE devices SET last_seen_at = datetime('now') WHERE device_id = ?`, null, [deviceId]);
 }
 
-// Record the serial/expiry of the cert a device just presented — observed
-// truth from the TLS handshake, kept distinct from what we issued.
-// Store the canonical decimal serial so revocation lookups never depend on
-// whether Node reported it as hex or decimal.
-export function recordCertPresentation(deviceId, serial, notAfter) {
-  db.prepare(`UPDATE devices SET cert_serial = ?, cert_not_after = ? WHERE device_id = ?`)
-    .run(canonicalSerial(serial), notAfter, deviceId);
+export async function recordCertPresentation(deviceId, serial, notAfter) {
+  await run(
+    `UPDATE devices SET cert_serial = ?, cert_not_after = ? WHERE device_id = ?`,
+    null,
+    [canonicalSerial(serial), notAfter, deviceId]
+  );
 }
 
-// Record that a certificate serial has been revoked in step-ca. The local
-// serial registry is what lets deviceFromCert reject the next connection
-// immediately, even though step-ca's revocation is passive.
-export function recordRevokedSerial(serial, deviceId, source = 'replace') {
-  db.prepare(
-    `INSERT OR IGNORE INTO revoked_serials (serial, device_id, source, revoked_at)
-     VALUES (?, ?, ?, datetime('now'))`
-  ).run(canonicalSerial(serial), deviceId, source);
+export async function recordRevokedSerial(serial, deviceId, source = 'replace') {
+  await run(
+    `INSERT OR IGNORE INTO revoked_serials (serial, device_id, source, revoked_at) VALUES (?, ?, ?, datetime('now'))`,
+    `INSERT INTO revoked_serials (serial, device_id, source, revoked_at) VALUES ($1, $2, $3, NOW()::TEXT) ON CONFLICT DO NOTHING`,
+    [canonicalSerial(serial), deviceId, source]
+  );
 }
 
-// Check whether a certificate serial is in the local revocation registry.
-export function isSerialRevoked(serial) {
-  const row = db.prepare(`SELECT 1 FROM revoked_serials WHERE serial = ?`).get(canonicalSerial(serial));
+export async function isSerialRevoked(serial) {
+  const row = await get(`SELECT 1 FROM revoked_serials WHERE serial = ?`, null, [canonicalSerial(serial)]);
   return !!row;
 }
 
-// replaceDevice — field-swap workflow (hardware lifecycle, BUILD_SPEC §8.9).
-// Retires the old device, ensures the new device is assigned to the same site in
-// quarantine, records the replacement pair, and audits the action. This is the
-// no-hardware control-plane side of a physical swap; the physical steps live in
-// hardware/swap_procedure.md.
-export function replaceDevice({ oldDeviceId, newDeviceId, reason, actor }) {
-  const oldDevice = getDevice(oldDeviceId);
-  if (!oldDevice) throw new Error('old device not found');
-  let newDevice = getDevice(newDeviceId);
-  if (!newDevice) {
-    // Create the replacement device in quarantine at the same site if it has not
-    // yet checked in. It will be confirmed after physical install.
-    upsertDevice({ deviceId: newDeviceId, siteId: oldDevice.site_id, state: 'quarantine' });
-    newDevice = getDevice(newDeviceId);
-  }
-  if (newDevice.site_id !== oldDevice.site_id) {
-    throw new Error('replacement device belongs to a different site');
-  }
-  db.prepare(`UPDATE devices SET state = 'revoked' WHERE device_id = ?`).run(oldDeviceId);
-  db.prepare(
-    `INSERT OR REPLACE INTO device_replacements (old_device_id, new_device_id, site_id, reason)
-     VALUES (?, ?, ?, ?)`
-  ).run(oldDeviceId, newDeviceId, oldDevice.site_id, reason ?? null);
-  appendAudit({
-    auditId: crypto.randomUUID(),
-    actor: actor ?? 'system',
-    action: 'device.replaced',
-    target: oldDeviceId,
-    detail: JSON.stringify({ old_device_id: oldDeviceId, new_device_id: newDeviceId, site_id: oldDevice.site_id, reason: reason ?? '' }),
-  });
-  return {
-    old_device_id: oldDeviceId,
-    new_device_id: newDeviceId,
-    site_id: oldDevice.site_id,
-    old_state: 'revoked',
-    new_state: newDevice.state,
-  };
-}
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
 
-// Persist one canonical event; the full JSON is kept in payload (metadata-only)
-// so audit/replay never depends on column drift. channel_id rides in a real
-// column too, for the topology query.
-// Persist one canonical event; the full JSON is kept in payload (metadata-only)
-// so audit/replay never depends on column drift. channel_id rides in a real
-// column too, for the topology query.
-export function insertEvent(ev) {
-  db.prepare(
+export async function insertEvent(ev) {
+  await run(
     `INSERT INTO events (event_id, device_id, site_id, occurred_at, kind, service, tier,
                          status, latency_ms, confidence, freshness_s, phi_mode, channel_id, payload)
-     VALUES (@event_id, @device_id, @site_id, @occurred_at, @kind, @service, @tier_observed,
-             @status, @latency_ms, @confidence, @freshness_s, @phi_mode, @channel_id, @payload)`
-  ).run({
-    ...ev,
-    tier_observed: ev.tier_observed ?? null,
-    phi_mode: ev.phi_mode ? 1 : 0,
-    channel_id: ev.channel_id ?? null,
-    payload: JSON.stringify(ev),
-  });
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    null,
+    [
+      ev.event_id, ev.device_id, ev.site_id, ev.occurred_at, ev.kind, ev.service,
+      ev.tier_observed ?? null, ev.status, ev.latency_ms ?? null, ev.confidence ?? null,
+      ev.freshness_s ?? null, ev.phi_mode ? 1 : 0, ev.channel_id ?? null, JSON.stringify(ev),
+    ]
+  );
 }
 
-// Recent events for one device, newest first.
-export function listEvents(deviceId, limit = 50) {
-  return db.prepare(
-    `SELECT * FROM events WHERE device_id = ? ORDER BY occurred_at DESC LIMIT ?`
-  ).all(deviceId, limit);
+export async function listEvents(deviceId, limit = 50) {
+  return all(
+    `SELECT * FROM events WHERE device_id = ? ORDER BY occurred_at DESC LIMIT ?`,
+    null,
+    [deviceId, limit]
+  );
 }
 
-// --- sites (fleet map metadata) ---------------------------------------------
-// upsertSite: create or update a site's display name and map coordinates.
-// Called when an enrollment token is created with location data, or from the
-// console when an operator edits a site.
-export function upsertSite({ siteId, name = null, lat = null, lng = null }) {
-  db.prepare(
-    `INSERT INTO sites (site_id, name, lat, lng)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(site_id) DO UPDATE SET
-       name = excluded.name,
-       lat = excluded.lat,
-       lng = excluded.lng`
-  ).run(siteId, name, lat, lng);
+export async function listEventsBySite(siteId, limit = 200) {
+  return all(
+    `SELECT * FROM events WHERE site_id = ? ORDER BY occurred_at DESC LIMIT ?`,
+    null,
+    [siteId, limit]
+  );
 }
 
-// getSite: one site record, or undefined.
-export function getSite(siteId) {
-  return db.prepare(`SELECT * FROM sites WHERE site_id = ?`).get(siteId);
+// ---------------------------------------------------------------------------
+// Sites
+// ---------------------------------------------------------------------------
+
+export async function upsertSite({ siteId, name = null, lat = null, lng = null }) {
+  if (isPg) {
+    await pgPool.query(
+      `INSERT INTO sites (site_id, name, lat, lng) VALUES ($1, $2, $3, $4)
+       ON CONFLICT(site_id) DO UPDATE SET
+         name = EXCLUDED.name,
+         lat = EXCLUDED.lat,
+         lng = EXCLUDED.lng`,
+      [siteId, name, lat, lng]
+    );
+  } else {
+    sqliteDb.prepare(
+      `INSERT INTO sites (site_id, name, lat, lng) VALUES (?, ?, ?, ?)
+       ON CONFLICT(site_id) DO UPDATE SET
+         name = excluded.name,
+         lat = excluded.lat,
+         lng = excluded.lng`
+    ).run(siteId, name, lat, lng);
+  }
 }
 
-// listSites: all known sites.
-export function listSites() {
-  return db.prepare(`SELECT * FROM sites ORDER BY created_at DESC`).all();
+export async function getSite(siteId) {
+  return get(`SELECT * FROM sites WHERE site_id = ?`, null, [siteId]);
 }
 
-// Pin a device's public-key fingerprint at enrollment redeem. The IS-NULL
-// guard is deliberate: re-keying must go through re-enrollment, never an UPDATE.
-export function setDeviceKeyFp(deviceId, fp) {
-  // Only pins when unset — the enrollment-time key must never be re-keyed here.
-  db.prepare(`UPDATE devices SET device_key_fp = ? WHERE device_id = ? AND device_key_fp IS NULL`)
-    .run(fp, deviceId);
+export async function listSites() {
+  return all(`SELECT * FROM sites ORDER BY created_at DESC`, null);
 }
 
-// Issue a single-use re-trust challenge with a 60-second TTL.
-export function createRetrustChallenge({ challengeHash, deviceId }) {
+export async function setDeviceKeyFp(deviceId, fp) {
+  await run(
+    `UPDATE devices SET device_key_fp = ? WHERE device_id = ? AND device_key_fp IS NULL`,
+    null,
+    [fp, deviceId]
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Retrust challenges
+// ---------------------------------------------------------------------------
+
+export async function createRetrustChallenge({ challengeHash, deviceId }) {
   const expiresAt = new Date(Date.now() + 60_000).toISOString().replace('T', ' ').slice(0, 19);
-  db.prepare(
-    `INSERT INTO retrust_challenges (challenge_hash, device_id, expires_at) VALUES (?, ?, ?)`
-  ).run(challengeHash, deviceId, expiresAt);
+  await run(
+    `INSERT INTO retrust_challenges (challenge_hash, device_id, expires_at) VALUES (?, ?, ?)`,
+    null,
+    [challengeHash, deviceId, expiresAt]
+  );
 }
 
-// Burn a re-trust challenge: returns the row iff it matches this device, is
-// unexpired and unused, else null — single-use is the anti-replay guarantee.
-export function consumeRetrustChallenge(challengeHash, deviceId) {
-  const row = db.prepare(
+export async function consumeRetrustChallenge(challengeHash, deviceId) {
+  const row = await get(
     `SELECT * FROM retrust_challenges
-     WHERE challenge_hash = ? AND device_id = ? AND used_at IS NULL AND expires_at > datetime('now')`
-  ).get(challengeHash, deviceId);
+     WHERE challenge_hash = ? AND device_id = ? AND used_at IS NULL AND expires_at > datetime('now')`,
+    null,
+    [challengeHash, deviceId]
+  );
   if (!row) return null;
-  db.prepare(`UPDATE retrust_challenges SET used_at = datetime('now') WHERE challenge_hash = ?`)
-    .run(challengeHash);
+  await run(
+    `UPDATE retrust_challenges SET used_at = datetime('now') WHERE challenge_hash = ?`,
+    null,
+    [challengeHash]
+  );
   return row;
 }
 
-// Events for one site (all devices at the site), newest first — the topology
-// view groups by channel_id over this set.
-export function listEventsBySite(siteId, limit = 200) {
-  return db.prepare(
-    `SELECT * FROM events WHERE site_id = ? ORDER BY occurred_at DESC LIMIT ?`
-  ).all(siteId, limit);
+// ---------------------------------------------------------------------------
+// Channels
+// ---------------------------------------------------------------------------
+
+export async function upsertChannel({ channelId, displayName, engine, siteId = null, sourceSystem = null, destinationSystem = null }) {
+  if (isPg) {
+    await pgPool.query(
+      `INSERT INTO channels (channel_id, display_name, engine, site_id, source_system, destination_system)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT(channel_id) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         engine = EXCLUDED.engine,
+         site_id = EXCLUDED.site_id,
+         source_system = EXCLUDED.source_system,
+         destination_system = EXCLUDED.destination_system`,
+      [channelId, displayName, engine, siteId, sourceSystem, destinationSystem]
+    );
+  } else {
+    sqliteDb.prepare(
+      `INSERT INTO channels (channel_id, display_name, engine, site_id, source_system, destination_system)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(channel_id) DO UPDATE SET
+         display_name = excluded.display_name,
+         engine = excluded.engine,
+         site_id = excluded.site_id,
+         source_system = excluded.source_system,
+         destination_system = excluded.destination_system`
+    ).run(channelId, displayName, engine, siteId, sourceSystem, destinationSystem);
+  }
 }
 
-// --- channel registry (topology) -------------------------------------------
-// upsertChannel: register (or rename) a channel_id -> readable name/engine plus
-// graph endpoints. Idempotent — re-registering the same id updates all mutable
-// fields. site_id/source_system/destination_system are optional at insert time
-// so manual operator registration stays simple; the Mirth reader fills them in
-// when it discovers them.
-export function upsertChannel({ channelId, displayName, engine, siteId = null, sourceSystem = null, destinationSystem = null }) {
-  db.prepare(
-    `INSERT INTO channels (channel_id, display_name, engine, site_id, source_system, destination_system)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(channel_id) DO UPDATE SET
-       display_name = excluded.display_name,
-       engine = excluded.engine,
-       site_id = excluded.site_id,
-       source_system = excluded.source_system,
-       destination_system = excluded.destination_system`
-  ).run(channelId, displayName, engine, siteId, sourceSystem, destinationSystem);
+export async function getChannel(channelId) {
+  return get(`SELECT * FROM channels WHERE channel_id = ?`, null, [channelId]);
 }
 
-// getChannel: look up a channel_id; undefined when unregistered. Unregistered
-// ids still work end-to-end — the console shows the raw id with an
-// "unregistered" hint rather than failing.
-export function getChannel(channelId) {
-  return db.prepare(`SELECT * FROM channels WHERE channel_id = ?`).get(channelId);
+export async function listChannels() {
+  return all(`SELECT * FROM channels ORDER BY created_at DESC`, null);
 }
 
-// listChannels: enumerate the registry (console).
-export function listChannels() {
-  return db.prepare(`SELECT * FROM channels ORDER BY created_at DESC`).all();
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+export async function appendAudit({ auditId, actor, action, target = null, detail = null }) {
+  await run(
+    `INSERT INTO audit_log (audit_id, actor, action, target, detail) VALUES (?, ?, ?, ?, ?)`,
+    null,
+    [auditId, actor, action, target, detail]
+  );
 }
 
-// --- audit log (append-only) ------------------------------------------------
-// appendAudit: the ONLY write path for audit_log. There is intentionally no
-// updateAudit/deleteAudit — the triggers in the schema enforce immutability
-// at the database level so a caller can't "fix" history even if it wants to.
-export function appendAudit({ auditId, actor, action, target = null, detail = null }) {
-  db.prepare(
-    `INSERT INTO audit_log (audit_id, actor, action, target, detail) VALUES (?, ?, ?, ?, ?)`
-  ).run(auditId, actor, action, target, detail);
+export async function listAudit(limit = 100) {
+  return all(
+    `SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT ?`,
+    null,
+    [limit]
+  );
 }
 
-// listAudit: read the audit trail, newest first. Read-only by design.
-export function listAudit(limit = 100) {
-  return db.prepare(`SELECT * FROM audit_log ORDER BY occurred_at DESC LIMIT ?`).all(limit);
-}
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
 
-// --- alert rules / contacts / alerts ----------------------------------------
-// createAlertRule: register an alert rule. impact_stmt is validated upstream
-// (alerting.js rejects transport jargon); this layer only persists.
-export function createAlertRule(r) {
-  db.prepare(
+export async function createAlertRule(r) {
+  await run(
     `INSERT INTO alert_rules (rule_id, severity, service, impact_stmt, runbook_url, ack_window_s, maintenance_start, maintenance_end)
-     VALUES (@rule_id, @severity, @service, @impact_stmt, @runbook_url, @ack_window_s, @maintenance_start, @maintenance_end)`
-  ).run({ runbook_url: null, ack_window_s: 300, maintenance_start: null, maintenance_end: null, ...r });
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    null,
+    [
+      r.rule_id, r.severity, r.service, r.impact_stmt,
+      r.runbook_url ?? null, r.ack_window_s ?? 300,
+      r.maintenance_start ?? null, r.maintenance_end ?? null,
+    ]
+  );
 }
-// listAlertRules: all registered alert rules (console + engine).
-export function listAlertRules() { return db.prepare(`SELECT * FROM alert_rules`).all(); }
-// getAlertRule: one rule by id, undefined when unknown.
-export function getAlertRule(ruleId) { return db.prepare(`SELECT * FROM alert_rules WHERE rule_id = ?`).get(ruleId); }
 
-// createAlertContact: add an escalation contact at a severity+tier.
-export function createAlertContact(c) {
-  db.prepare(`INSERT INTO alert_contacts (contact_id, severity, tier, channel, address) VALUES (?, ?, ?, ?, ?)`)
-    .run(c.contact_id, c.severity, c.tier, c.channel, c.address);
+export async function listAlertRules() {
+  return all(`SELECT * FROM alert_rules`, null);
 }
-// contactsFor: the contacts to page for a severity at a given escalation tier.
-export function contactsFor(severity, tier) {
-  return db.prepare(`SELECT * FROM alert_contacts WHERE severity = ? AND tier = ? ORDER BY contact_id`).all(severity, tier);
+
+export async function getAlertRule(ruleId) {
+  return get(`SELECT * FROM alert_rules WHERE rule_id = ?`, null, [ruleId]);
 }
-// maxTier: highest configured tier for a severity (0 = no contacts).
-export function maxTier(severity) {
-  const r = db.prepare(`SELECT MAX(tier) AS t FROM alert_contacts WHERE severity = ?`).get(severity);
+
+export async function createAlertContact(c) {
+  await run(
+    `INSERT INTO alert_contacts (contact_id, severity, tier, channel, address) VALUES (?, ?, ?, ?, ?)`,
+    null,
+    [c.contact_id, c.severity, c.tier, c.channel, c.address]
+  );
+}
+
+export async function contactsFor(severity, tier) {
+  return all(
+    `SELECT * FROM alert_contacts WHERE severity = ? AND tier = ? ORDER BY contact_id`,
+    null,
+    [severity, tier]
+  );
+}
+
+export async function maxTier(severity) {
+  const r = await get(
+    `SELECT MAX(tier) AS t FROM alert_contacts WHERE severity = ?`,
+    null,
+    [severity]
+  );
   return r?.t ?? 0;
 }
 
-// createAlert: open a new alert with its ack deadline; starts at tier 1.
-export function createAlert(a) {
-  db.prepare(
+export async function createAlert(a) {
+  await run(
     `INSERT INTO alerts (alert_id, rule_id, device_id, site_id, severity, impact_stmt, status, ack_deadline, current_tier)
-     VALUES (@alert_id, @rule_id, @device_id, @site_id, @severity, @impact_stmt, 'open', @ack_deadline, 1)`
-  ).run(a);
-}
-// getAlert: one alert by id.
-export function getAlert(alertId) { return db.prepare(`SELECT * FROM alerts WHERE alert_id = ?`).get(alertId); }
-// listAlerts: recent alerts, newest first.
-export function listAlerts(limit = 100) { return db.prepare(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?`).all(limit); }
-// ackAlert: mark an open alert acked by an actor (stops escalation).
-export function ackAlert(alertId, actor) {
-  db.prepare(`UPDATE alerts SET status='acked', acked_by=?, acked_at=datetime('now') WHERE alert_id=? AND status='open'`)
-    .run(actor, alertId);
-}
-// escalateAlert: move an alert to the next tier and stamp the escalation.
-export function escalateAlert(alertId, newTier) {
-  db.prepare(`UPDATE alerts SET status='escalated', current_tier=?, escalated_at=datetime('now') WHERE alert_id=?`)
-    .run(newTier, alertId);
-}
-// openUnackedPastDeadline: the escalation sweep's input — open alerts whose
-// ack window has lapsed.
-export function openUnackedPastDeadline(nowIso) {
-  return db.prepare(`SELECT * FROM alerts WHERE status='open' AND ack_deadline < ?`).all(nowIso);
-}
-// closeAlert: mark an alert closed and record resolution metadata. Used by the
-// close-incident UI flow (TOPOLOGY_AND_TROUBLESHOOTING_MEMORY.md §2).
-export function closeAlert(alertId) {
-  db.prepare(`UPDATE alerts SET status='closed' WHERE alert_id=?`).run(alertId);
+     VALUES (?, ?, ?, ?, ?, ?, 'open', ?, 1)`,
+    null,
+    [a.alert_id, a.rule_id, a.device_id, a.site_id, a.severity, a.impact_stmt, a.ack_deadline]
+  );
 }
 
-// --- incident signatures / resolution records (troubleshooting memory) -------
-export function createIncidentSignature(sig) {
-  db.prepare(
+export async function getAlert(alertId) {
+  return get(`SELECT * FROM alerts WHERE alert_id = ?`, null, [alertId]);
+}
+
+export async function listAlerts(limit = 100) {
+  return all(`SELECT * FROM alerts ORDER BY created_at DESC LIMIT ?`, null, [limit]);
+}
+
+export async function ackAlert(alertId, actor) {
+  await run(
+    `UPDATE alerts SET status='acked', acked_by=?, acked_at=datetime('now') WHERE alert_id=? AND status='open'`,
+    null,
+    [actor, alertId]
+  );
+}
+
+export async function escalateAlert(alertId, newTier) {
+  await run(
+    `UPDATE alerts SET status='escalated', current_tier=?, escalated_at=datetime('now') WHERE alert_id=?`,
+    null,
+    [newTier, alertId]
+  );
+}
+
+export async function openUnackedPastDeadline(nowIso) {
+  return all(
+    `SELECT * FROM alerts WHERE status='open' AND ack_deadline < ?`,
+    null,
+    [nowIso]
+  );
+}
+
+export async function closeAlert(alertId) {
+  await run(`UPDATE alerts SET status='closed' WHERE alert_id=?`, null, [alertId]);
+}
+
+// ---------------------------------------------------------------------------
+// Incident signatures / resolution records
+// ---------------------------------------------------------------------------
+
+export async function createIncidentSignature(sig) {
+  await run(
     `INSERT INTO incident_signatures (signature_id, alert_id, site_id, service, tier_at_failure,
       status_transition, vendor, interface_engine, co_occurring_signals, time_of_day_bucket, opened_at)
-     VALUES (@signature_id, @alert_id, @site_id, @service, @tier_at_failure, @status_transition,
-             @vendor, @interface_engine, @co_occurring_signals, @time_of_day_bucket, @opened_at)`
-  ).run({
-    signature_id: crypto.randomUUID(),
-    vendor: null,
-    interface_engine: null,
-    co_occurring_signals: '[]',
-    ...sig,
-  });
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    null,
+    [
+      sig.signature_id ?? crypto.randomUUID(), sig.alert_id, sig.site_id, sig.service,
+      sig.tier_at_failure ?? null, sig.status_transition, sig.vendor ?? null,
+      sig.interface_engine ?? null, sig.co_occurring_signals ?? '[]',
+      sig.time_of_day_bucket, sig.opened_at,
+    ]
+  );
 }
-export function getIncidentSignature(alertId) {
-  return db.prepare(`SELECT * FROM incident_signatures WHERE alert_id = ?`).get(alertId);
+
+export async function getIncidentSignature(alertId) {
+  return get(`SELECT * FROM incident_signatures WHERE alert_id = ?`, null, [alertId]);
 }
-export function createResolutionRecord(rec) {
-  db.prepare(
+
+export async function createResolutionRecord(rec) {
+  await run(
     `INSERT INTO resolution_records (record_id, alert_id, root_cause_category, root_cause_note,
                                      action_taken, time_to_resolve_min, closed_by, closed_at)
-     VALUES (@record_id, @alert_id, @root_cause_category, @root_cause_note, @action_taken,
-             @time_to_resolve_min, @closed_by, @closed_at)`
-  ).run({
-    record_id: crypto.randomUUID(),
-    root_cause_note: null,
-    time_to_resolve_min: null,
-    ...rec,
-  });
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    null,
+    [
+      rec.record_id ?? crypto.randomUUID(), rec.alert_id, rec.root_cause_category,
+      rec.root_cause_note ?? null, rec.action_taken, rec.time_to_resolve_min ?? null,
+      rec.closed_by, rec.closed_at,
+    ]
+  );
 }
-export function getResolutionRecord(alertId) {
-  return db.prepare(`SELECT * FROM resolution_records WHERE alert_id = ?`).get(alertId);
+
+export async function getResolutionRecord(alertId) {
+  return get(`SELECT * FROM resolution_records WHERE alert_id = ?`, null, [alertId]);
 }
-// allClosedIncidents: every closed alert with its signature + resolution, used
-// by the deterministic matching function.
-export function allClosedIncidents() {
-  return db.prepare(
+
+export async function allClosedIncidents() {
+  return all(
     `SELECT a.alert_id, a.site_id, a.device_id, a.severity, a.created_at,
             s.*, r.root_cause_category, r.root_cause_note, r.action_taken,
             r.time_to_resolve_min, r.closed_by, r.closed_at
@@ -603,15 +503,13 @@ export function allClosedIncidents() {
      LEFT JOIN incident_signatures s ON s.alert_id = a.alert_id
      LEFT JOIN resolution_records r ON r.alert_id = a.alert_id
      WHERE a.status = 'closed'
-     ORDER BY a.created_at DESC`
-  ).all();
+     ORDER BY a.created_at DESC`,
+    null
+  );
 }
 
-// captureIncidentSignature: compute and persist the signature the moment an
-// incident opens. Deterministic: only recorded facts from the latest events at
-// the site, no inferred prose.
-export function captureIncidentSignature({ alertId, siteId, service, vendor = 'unknown', openedAt }) {
-  const events = listEventsBySite(siteId, 500).filter(e => e.kind === 'check_result');
+export async function captureIncidentSignature({ alertId, siteId, service, vendor = 'unknown', openedAt }) {
+  const events = (await listEventsBySite(siteId, 500)).filter(e => e.kind === 'check_result');
   const byService = new Map();
   for (const ev of events) {
     if (!byService.has(ev.service)) byService.set(ev.service, ev);
@@ -632,13 +530,18 @@ export function captureIncidentSignature({ alertId, siteId, service, vendor = 'u
     if (st === 'degraded' || st === 'down') cooc.push(`${svc}:${st}`);
   }
 
-  const engineRow = db.prepare(`SELECT engine FROM channels WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`).get(siteId);
+  const engineRow = await get(
+    `SELECT engine FROM channels WHERE site_id = ? ORDER BY created_at DESC LIMIT 1`,
+    null,
+    [siteId]
+  );
   const interfaceEngine = engineRow?.engine ?? 'none';
 
   const hour = new Date(openedAt).getHours();
   const bucket = hour >= 6 && hour < 18 ? 'business-hours' : hour >= 18 && hour < 22 ? 'after-hours' : 'overnight';
 
-  createIncidentSignature({
+  await createIncidentSignature({
+    signature_id: crypto.randomUUID(),
     alert_id: alertId,
     site_id: siteId,
     service,
@@ -652,102 +555,179 @@ export function captureIncidentSignature({ alertId, siteId, service, vendor = 'u
   });
 }
 
-// --- OTA staged rollout -----------------------------------------------------
-// createRollout: register a stage row for a release version. Only one rollout
-// can be active at a time; activation is a separate, audited step.
-export function createRollout(r) {
+// ---------------------------------------------------------------------------
+// OTA staged rollout
+// ---------------------------------------------------------------------------
+
+export async function createRollout(r) {
   const id = r.rollout_id ?? crypto.randomUUID();
-  db.prepare(
-    `INSERT INTO rollouts (rollout_id, version, stage, percentage, active)
-     VALUES (@rollout_id, @version, @stage, @percentage, 0)`
-  ).run({ ...r, rollout_id: id, percentage: r.percentage ?? 100 });
+  await run(
+    `INSERT INTO rollouts (rollout_id, version, stage, percentage, active) VALUES (?, ?, ?, ?, 0)`,
+    null,
+    [id, r.version, r.stage, r.percentage ?? 100]
+  );
   return id;
 }
-// listRollouts: all rows, newest first.
-export function listRollouts(limit = 100) {
-  return db.prepare(`SELECT * FROM rollouts ORDER BY created_at DESC LIMIT ?`).all(limit);
-}
-// getActiveRollout: the single active policy row, if any.
-export function getActiveRollout() {
-  return db.prepare(`SELECT * FROM rollouts WHERE active = 1 ORDER BY updated_at DESC LIMIT 1`).get();
-}
-// activateRollout: make one row active and deactivate all others. Returns the
-// number of rows affected.
-export function activateRollout(rolloutId) {
-  db.prepare(`UPDATE rollouts SET active = 0 WHERE rollout_id != ?`).run(rolloutId);
-  const info = db.prepare(`UPDATE rollouts SET active = 1, updated_at = datetime('now') WHERE rollout_id = ?`).run(rolloutId);
-  return info.changes;
-}
-// deleteRollout: remove an inactive rollout row.
-export function deleteRollout(rolloutId) {
-  return db.prepare(`DELETE FROM rollouts WHERE rollout_id = ? AND active = 0`).run(rolloutId).changes;
+
+export async function listRollouts(limit = 100) {
+  return all(`SELECT * FROM rollouts ORDER BY created_at DESC LIMIT ?`, null, [limit]);
 }
 
-// deviceInRollout — deterministic, stable assignment of a device to a staged
-// percentage. Hashes device_id + version so the same device/version pair always
-// lands in the same bucket, but changing either changes the assignment. Returns
-// true when the resulting 0-99 value is less than the percentage.
+export async function getActiveRollout() {
+  return get(`SELECT * FROM rollouts WHERE active = 1 ORDER BY updated_at DESC LIMIT 1`, null);
+}
+
+export async function activateRollout(rolloutId) {
+  await run(`UPDATE rollouts SET active = 0 WHERE rollout_id != ?`, null, [rolloutId]);
+  const res = await run(
+    `UPDATE rollouts SET active = 1, updated_at = datetime('now') WHERE rollout_id = ?`,
+    null,
+    [rolloutId]
+  );
+  return res.changes;
+}
+
+export async function deleteRollout(rolloutId) {
+  const res = await run(
+    `DELETE FROM rollouts WHERE rollout_id = ? AND active = 0`,
+    null,
+    [rolloutId]
+  );
+  return res.changes;
+}
+
 export function deviceInRollout(deviceId, version, percentage) {
   const hash = crypto.createHash('sha256').update(`${deviceId}:${version}`).digest('hex');
   const bucket = parseInt(hash.slice(0, 8), 16) % 100;
   return bucket < percentage;
 }
 
-// offeredVersion — given a device_id and the latest published version, decide
-// whether the active staged rollout permits this device to see that version.
-// No active rollout means everyone sees the latest version (backward-compatible
-// with the pre-rollout path). This is the single policy gate used by
-// /api/releases/latest.
-export function offeredVersion(deviceId, latestVersion) {
+export async function offeredVersion(deviceId, latestVersion) {
   if (!latestVersion) return null;
-  const rollout = getActiveRollout();
+  const rollout = await getActiveRollout();
   if (!rollout) return latestVersion;
   if (deviceInRollout(deviceId, rollout.version, rollout.percentage)) return rollout.version;
   return null;
 }
 
-// --- Action Registry --------------------------------------------------------
-// createActionRegistryEntry: whitelist an action type for a site.
-export function createActionRegistryEntry(e) {
-  db.prepare(
+// ---------------------------------------------------------------------------
+// Action registry
+// ---------------------------------------------------------------------------
+
+export async function createActionRegistryEntry(e) {
+  await run(
     `INSERT INTO action_registry (action_id, site_id, requires_role, requires_session, max_scope, enabled)
-     VALUES (@action_id, @site_id, @requires_role, @requires_session, @max_scope, 1)`
-  ).run({ requires_session: 1, max_scope: null, ...e });
-}
-// listActionRegistryEntries: all approved actions for a site.
-export function listActionRegistryEntries(siteId) {
-  return db.prepare(`SELECT * FROM action_registry WHERE site_id = ? ORDER BY action_id`).all(siteId);
-}
-// getActionRegistryEntry: one entry by action+site.
-export function getActionRegistryEntry(actionId, siteId) {
-  return db.prepare(`SELECT * FROM action_registry WHERE action_id = ? AND site_id = ?`).get(actionId, siteId);
-}
-// setActionRegistryEnabled: flip an entry on/off without deleting it.
-export function setActionRegistryEnabled(actionId, siteId, enabled) {
-  return db.prepare(`UPDATE action_registry SET enabled = ? WHERE action_id = ? AND site_id = ?`).run(enabled ? 1 : 0, actionId, siteId).changes;
+     VALUES (?, ?, ?, ?, ?, 1)`,
+    null,
+    [e.action_id, e.site_id, e.requires_role, e.requires_session ?? 1, e.max_scope ?? null]
+  );
 }
 
-// --- remote support sessions ------------------------------------------------
-// createSupportSession: register a pending session with its JIT token hash.
-export function createSupportSession(s) {
-  db.prepare(
+export async function listActionRegistryEntries(siteId) {
+  return all(`SELECT * FROM action_registry WHERE site_id = ? ORDER BY action_id`, null, [siteId]);
+}
+
+export async function getActionRegistryEntry(actionId, siteId) {
+  return get(`SELECT * FROM action_registry WHERE action_id = ? AND site_id = ?`, null, [actionId, siteId]);
+}
+
+export async function setActionRegistryEnabled(actionId, siteId, enabled) {
+  const res = await run(
+    `UPDATE action_registry SET enabled = ? WHERE action_id = ? AND site_id = ?`,
+    null,
+    [enabled ? 1 : 0, actionId, siteId]
+  );
+  return res.changes;
+}
+
+// ---------------------------------------------------------------------------
+// Remote support sessions
+// ---------------------------------------------------------------------------
+
+export async function createSupportSession(s) {
+  await run(
     `INSERT INTO support_sessions (session_id, device_id, requested_by, token_hash, expires_at, action_id, state)
-     VALUES (@session_id, @device_id, @requested_by, @token_hash, @expires_at, @action_id, 'pending')`
-  ).run({ action_id: null, ...s });
+     VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+    null,
+    [s.session_id, s.device_id, s.requested_by, s.token_hash, s.expires_at, s.action_id ?? null]
+  );
 }
-// getSupportSession: one session by id.
-export function getSupportSession(sessionId) {
-  return db.prepare(`SELECT * FROM support_sessions WHERE session_id = ?`).get(sessionId);
+
+export async function getSupportSession(sessionId) {
+  return get(`SELECT * FROM support_sessions WHERE session_id = ?`, null, [sessionId]);
 }
-// openSupportSession: flip pending -> open (device picked up its token).
-export function openSupportSession(sessionId) {
-  db.prepare(`UPDATE support_sessions SET state='open', opened_at=datetime('now') WHERE session_id=? AND state='pending'`).run(sessionId);
+
+export async function openSupportSession(sessionId) {
+  await run(
+    `UPDATE support_sessions SET state='open', opened_at=datetime('now') WHERE session_id=? AND state='pending'`,
+    null,
+    [sessionId]
+  );
 }
-// closeSupportSession: flip to closed/expired with a timestamp.
-export function closeSupportSession(sessionId, state = 'closed') {
-  db.prepare(`UPDATE support_sessions SET state=?, closed_at=datetime('now') WHERE session_id=?`).run(state, sessionId);
+
+export async function closeSupportSession(sessionId, state = 'closed') {
+  await run(
+    `UPDATE support_sessions SET state=?, closed_at=datetime('now') WHERE session_id=?`,
+    null,
+    [state, sessionId]
+  );
 }
-// expiredSupportSessions: the session sweep's input — pending/open past TTL.
-export function expiredSupportSessions(nowIso) {
-  return db.prepare(`SELECT * FROM support_sessions WHERE state IN ('pending','open') AND expires_at < ?`).all(nowIso);
+
+export async function expiredSupportSessions(nowIso) {
+  return all(
+    `SELECT * FROM support_sessions WHERE state IN ('pending','open') AND expires_at < ?`,
+    null,
+    [nowIso]
+  );
+}
+
+export async function listPendingSupportSessions(deviceId) {
+  return all(
+    `SELECT * FROM support_sessions WHERE device_id = ? AND state = 'pending' AND expires_at > datetime('now')`,
+    null,
+    [deviceId]
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Device replacement
+// ---------------------------------------------------------------------------
+
+export async function replaceDevice({ oldDeviceId, newDeviceId, reason, actor }) {
+  const oldDevice = await getDevice(oldDeviceId);
+  if (!oldDevice) throw new Error('old device not found');
+  let newDevice = await getDevice(newDeviceId);
+  if (!newDevice) {
+    await upsertDevice({ deviceId: newDeviceId, siteId: oldDevice.site_id, state: 'quarantine' });
+    newDevice = await getDevice(newDeviceId);
+  }
+  if (newDevice.site_id !== oldDevice.site_id) {
+    throw new Error('replacement device belongs to a different site');
+  }
+  await run(`UPDATE devices SET state = 'revoked' WHERE device_id = ?`, null, [oldDeviceId]);
+  await run(
+    `INSERT OR REPLACE INTO device_replacements (old_device_id, new_device_id, site_id, reason, replaced_at)
+     VALUES (?, ?, ?, ?, datetime('now'))`,
+    `INSERT INTO device_replacements (old_device_id, new_device_id, site_id, reason, replaced_at)
+     VALUES ($1, $2, $3, $4, NOW()::TEXT)
+     ON CONFLICT (old_device_id, new_device_id) DO UPDATE SET
+       site_id = EXCLUDED.site_id,
+       reason = EXCLUDED.reason,
+       replaced_at = EXCLUDED.replaced_at`,
+    [oldDeviceId, newDeviceId, oldDevice.site_id, reason ?? null]
+  );
+  await appendAudit({
+    auditId: crypto.randomUUID(),
+    actor: actor ?? 'system',
+    action: 'device.replaced',
+    target: oldDeviceId,
+    detail: JSON.stringify({ old_device_id: oldDeviceId, new_device_id: newDeviceId, site_id: oldDevice.site_id, reason: reason ?? '' }),
+  });
+  return {
+    old_device_id: oldDeviceId,
+    new_device_id: newDeviceId,
+    site_id: oldDevice.site_id,
+    old_state: 'revoked',
+    new_state: newDevice.state,
+  };
 }

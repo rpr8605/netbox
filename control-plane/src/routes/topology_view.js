@@ -62,7 +62,7 @@ function timeInState(events, currentStatus) {
 export default async function topologyViewRoutes(app) {
   app.get('/api/sites/:id/full-status', async (req) => {
     const siteId = req.params.id;
-    const events = listEventsBySite(siteId, 500);
+    const events = await listEventsBySite(siteId, 500);
     const checkResults = events.filter(e => e.kind === 'check_result');
 
     // Latest status per critical service. A service with NO events is 'unknown'
@@ -90,9 +90,10 @@ export default async function topologyViewRoutes(app) {
     // Interface-engine channel topology: newest check_result per channel_id.
     const channelEvents = checkResults.filter(e => e.channel_id);
     const byChannel = latestPer(channelEvents, e => e.channel_id);
-    const channels = [...byChannel.entries()].map(([chId, ev]) => {
+    const channels = [];
+    for (const [chId, ev] of byChannel) {
       const p = JSON.parse(ev.payload ?? '{}');
-      const reg = getChannel(chId);
+      const reg = await getChannel(chId);
       const chEvents = channelEvents.filter(e => e.channel_id === chId);
       // The Mirth reader emits per-channel metadata (last message time, recent
       // error count) inside observed.channels. Match by name/channel_id.
@@ -100,7 +101,7 @@ export default async function topologyViewRoutes(app) {
       const observedChannel = observedChannels.find(
         c => c.name === chId || c.name === reg?.display_name || c.name === reg?.channel_id
       );
-      return {
+      channels.push({
         channel_id: chId,
         display_name: reg?.display_name ?? chId,
         engine: reg?.engine ?? 'unregistered',
@@ -113,8 +114,8 @@ export default async function topologyViewRoutes(app) {
         time_in_state_s: timeInState(chEvents, p.status ?? 'unknown'),
         last_message_time: observedChannel?.last_message_time ?? null,
         recent_error_count: observedChannel?.recent_error_count ?? null,
-      };
-    });
+      });
+    }
 
     // Co-occurring signals: every OTHER node (service or channel) at this site
     // currently degraded/down. Computed per node at render time by the client
@@ -153,16 +154,16 @@ export default async function topologyViewRoutes(app) {
     if (can(role, 'topology:rollup')) return;
     // customer-it-admin may see only their own site pin.
     if (role === 'customer-it-admin' && requestedSite) return;
-    appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
+    await appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
     return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks fleet map access` });
   } }, async (req) => {
     const role = req.query?.role ?? req.body?.role ?? null;
     const requestedSite = req.query?.site_id ?? null;
     const sites = [];
-    for (const site of listSites()) {
+    for (const site of await listSites()) {
       if (role === 'customer-it-admin' && site.site_id !== requestedSite) continue;
       // Overall site status = worst latest status among critical services at this site.
-      const events = listEventsBySite(site.site_id, 500);
+      const events = await listEventsBySite(site.site_id, 500);
       const checkResults = events.filter(e => e.kind === 'check_result');
       const byService = latestPer(checkResults, e => e.service);
       const statuses = CRITICAL_SERVICES.map(svc => {

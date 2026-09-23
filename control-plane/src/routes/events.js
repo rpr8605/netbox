@@ -27,18 +27,18 @@ const ALLOWED_BY_STATE = {
   active: new Set(['check_result', 'hl7_metadata', 'heartbeat', 'update_event', 'security_signal']),
 };
 
-function deviceFromCert(req, reply) {
+async function deviceFromCert(req, reply) {
   const cert = req.socket.getPeerCertificate();
   if (!req.socket.authorized || !cert?.subject?.CN) {
     reply.code(401).send({ error: 'valid client certificate required' });
     return null;
   }
   const serial = canonicalSerial(cert.serialNumber);
-  if (isSerialRevoked(serial)) {
+  if (await isSerialRevoked(serial)) {
     reply.code(403).send({ error: 'certificate revoked' });
     return null;
   }
-  const device = getDevice(cert.subject.CN);
+  const device = await getDevice(cert.subject.CN);
   if (!device) {
     reply.code(403).send({ error: 'certificate valid but device not registered' });
     return null;
@@ -50,21 +50,21 @@ function deviceFromCert(req, reply) {
   // Record the presented certificate's identity — the quarantine-release
   // confirmation (routes/devices.js) requires proof a valid cert was presented.
   if (device.cert_serial !== serial) {
-    recordCertPresentation(device.device_id, serial, cert.valid_to ?? null);
+    await recordCertPresentation(device.device_id, serial, cert.valid_to ?? null);
   }
   return device;
 }
 
 export default async function eventRoutes(app) {
   app.post('/api/heartbeat', async (req, reply) => {
-    const device = deviceFromCert(req, reply);
+    const device = await deviceFromCert(req, reply);
     if (!device) return;
-    touchDevice(device.device_id);
+    await touchDevice(device.device_id);
     return { device_id: device.device_id, state: device.state, server_time: new Date().toISOString() };
   });
 
   app.post('/api/events', async (req, reply) => {
-    const device = deviceFromCert(req, reply);
+    const device = await deviceFromCert(req, reply);
     if (!device) return;
 
     const ev = req.body;
@@ -85,8 +85,8 @@ export default async function eventRoutes(app) {
       return reply.code(403).send({ error: `device in ${device.state}: event kind '${ev.kind}' not permitted` });
     }
 
-    insertEvent(ev);
-    touchDevice(device.device_id);
+    await insertEvent(ev);
+    await touchDevice(device.device_id);
     return reply.code(202).send({ accepted: true, event_id: ev.event_id });
   });
 }

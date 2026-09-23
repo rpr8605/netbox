@@ -179,7 +179,7 @@ async function partC() {
   const tmpDb = path.join(os.tmpdir(), `beacon-relay-audit-test-${crypto.randomUUID()}.db`);
   process.env.DB_PATH = tmpDb;
   const { db, appendAudit } = await import('../control-plane/src/db.js');
-  appendAudit({ auditId: 'tamper-target', actor: 'test', action: 'test.entry' });
+  await appendAudit({ auditId: 'tamper-target', actor: 'test', action: 'test.entry' });
   try { db.prepare(`UPDATE audit_log SET action='tampered' WHERE audit_id='tamper-target'`).run(); } catch { updateThrew = true; }
   try { db.prepare(`DELETE FROM audit_log WHERE audit_id='tamper-target'`).run(); } catch { deleteThrew = true; }
   const intact = db.prepare(`SELECT action FROM audit_log WHERE audit_id='tamper-target'`).get()?.action === 'test.entry';

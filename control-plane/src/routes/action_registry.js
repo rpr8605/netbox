@@ -37,8 +37,8 @@ export default async function actionRegistryRoutes(app) {
     if (!ROLE_RANK.hasOwnProperty(requires_role)) {
       return reply.code(400).send({ error: `unknown role ${requires_role}` });
     }
-    createActionRegistryEntry({ action_id, site_id, requires_role, max_scope });
-    appendAudit({
+    await createActionRegistryEntry({ action_id, site_id, requires_role, max_scope });
+    await appendAudit({
       auditId: crypto.randomUUID(), actor: req.body?.actor ?? req.query?.role ?? 'operations-manager',
       action: 'action_registry.created', target: `${site_id}:${action_id}`,
       detail: `requires_role=${requires_role} session=true`,
@@ -48,7 +48,7 @@ export default async function actionRegistryRoutes(app) {
 
   // List approved actions for a site.
   app.get('/api/action-registry/:siteId', { preHandler: requirePerm('action_registry:read', appendAudit) }, async (req) => {
-    return { site_id: req.params.siteId, actions: listActionRegistryEntries(req.params.siteId) };
+    return { site_id: req.params.siteId, actions: await listActionRegistryEntries(req.params.siteId) };
   });
 
   // Request execution of an approved action. This creates a remote-support
@@ -62,9 +62,9 @@ export default async function actionRegistryRoutes(app) {
     if (!action_id || !site_id || !device_id || !requested_by) {
       return reply.code(400).send({ error: 'action_id, site_id, device_id, requested_by required' });
     }
-    const entry = getActionRegistryEntry(action_id, site_id);
+    const entry = await getActionRegistryEntry(action_id, site_id);
     if (!entry) {
-      appendAudit({
+      await appendAudit({
         auditId: crypto.randomUUID(), actor: requesterRole,
         action: 'action_registry.execute_denied', target: `${site_id}:${action_id}`,
         detail: 'action not registered for site',
@@ -72,7 +72,7 @@ export default async function actionRegistryRoutes(app) {
       return reply.code(403).send({ error: 'action not registered for this site' });
     }
     if (!entry.enabled) {
-      appendAudit({
+      await appendAudit({
         auditId: crypto.randomUUID(), actor: requesterRole,
         action: 'action_registry.execute_denied', target: `${site_id}:${action_id}`,
         detail: 'action disabled',
@@ -80,7 +80,7 @@ export default async function actionRegistryRoutes(app) {
       return reply.code(403).send({ error: 'action is disabled' });
     }
     if (!roleMeets(requesterRole, entry.requires_role)) {
-      appendAudit({
+      await appendAudit({
         auditId: crypto.randomUUID(), actor: requesterRole,
         action: 'action_registry.execute_denied', target: `${site_id}:${action_id}`,
         detail: `requires ${entry.requires_role}`,
@@ -92,11 +92,11 @@ export default async function actionRegistryRoutes(app) {
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + SESSION_TTL_S * 1000).toISOString().replace('T', ' ').slice(0, 19);
-    createSupportSession({
+    await createSupportSession({
       session_id: sessionId, device_id, requested_by, token_hash: tokenHash, expires_at: expiresAt,
       action_id,
     });
-    appendAudit({
+    await appendAudit({
       auditId: crypto.randomUUID(), actor: requested_by,
       action: 'action_registry.executed', target: `${site_id}:${action_id}`,
       detail: `device=${device_id} session=${sessionId}`,

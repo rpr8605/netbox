@@ -58,8 +58,8 @@ export function scoreSignature(newSig, past) {
 // findSimilarIncidents — ranked list of closed past incidents for a new
 // signature. Includes a link (alert_id) to each matched incident so a human can
 // verify. Returns [] when nothing clears the threshold (cold-start honesty).
-export function findSimilarIncidents(newSig, { threshold = 4, topN = 5, excludeAlertId = null } = {}) {
-  const past = allClosedIncidents().filter(p => p.alert_id !== excludeAlertId);
+export async function findSimilarIncidents(newSig, { threshold = 4, topN = 5, excludeAlertId = null } = {}) {
+  const past = (await allClosedIncidents()).filter(p => p.alert_id !== excludeAlertId);
   const scored = past
     .map(p => ({ ...p, ...scoreSignature(newSig, p) }))
     .filter(p => p.score >= threshold)

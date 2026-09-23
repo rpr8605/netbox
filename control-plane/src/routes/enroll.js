@@ -27,15 +27,15 @@ export default async function enrollRoutes(app) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + ttl_minutes * 60_000)
       .toISOString().replace('T', ' ').slice(0, 19);
-    createEnrollmentToken({ tokenHash, deviceId: device_id, siteId: site_id, expiresAt });
+    await createEnrollmentToken({ tokenHash, deviceId: device_id, siteId: site_id, expiresAt });
     // Register the device in quarantine NOW — before any cert exists. A device
     // that shows up with a valid cert but no registry row is refused later;
     // quarantine-by-default is the safety property (spec §2).
-    upsertDevice({ deviceId: device_id, siteId: site_id, state: 'quarantine' });
+    await upsertDevice({ deviceId: device_id, siteId: site_id, state: 'quarantine' });
     // Optional site metadata for the geographic fleet map (TOPOLOGY_…_MEMORY §1).
     // Lat/lng are optional at enrollment time; the console can update them later.
     if (name != null || lat != null || lng != null) {
-      upsertSite({ siteId: site_id, name, lat, lng });
+      await upsertSite({ siteId: site_id, name, lat, lng });
     }
     return { device_id, site_id, enrollment_token: token, expires_at: expiresAt };
   });
@@ -48,7 +48,7 @@ export default async function enrollRoutes(app) {
     if (!enrollment_token) return reply.code(400).send({ error: 'enrollment_token required' });
 
     const tokenHash = crypto.createHash('sha256').update(enrollment_token).digest('hex');
-    const row = consumeEnrollmentToken(tokenHash);
+    const row = await consumeEnrollmentToken(tokenHash);
     if (!row) {
       // Deliberately vague: don't let an oracle distinguish expired vs never-existed.
       return reply.code(403).send({ error: 'invalid enrollment token' });
@@ -57,7 +57,7 @@ export default async function enrollRoutes(app) {
     if (public_key_pem) {
       try {
         const fp = publicKeyFingerprint(public_key_pem);
-        setDeviceKeyFp(row.device_id, fp);
+        await setDeviceKeyFp(row.device_id, fp);
       } catch {
         return reply.code(400).send({ error: 'malformed public_key_pem' });
       }

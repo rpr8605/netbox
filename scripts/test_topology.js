@@ -36,40 +36,40 @@ describe('channel_id optional', () => {
 });
 
 describe('channel registry + topology', () => {
-  it('register + getChannel carries source_system/destination_system', () => {
-    upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
-    const reg = getChannel('adt-to-lab');
+  it('register + getChannel carries source_system/destination_system', async () => {
+    await upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
+    const reg = await getChannel('adt-to-lab');
     assert.equal(reg.display_name, 'ADT -> Lab');
     assert.equal(reg.source_system, 'ADT');
     assert.equal(reg.destination_system, 'Lab');
   });
-  it('topology groups newest-per-channel, unregistered shows raw id', () => {
+  it('topology groups newest-per-channel, unregistered shows raw id', async () => {
     const deviceId = crypto.randomUUID(); const siteId = crypto.randomUUID();
-    upsertDevice({ deviceId, siteId, state: 'active' });
-    insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
+    await upsertDevice({ deviceId, siteId, state: 'active' });
+    await insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
                   occurred_at: new Date().toISOString(), kind: 'check_result', service: 'adt',
                   status: 'degraded', latency_ms: 1, confidence: 'high', freshness_s: 0,
                   channel_id: 'adt-to-lab', phi_mode: false, payload: '', detail: 'degraded', observed: {} });
-    insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
+    await insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
                   occurred_at: new Date().toISOString(), kind: 'check_result', service: 'adt',
                   status: 'active', latency_ms: 1, confidence: 'high', freshness_s: 0,
                   channel_id: 'oru-result', phi_mode: false, payload: '', detail: 'active', observed: {} });
-    const evs = listEventsBySite(siteId, 50);
+    const evs = await listEventsBySite(siteId, 50);
     const grouped = new Map();
     for (const ev of evs) { const k = ev.channel_id; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k).push(ev); }
-    const topo = [...grouped.keys()].map(k => {
-      const reg = getChannel(k);
-      const rows = grouped.get(k);
+    const topo = [];
+    for (const [k, rows] of grouped) {
+      const reg = await getChannel(k);
       const p = JSON.parse(rows[0].payload ?? '{}');
-      return {
+      topo.push({
         channel_id: k,
         display_name: reg?.display_name ?? k,
         engine: reg?.engine ?? 'unregistered',
         source_system: reg?.source_system ?? null,
         destination_system: reg?.destination_system ?? null,
         newest_status: p.status ?? 'unknown',
-      };
-    });
+      });
+    }
     assert.ok(topo.some(t => t.channel_id === 'adt-to-lab' && t.display_name === 'ADT -> Lab' && t.source_system === 'ADT' && t.destination_system === 'Lab'));
     assert.ok(topo.some(t => t.channel_id === 'oru-result' && t.engine === 'unregistered' && t.source_system === null && t.destination_system === null));
   });
@@ -90,15 +90,15 @@ describe('full-status detail panel', () => {
   it('surfaces last_message_time and recent_error_count from the Mirth reader', async () => {
     const siteId = crypto.randomUUID();
     const deviceId = crypto.randomUUID();
-    upsertDevice({ deviceId, siteId, state: 'active' });
-    upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
+    await upsertDevice({ deviceId, siteId, state: 'active' });
+    await upsertChannel({ channelId: 'adt-to-lab', displayName: 'ADT -> Lab', engine: 'mirth', sourceSystem: 'ADT', destinationSystem: 'Lab' });
     const observed = {
       channels: [{
         name: 'adt-to-lab', state: 'STARTED', connectors: [{ name: 'source', state: 'CONNECTED' }],
         last_message_time: '2026-09-23T18:00:00.000Z', recent_error_count: 2,
       }],
     };
-    insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
+    await insertEvent({ event_id: crypto.randomUUID(), device_id: deviceId, site_id: siteId,
                   occurred_at: new Date().toISOString(), kind: 'check_result', service: 'adt',
                   status: 'active', latency_ms: 1, confidence: 'high', freshness_s: 0,
                   channel_id: 'adt-to-lab', phi_mode: false, detail: 'Mirth ok', observed });

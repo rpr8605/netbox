@@ -50,7 +50,7 @@ export function requirePerm(perm, appendAuditFn) {
     const role = req.query?.role ?? req.body?.role ?? null;
     if (!can(role, perm)) {
       if (appendAuditFn) {
-        appendAuditFn({
+        await appendAuditFn({
           auditId: crypto.randomUUID(), actor: role ?? 'anonymous',
           action: 'rbac.denied', target: perm, detail: req.url,
         });

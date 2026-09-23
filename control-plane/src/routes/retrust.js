@@ -24,12 +24,6 @@ import { mintStepCaToken, caBootstrap } from '../ca.js';
 // canonical; a text-level hash would false-reject the rightful key and lock a
 // legitimate device out of re-trust. This is step (a) of the header's trust
 // argument — do not weaken the comparison.
-// SHA-256 of a public key's DER encoding — the value compared against the
-// devices.device_key_fp pin set once at enrollment. DER is hashed, not PEM
-// text, because PEM armor/whitespace can differ for the SAME key while DER is
-// canonical; a text-level hash would false-reject the rightful key and lock a
-// legitimate device out of re-trust. This is step (a) of the header's trust
-// argument — do not weaken the comparison.
 // forge 1.4 changed publicKeyToAsn1() to no longer expose getBytes(), which
 // silently breaks every fingerprint check; node:crypto's export({type:'spki',
 // form:'der'}) is canonical and stable, so it replaced forge here.
@@ -43,13 +37,13 @@ export default async function retrustRoutes(app) {
   app.post('/api/enroll/retrust/challenge', async (req, reply) => {
     const { device_id } = req.body ?? {};
     if (!device_id) return reply.code(400).send({ error: 'device_id required' });
-    const d = getDevice(device_id);
+    const d = await getDevice(device_id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
     if (d.state === 'revoked') return reply.code(403).send({ error: 'device revoked' });
 
     const challenge = crypto.randomBytes(32).toString('base64url');
     const challengeHash = crypto.createHash('sha256').update(challenge).digest('hex');
-    createRetrustChallenge({ challengeHash, deviceId: device_id });
+    await createRetrustChallenge({ challengeHash, deviceId: device_id });
     return { device_id, challenge, expires_in_s: 60 };
   });
 
@@ -58,13 +52,13 @@ export default async function retrustRoutes(app) {
     if (!device_id || !challenge || !signature_b64 || !public_key_pem) {
       return reply.code(400).send({ error: 'device_id, challenge, signature_b64, public_key_pem required' });
     }
-    const d = getDevice(device_id);
+    const d = await getDevice(device_id);
     if (!d || !['active', 'quarantine'].includes(d.state)) {
       return reply.code(403).send({ error: 'unknown, revoked, or not-yet-enrolled device' });
     }
 
     const challengeHash = crypto.createHash('sha256').update(challenge).digest('hex');
-    if (!consumeRetrustChallenge(challengeHash, device_id)) {
+    if (!await consumeRetrustChallenge(challengeHash, device_id)) {
       return reply.code(403).send({ error: 'challenge missing, used, or expired' });
     }
 

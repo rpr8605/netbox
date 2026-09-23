@@ -43,22 +43,22 @@ export function inMaintenanceWindow(rule, now = new Date()) {
 // contact(s). Suppression in a maintenance window returns {suppressed:true}
 // and creates NO alert row (a suppressed alert must not page anyone).
 export async function fireAlert({ ruleId, deviceId, siteId, deliver, auditActor = 'system' }) {
-  const rule = getAlertRule(ruleId);
+  const rule = await getAlertRule(ruleId);
   if (!rule) throw new Error(`unknown alert rule ${ruleId}`);
   if (inMaintenanceWindow(rule)) {
-    appendAudit({ auditId: crypto.randomUUID(), actor: auditActor, action: 'alert.suppressed', target: ruleId, detail: `maintenance window for ${rule.service}` });
+    await appendAudit({ auditId: crypto.randomUUID(), actor: auditActor, action: 'alert.suppressed', target: ruleId, detail: `maintenance window for ${rule.service}` });
     return { suppressed: true, reason: 'maintenance window' };
   }
   const alertId = crypto.randomUUID();
   const openedAt = new Date();
   const ackDeadline = new Date(openedAt.getTime() + rule.ack_window_s * 1000).toISOString().replace('T', ' ').slice(0, 19);
-  createAlert({
+  await createAlert({
     alert_id: alertId, rule_id: ruleId, device_id: deviceId, site_id: siteId,
     severity: rule.severity, impact_stmt: rule.impact_stmt, ack_deadline: ackDeadline,
   });
-  captureIncidentSignature({ alertId, siteId, service: rule.service, vendor: 'unknown', openedAt: openedAt.toISOString() });
-  appendAudit({ auditId: crypto.randomUUID(), actor: auditActor, action: 'alert.fired', target: alertId, detail: `${rule.severity} ${rule.service}` });
-  const contacts = contactsFor(rule.severity, 1);
+  await captureIncidentSignature({ alertId, siteId, service: rule.service, vendor: 'unknown', openedAt: openedAt.toISOString() });
+  await appendAudit({ auditId: crypto.randomUUID(), actor: auditActor, action: 'alert.fired', target: alertId, detail: `${rule.severity} ${rule.service}` });
+  const contacts = await contactsFor(rule.severity, 1);
   const deliveries = [];
   for (const c of contacts) {
     deliveries.push(await deliver(c, { alertId, severity: rule.severity, impact: rule.impact_stmt, runbook: rule.runbook_url }));
@@ -69,11 +69,11 @@ export async function fireAlert({ ruleId, deviceId, siteId, deliver, auditActor 
 // acknowledgeAlert — the required ack. Acknowledging stops the escalation
 // sweep; it is audit-logged with the actor.
 export async function acknowledgeAlert({ alertId, actor }) {
-  const a = getAlert(alertId);
+  const a = await getAlert(alertId);
   if (!a) return { ok: false, error: 'unknown alert' };
   if (a.status !== 'open') return { ok: false, error: `alert is ${a.status}, not open` };
-  ackAlert(alertId, actor);
-  appendAudit({ auditId: crypto.randomUUID(), actor, action: 'alert.acked', target: alertId });
+  await ackAlert(alertId, actor);
+  await appendAudit({ auditId: crypto.randomUUID(), actor, action: 'alert.acked', target: alertId });
   return { ok: true, status: 'acked' };
 }
 
@@ -82,14 +82,14 @@ export async function acknowledgeAlert({ alertId, actor }) {
 // and returns the list of alerts escalated this sweep (for tests + console).
 export async function sweepEscalations({ deliver, now = new Date() }) {
   const nowIso = now.toISOString().replace('T', ' ').slice(0, 19);
-  const overdue = openUnackedPastDeadline(nowIso);
+  const overdue = await openUnackedPastDeadline(nowIso);
   const escalated = [];
   for (const a of overdue) {
     const nextTier = a.current_tier + 1;
-    if (nextTier > maxTier(a.severity)) continue; // no one left to escalate to
-    escalateAlert(a.alert_id, nextTier);
-    appendAudit({ auditId: crypto.randomUUID(), actor: 'system', action: 'alert.escalated', target: a.alert_id, detail: `to tier ${nextTier}` });
-    const contacts = contactsFor(a.severity, nextTier);
+    if (nextTier > await maxTier(a.severity)) continue; // no one left to escalate to
+    await escalateAlert(a.alert_id, nextTier);
+    await appendAudit({ auditId: crypto.randomUUID(), actor: 'system', action: 'alert.escalated', target: a.alert_id, detail: `to tier ${nextTier}` });
+    const contacts = await contactsFor(a.severity, nextTier);
     for (const c of contacts) {
       await deliver(c, { alertId: a.alert_id, severity: a.severity, impact: a.impact_stmt, runbook: null, escalated: true });
     }

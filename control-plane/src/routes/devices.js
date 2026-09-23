@@ -18,15 +18,15 @@ export default async function deviceRoutes(app) {
   app.get('/api/devices', async () => listDevices());
 
   app.get('/api/devices/:id', async (req, reply) => {
-    const d = getDevice(req.params.id);
+    const d = await getDevice(req.params.id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
-    return { ...d, recent_events: listEvents(d.device_id, 20) };
+    return { ...d, recent_events: await listEvents(d.device_id, 20) };
   });
 
   // confirm flips quarantine -> active: a WRITE to the device registry, so it
   // requires devices:write. Wired (was unauthenticated before the RBAC pass).
   app.post('/api/devices/:id/confirm', { preHandler: requirePerm('devices:write', appendAudit) }, async (req, reply) => {
-    const d = getDevice(req.params.id);
+    const d = await getDevice(req.params.id);
     if (!d) return reply.code(404).send({ error: 'unknown device' });
     if (d.state === 'revoked') return reply.code(409).send({ error: 'device revoked' });
     if (!d.cert_serial || !d.last_seen_at) {
@@ -36,7 +36,7 @@ export default async function deviceRoutes(app) {
         error: 'device has not presented a valid certificate; cannot confirm',
       });
     }
-    upsertDevice({
+    await upsertDevice({
       deviceId: d.device_id,
       siteId: d.site_id,
       state: 'active',
@@ -59,18 +59,18 @@ export default async function deviceRoutes(app) {
       return reply.code(400).send({ error: 'new_device_id required' });
     }
     try {
-      const oldDevice = getDevice(oldDeviceId);
+      const oldDevice = await getDevice(oldDeviceId);
       if (!oldDevice) return reply.code(404).send({ error: 'old device not found' });
 
       // Revoke the old device's certificate in step-ca if it ever presented one.
       // If the CA call fails, stop the swap rather than leaving a live identity.
       if (oldDevice.cert_serial) {
         await revokeStepCaCertificate(oldDevice.cert_serial);
-        recordRevokedSerial(oldDevice.cert_serial, oldDeviceId, 'replace');
+        await recordRevokedSerial(oldDevice.cert_serial, oldDeviceId, 'replace');
       }
 
       const role = req.body?.role ?? req.query?.role ?? 'operations-manager';
-      const result = replaceDevice({ oldDeviceId, newDeviceId: new_device_id, reason, actor: role });
+      const result = await replaceDevice({ oldDeviceId, newDeviceId: new_device_id, reason, actor: role });
       return result;
     } catch (e) {
       return reply.code(502).send({ error: e.message });
