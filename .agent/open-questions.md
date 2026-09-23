@@ -31,6 +31,16 @@ These are logged here rather than built ahead of demand.
 
 Two acceptance runs failed identically with `Could not access KVM kernel module: No such file or directory`. Docker Desktop on Windows does not expose `/dev/kvm` to containers, and `vm-harness/acceptance.sh` hardcodes `-enable-kvm`. Anti-loop rule applied: stopped after 2 failures. See `.agent/attempts.md` for options.
 
+## M4 — TPM key generation
+
+**Status:** PARTIALLY ADDRESSED in Batch 1 (C4). `beacon-relay-agent/lib/tpm.js` now generates the RSA key inside the TPM via `tpm2_create`; the private key never exists in software. The review's literal claim ("generated in software, then imported") is therefore DISPUTED.
+
+**Remaining issue:** `beacon-relay-agent/provision.js` sends the software-generated public key's fingerprint to the control plane as `device_key_fp`, while the agent later signs with the TPM-generated key. The pinned fingerprint and the signing key will not match on retrust. Fixing this requires aligning first-boot provisioning with the TPM-generated key pair (use the TPM public key for the enrollment pin) or refactoring the enrollment flow to have the device present the TPM public key. This is deferred until Batch 2/3 are complete.
+
+## M6 — Native timestamp handling in PostgreSQL
+
+**Status:** LOGGED for post-Batch-3 work. `control-plane/src/db.js` still uses `pgize()` to translate SQLite SQL into Postgres, and timestamp columns are stored as `TEXT` with `NOW()::TEXT` comparisons. Converting to native `TIMESTAMPTZ` requires removing the SQLite driver path (part of Batch 3 maintainability: "Remove SQLite; Postgres only, native timestamps, delete pgize"). Do not attempt before SQLite removal is approved/undertaken.
+
 ## Plan for removing SQLite entirely
 
 `control-plane/src/db.js` is currently a dual-driver layer (Postgres when `DATABASE_URL` is set, SQLite otherwise). SQLite is still convenient for zero-ops local runs and a few unit tests, but PostgreSQL is the spec'd production store. Removal checklist:

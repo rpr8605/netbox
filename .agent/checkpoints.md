@@ -172,13 +172,13 @@
 ## Checkpoint #15 | Block: $7.42 | Total: $692.93 | Cost/feature commit: $1.48
 
 - **Done:**
-  - Migration safety (BUILD_SPEC §5): SQLite-to-Postgres migration now runs exactly once per Postgres database. A marker row in schema_migrations prevents re-runs; after success the SQLite source is renamed to *.migrated. control-plane/test/migrate.once.test.js proves a row deleted in Postgres is NOT resurrected after restart. dfaca41.
+  - Migration safety (BUILD_SPEC ï¿½5): SQLite-to-Postgres migration now runs exactly once per Postgres database. A marker row in schema_migrations prevents re-runs; after success the SQLite source is renamed to *.migrated. control-plane/test/migrate.once.test.js proves a row deleted in Postgres is NOT resurrected after restart. dfaca41.
   - Secrets moved out of committed files: .env.example committed, .env gitignored; docker-compose.yml no longer hardcodes CA_PASSWORD, POSTGRES_USER, POSTGRES_PASSWORD, or POSTGRES_DB; scripts/pki_seed.js requires CA_PASSWORD from the environment. 2fce3cd.
   - PostgreSQL made the default for test suites: .env sets DATABASE_URL to isolated eacon_relay_test; 
 pm run test:db:reset recreates it; root and control-plane/package.json scripts load .env via 
 ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite only for its isolated audit tamper test.  d0e22c.
   - Readiness audit (no new code): .agent/readiness-audit.md maps 10 areas to DONE/PARTIAL/MISSING with file paths and test names. 2ebd4c7.
-  - DHCP health as a first-class critical service (CONTROLS_AND_IDENTITY §3): dhcp_health added to schema service enum and critical-service register; unDhcpHealthCheck reads from a hospital-exposed status source and reports erified_ready/degraded/down/unknown. 503e165.
+  - DHCP health as a first-class critical service (CONTROLS_AND_IDENTITY ï¿½3): dhcp_health added to schema service enum and critical-service register; unDhcpHealthCheck reads from a hospital-exposed status source and reports erified_ready/degraded/down/unknown. 503e165.
   - CHECKLIST/STATUS updated with fresh evidence and the new .env/test workflow. dcd8365.
 - **Tests:**
   - Doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
@@ -188,4 +188,30 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
 - **Blocked:** AWS Organization + three accounts (skipped per Ryan's instruction); QEMU acceptance x3 (missing KVM in Docker Desktop); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps require real hardware.
 - **Next:** Security gaps from .agent/readiness-audit.md and the independent review (Beacon_Relay_Code_Review_2026-09-23.md): device-side server cert pinning, OTA version validation/no-shell, atomic token consumption, route auth-policy test.
 - **Progress:** 80 of 99 CHECKLIST items complete (81%), up from 79 of 99 (80%).
+
+## Checkpoint #16 | Block: $6.43 | Total: $699.36 | Cost/feature commit: $0.80
+
+- **Done (Batch 1 security fixes from independent review):**
+  - C3: `docker-compose.yml` binds control-plane and step-ca host ports to `127.0.0.1`; Postgres no longer published; `POSTGRES_PASSWORD` and `CA_PASSWORD` use `${VAR:?message}` with no defaults; `.env.example` updated; `.gitignore` ignores whole `out/` tree. `28c4c1c`.
+  - C4: strict version regex on rollout create and device receipt; `execSync` template strings replaced with `execFileSync` arg arrays in `beacon-relay-agent/lib/update.js` and `beacon-relay-agent/lib/tpm.js`; `fetchBytes` fails on non-200. `bba3793`.
+  - C2: `POST /api/enroll/tokens` gated behind `operator:enroll:tokens`; existing device_id refused unless `re_enroll=true` and audited; active device never downgraded; `device_key_fp` preserved. `e36f925`.
+  - H1: device pins step-ca root in `/data/ca-root.pem` and verifies control-plane server cert (`ca`, `rejectUnauthorized: true`, `servername`) on every call via new `beacon-relay-agent/lib/tls_pin.js`. `be90fec`.
+  - H3: every route declares `config.auth` policy (`device`, `operator:<perm>`, or `public`); ungated console reads (devices, alerts, channels, topology, full-status, support) now RBAC-gated; `control-plane/test/route-auth.test.js` enumerates the route table. `f4fc5c2`.
+  - H4: already fixed in `dfaca41` (marker table + `*.migrated`); verified by `control-plane/test/migrate.once.test.js`.
+  - M3: atomic `UPDATE ... RETURNING` for enrollment-token and retrust-challenge consumption. `ae073d5`.
+  - M5: bundle download reuses `deviceFromCert()` from `events.js`, enforcing revocation/state checks. `903b854`.
+  - M1: PHI guard applied to SMS, voice, and Slack/Teams webhooks; voice TwiML escapes XML special characters. `f54226b`.
+- **Tests:**
+  - New review-focused tests: 25/25 pass (C3 7, C4 3, C2 4, H1 2, H3 2, H4 1, M3 2, M5 2, M1 4).
+  - Existing no-Docker suites re-run: EHR unit 48/48, agent loop 11/11, update client 9/9.
+  - Docker-dependent alerting/RBAC/support suite not re-run yet (needs `docker compose up`).
+- **Repeat check:** none.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review; physical hardware-lifecycle steps require real hardware.
+- **Open questions updated:** M4 (TPM key generation partially addressed; provision.js pin mismatch remains) and M6 (native Postgres timestamps blocked on SQLite removal) logged to `.agent/open-questions.md`.
+- **Next 3:**
+  1. Batch 2: H2 OTA rollback correctness (remove in-cycle mark-good/mark-bad; health-check after reboot into new slot).
+  2. Batch 3 maintainability: README rewrite, ARCHITECTURE + SECURITY_MODEL docs, docs reorg, single `npm test`, GitHub Actions workflow, lint configs, wrong-comment fixes.
+  3. C1 options note (operator auth identity-provider decision) per user instruction.
+- **Progress:** 9 of 15 review code findings closed (excluding maintainability list and H5 repo-setting). No CHECKLIST items added yet.
+
 
