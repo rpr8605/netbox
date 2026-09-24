@@ -26,49 +26,70 @@ Tag meanings:
 | ID | Description | Stage | Blocked by | Tag |
 |---|---|---|---|---|
 | QEMU-1 | Phase 3 QEMU acceptance harness re-run (`vm-harness/acceptance.sh` with fresh image) | 1 | Docker Desktop on Windows lacks `/dev/kvm`; harness hardcodes `-enable-kvm` | HARDWARE |
-| REACT-1 | React rewrite of the Fleet Console (spec asks React; current console is vanilla HTML/JS) | 1 | Functional surfaces (fleet map, topology, alerting, ticketing, Action Registry, PHI-mode badge) are not yet stable | DECISION |
-| SQLITE-1 | Remove SQLite entirely and use native PostgreSQL + `TIMESTAMPTZ`; drop `pgize()` and dual-driver code | 2 | Decision on whether dev/tests must require Postgres; M6 timestamp correctness depends on this | DECISION |
-| M6 | Native timestamp handling in PostgreSQL (`pgize()` currently stores `TEXT`/`NOW()::TEXT`) | 2 | SQLite removal decision (SQLITE-1) | DECISION |
-| RD-PHI-1 | Implement PHI-mode toggle (design note exists in `.agent/phi-mode-design.md`) | 2 | Design review / approval of `.agent/phi-mode-design.md` | DECISION |
-| RD-PHI-2 | Extend PHI guard to SMS, voice, Slack/Teams webhook channels (currently email only) | 2 | None — can be done once PHI-mode design is approved, but does not strictly require it | AGENT |
+| REACT-1 | React rewrite of the Fleet Console (approved per `docs/specs/BEACON_RELAY_TECH_CONSOLE_SPEC.md`; localhost-only until C1) | 1 | Plan-only: write `.agent/console-build-plan.md`, STOP for review | DECISION → plan-only |
+| SQLITE-1 | Remove SQLite entirely and use native PostgreSQL + `TIMESTAMPTZ`; drop `pgize()` and dual-driver code; replace SQLite in CI with a Postgres service container | 2 | None — decision made (Option B) | DECISION → AGENT (Phase B) |
+| M6 | Native timestamp handling in PostgreSQL (`pgize()` currently stores `TEXT`/`NOW()::TEXT`) | 2 | SQLITE-1 (Postgres-only phase) | DECISION → AGENT (Phase B) |
+| RD-PHI-1 | **DEFERRED** — Implement PHI-mode toggle (design note exists in `.agent/phi-mode-design.md`); stay metadata-only through pilot | 2 | Pilot will remain metadata-only | DECISION → DEFERRED |
+| RD-PHI-2 | **DONE** — Extend PHI guard to SMS, voice, Slack/Teams webhook channels (M1, commit `f54226b`; covered by `control-plane/test/deliver.phi.test.js`) | 2 | None | AGENT (DONE) |
 | RD-SEC-1 | Create consolidated security approval pack (`docs/SECURITY_MODEL.md`, risk assessment, pen-test plan, vendor questionnaire responses) | 3 | None — can be derived from existing specs and the independent review | AGENT |
-| RD-CON-1 | Contracts / insurance docs: draft BAA, cyber-liability/E&O summary, customer MSA, AWS HIPAA-eligible-services confirmation | 8 | Legal/process ownership; no repo evidence exists | DECISION |
-| AWS-1 | AWS Organization + three accounts (prod, sim/staging, security/log-archive) | 3 | Ryan's AWS account setup; foundational for all AWS work | DECISION |
-| AWS-2 | RDS PostgreSQL Multi-AZ (+ TimescaleDB check / partitioning fallback) | 3 | AWS-1 (accounts) | AGENT |
-| AWS-3 | ECS Fargate control-plane API + ingestion behind ALB | 3 | AWS-1 (accounts) and C1 operator-auth shape | AGENT |
-| AWS-4 | QLDB or S3-Object-Lock audit export | 3 | AWS-1 (accounts) | AGENT |
-| C1 | Operator authentication IdP decision (MFA, RBAC derived from principal, audit log, no standing SSH) | 4 | Ryan's identity-provider choice | DECISION |
-| COGNITO-1 | Cognito user pools with the five RBAC groups | 4 | C1 (IdP choice) and AWS-1 (accounts). If C1 chooses non-AWS IdP, this may be skipped. | DECISION |
+| RD-CON-1 | Draft BAA and MSA templates in `docs/legal/`, marked "DRAFT — requires attorney review, not legal advice"; AWS BAA step listed in `docs/planning/AWS_SETUP_CHECKLIST.md` | 8 | None — decision made (Option B) | DECISION → AGENT (draft templates) |
+| AWS-1 | AWS Organization + three accounts (prod, sim/staging, security/log-archive); Ryan will create org/accounts and accept AWS BAA | 3 | Agent must write `docs/planning/AWS_SETUP_CHECKLIST.md`; Ryan executes the checklist | DECISION → AGENT (checklist) |
+| AWS-2 | RDS PostgreSQL Multi-AZ (+ TimescaleDB check / partitioning fallback) | 3 | AWS-1 (Ryan executes setup) | AGENT |
+| AWS-3 | ECS Fargate control-plane API + ingestion behind ALB | 3 | AWS-1 (Ryan executes setup) and C1 plan approval | AGENT |
+| AWS-4 | QLDB or S3-Object-Lock audit export | 3 | AWS-1 (Ryan executes setup) | AGENT |
+| C1 | Operator authentication: Amazon Cognito with TOTP MFA required, five RBAC groups, room for SAML/OIDC federation later; localhost-only until merged/tested | 4 | Plan-only: write implementation plan, STOP for review | DECISION → plan-only |
+| COGNITO-1 | Cognito user pools with the five RBAC groups | 4 | C1 plan approval and AWS-1 (Ryan executes setup) | AGENT |
 | M4 | TPM-backed device identity: align `provision.js` enrollment pin with the TPM-generated public key so the pinned `device_key_fp` matches the signing key | 4 | None — technical approach is known, but touches device identity boundary | AGENT |
 | IOT-1 | IoT Core + step-ca CA registration (device registry ingestion) | 4 | AWS-1 (accounts) | AGENT |
 | IOT-2 | IoT Jobs OTA rollout over the RAUC bundle | 6 | AWS-1 (accounts); existing RAUC bundle pipeline is DONE | AGENT |
 | IOT-3 | IoT Secure Tunneling + Action Registry session layer (real byte pipe, not just session record) | 4 | AWS-1 (accounts); session broker is DONE | AGENT |
 | FLEET-1 | Sim/staging synthetic device fleet | 4 | AWS-1 (accounts) and IOT-1 | AGENT |
-| M365-1 | Microsoft 365 / Entra ID Phase 1 live validation with a real test tenant | 10 | Real Entra ID test tenant with admin consent for read-only scopes | DECISION |
-| M365-2 | M365 Phase 2 gated non-admin password reset | 10 | M365-1 (live validation); requires higher-privilege API permissions | DECISION |
-| IDP-1 | Okta / Google Workspace identity providers | 4 | C1 (IdP choice); spec says "don't build ahead of demand" | DECISION |
+| M365-1 | Microsoft 365 / Entra ID Phase 1 live validation with a real test tenant | 10 | **DEFERRED** until a customer requires it | DECISION → DEFERRED |
+| M365-2 | M365 Phase 2 gated non-admin password reset | 10 | **DEFERRED** until a customer requires it | DECISION → DEFERRED |
+| IDP-1 | Okta / Google Workspace identity providers | 4 | **DEFERRED** until a customer requires it | DECISION → DEFERRED |
 | STEP-1 | Step Functions escalation engine | 5 | AWS-1 (accounts) | AGENT |
 | RD-FP-1 | Systematic false-positive control workflow / runbook-driven tuning process | 5 | None — can be documented and partially automated from existing alert data | AGENT |
 | RD-OTA-1 | SBOM generation + CVE monitoring workflow | 6 | None — can be added to the existing signed-update pipeline | AGENT |
-| PB-SW | Power backup software work: agent reports power source/battery %/time left; alerts for "on battery" and "battery below 25%"; console power status; clean shutdown at low threshold | 7 | PB-HW1–PB-HW5 (hardware questions) | AGENT |
+| PB-SW | Power backup software work: agent reports power source/battery %/time left; alerts for "on battery" and "battery below 25%"; console power status; clean shutdown at low threshold — **decision: Option A** (test first, then facilities approval) | 7 | PB-HW1–PB-HW5 hardware tests | AGENT |
 | PB-HW1 | Confirm EcoFlow RIVER 3 Plus 12 V output stays live in UPS mode with no switchover dropout | 7 | Physical power station + box to test with | HARDWARE |
 | PB-HW2 | Confirm Linux can read RIVER 3 Plus battery status (USB data port or choose a reporting unit) | 7 | Physical power station; cable/driver investigation | HARDWARE |
 | PB-HW3 | Measure actual average draw of VP2420 / V1210 running Beacon Relay, with and without LTE modem | 7 | Physical boxes + power meter | HARDWARE |
-| PB-HW4 | Hospital facilities approval for a lithium battery in the network closet (LiFePO4 preferred) | 8 | Customer/site facilities decision | DECISION |
-| PB-HW5 | Confirm whether Protectli V1210 has TPM 2.0 enabled in firmware | 7 | Protectli answer or physical V1210 to test | HARDWARE |
+| PB-HW4 | Hospital facilities approval for a lithium battery in the network closet (LiFePO4 preferred) — **decision: Option A** (EcoFlow first, then approval) | 8 | PB-HW1–PB-HW3 test results | DECISION → HARDWARE |
+| PB-HW5 | Confirm whether Protectli V1210 has TPM 2.0 enabled in firmware — **Ryan will email Protectli** | 7 | Protectli support response | HARDWARE |
 | HLIVE-1 | Physical hardware-lifecycle steps: secure wipe / TPM clear on returned units | 7 | Real returned hardware + wipe tools/TPM clear process | HARDWARE |
 | HLIVE-2 | Physical barcode/serial-number scanning and RMA label integration | 7 | Real hardware + scanner/RMA workflow | HARDWARE |
 | HLIVE-3 | Factory burn-in, thermal, and power-cycle qualification of approved alternates | 7 | Physical alternates + test harness | HARDWARE |
 | HLIVE-4 | Verify every approved alternate in `hardware/bom.json` boots the golden image and seals LUKS correctly | 7 | Physical alternates + golden image | HARDWARE |
 | BOM-V1210 | Protectli V1210 marked `tpm_unconfirmed: true` — cannot be a trusted alternate until PB-HW5 is resolved | 7 | PB-HW5 | HARDWARE |
-| BOM-TPM | VP2420e primary compute requires add-on TPM-02 module; verify module availability and installation | 7 | Supplier availability / procurement | DECISION |
-| BOM-VP2410 | VP2410 is out of stock; remove from alternates or keep as "on-hand only" | 7 | Procurement reality | DECISION |
-| BOM-N100 | CUSTOM-N100-4 alternate requires M.2 NVMe SSD selection | 7 | Build config discipline | AGENT |
-| BOM-WYSE | Dell Wyse 5070 is approved only as `role: dev_test`; needs USB 3 Ethernet adapter + 128 GB M.2 SATA SSD | 7 | Parts procurement | DECISION |
-| CK-EHR-1 | Vendor config profiles: Healthland, MEDHOST, Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC | 10 | Real customer names a vendor; spec says "profiles only" | DECISION |
-| CK-EHR-2 | Federal Oracle Health profile (VA/IHS Cerner deployment) | 10 | Spec flagged as premature; real deployment need | DECISION |
-| CK-ENG-1 | Rhapsody / Cloverleaf / Iguana admin-API readers | 10 | Real deployment exposes the API; spec says opportunistic | DECISION |
-| CK-TIX-1 | Ticketing Tier 1 generic REST adapter | 8 | Customer names a target system; spec says deferred | DECISION |
+| BOM-TPM | VP2420e primary compute keeps add-on TPM-02 module — **decision: (a)** | 7 | Supplier availability / procurement | DECISION → AGENT (update BOM note) |
+| BOM-VP2410 | VP2410 is out of stock — **decision: (b) on-hand only** | 7 | None | DECISION → AGENT (update BOM note) |
+| BOM-N100 | CUSTOM-N100-4 alternate requires M.2 NVMe SSD selection | 7 | None | AGENT |
+| BOM-WYSE | **DECISION: (c)** Use Ryan's Intel i5 Mac mini as `role: dev_test` instead of Dell Wyse 5070; add Mac mini entry to `hardware/bom.json` | 7 | None | DECISION → AGENT (update BOM) |
+| BOM-MACMINI | Intel i5 Mac mini as `dev_test` box: verify x86_64/UEFI/TPM-or-PTT/USB3/second-NIC; plan a "no TPM, test only" boot mode that flags the box as "Test box: no TPM" in the console | 7 | Plan-only: write `.agent/mac-mini-test-mode-plan.md`, STOP for review | DECISION → plan-only |
+| CK-EHR-1 | Vendor config profiles: Healthland, MEDHOST, Altera, NextGen, Veradigm, Azalea, Juno, Netsmart, WellSky, Sunquest/SCC | 10 | **DEFERRED** until a real customer justifies each | DECISION → DEFERRED |
+| CK-EHR-2 | Federal Oracle Health profile (VA/IHS Cerner deployment) | 10 | **DEFERRED** until a real deployment need | DECISION → DEFERRED |
+| CK-ENG-1 | Iguana and InterSystems admin-API readers first (verify-only per `.agent/KIMI_ENGINE_READERS_PROMPT.md` Step 1); Rhapsody/Corepoint/Cloverleaf wait for customer access | 10 | Reach this stage; spec says opportunistic | DECISION → AGENT (when reached) |
+| CK-TIX-1 | Ticketing Tier 1 generic REST adapter | 8 | **DEFERRED** until a customer names a system | DECISION → DEFERRED |
+
+---
+
+## Decisions applied (2026-09-24)
+
+| ID | Decision |
+|---|---|
+| C1 | Amazon Cognito with TOTP MFA required, five RBAC groups, SAML/OIDC federation room later. Write `.agent/cognito-implementation-plan.md` and STOP for review. Localhost-only until merged/tested. |
+| AWS-1 | Ryan will create AWS Organization + three accounts and accept the AWS BAA. Agent writes `docs/planning/AWS_SETUP_CHECKLIST.md`; Ryan executes it. |
+| SQLITE-1 / M6 | Option B: Postgres-only. Remove SQLite, replace CI SQLite with a Postgres service container. Do as its own phase with `npm test` green before and after. |
+| RD-PHI-1 | **DEFERRED** — stay metadata-only through pilot. Do not implement PHI-mode toggle. |
+| RD-CON-1 | Option B: draft BAA and MSA templates in `docs/legal/` marked draft; include AWS BAA step in the AWS checklist. |
+| Power backup (PB-SW / PB-HW4) | Option A: EcoFlow RIVER 3 Plus. Test first (PB-HW1–HW3), then seek hospital facilities approval. |
+| BOM-TPM | Option (a): keep VP2420e + TPM-02 module. |
+| BOM-VP2410 | Option (b): keep as "on-hand only". |
+| BOM-WYSE / BOM-MACMINI | Option (c): use Ryan's Intel i5 Mac mini as `dev_test` instead of Wyse 5070. Add Mac mini BOM entry and plan a "no TPM, test only" mode. |
+| PB-HW5 | Ryan will email Protectli to confirm V1210 TPM 2.0 support. |
+| REACT-1 | Approved per `docs/specs/BEACON_RELAY_TECH_CONSOLE_SPEC.md`. Write `.agent/console-build-plan.md` and STOP for review. Localhost-only until C1. |
+| M365-1 / M365-2 / IDP-1 / CK-EHR-1 / CK-EHR-2 / CK-TIX-1 | **DEFERRED** until a customer requires them. |
+| CK-ENG-1 | When reached, follow `.agent/KIMI_ENGINE_READERS_PROMPT.md` Step 1 (verify-only); Iguana/InterSystems first, Rhapsody/Corepoint/Cloverleaf wait for customer access. |
 
 ---
 
@@ -187,8 +208,26 @@ The Mac mini is not in the approved BOM. Before it can be a dev_test or referenc
 4. **Power backup questions (PB-HW1–HW3)** — if the Mac mini will run at a site, power draw and UPS compatibility must be measured.
 5. **QEMU acceptance (QEMU-1)** — while not directly about the Mac mini, the Phase-3 image proof is the reference for any physical install.
 
-If the goal is only desk development, the Mac mini is closest to a **dev_test** role (like BOM-WYSE), not a hospital production role. The BOM still needs an explicit entry or exception for it.
+Decisions applied:
+
+- BOM-WYSE is replaced by BOM-MACMINI: the Intel i5 Mac mini is approved as `role: dev_test` only, not for hospital production.
+- BOM-TPM stays with VP2420e + TPM-02 module for production compute; the Mac mini is explicitly a test box.
+- A "no TPM, test only" boot mode will be planned (BOM-MACMINI) so the Mac mini can run without a TPM while clearly flagging itself in the console.
+
+If the goal is desk development, the Mac mini is the approved **dev_test** node. It still needs an explicit BOM entry and the no-TPM test-mode plan before it is considered supported.
 
 ---
 
-*Next step: Ryan marks which DECISION items are decided, then the AGENT items from the earliest build-order stages (1–4) are implemented first, one commit per item, keeping `npm test` green.*
+## Plan-only items requiring STOP-for-review
+
+These items are approved in principle but must have a written implementation plan reviewed before any code is written:
+
+| ID | Stage | Plan file | Why it needs review |
+|---|---|---|---|
+| REACT-1 | 1 | `.agent/console-build-plan.md` | React rewrite touches every console surface; must stay localhost-only until C1 auth is merged. |
+| C1 | 4 | `.agent/cognito-implementation-plan.md` | Auth is a security boundary; nothing exposed beyond localhost until merged and tested. |
+| BOM-MACMINI | 7 | `.agent/mac-mini-test-mode-plan.md` | A no-TPM boot mode changes the device-identity trust model and must not accidentally be used in production. |
+
+---
+
+*Status: decisions applied. Next: implement AGENT items in stage order, one commit per item, `npm test` green after each, checkpoint every $5, STOP after each plan-only item for review.*
