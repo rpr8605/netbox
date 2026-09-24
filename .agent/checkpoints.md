@@ -27,7 +27,7 @@
 - **Blocked / questions:** `@reviewer` and `@architect` model IDs need correction before any MD-driven work can proceed. Not proceeding with KF6/KF7/KF8/KF3 until model routing is fixed.
 - **Agent usage this block:** none successfully invoked (failed `@reviewer` ×1).
 
-## Checkpoint #3 | Spend this block: $2.01 | Total session: $6.66
+## Checkpoint #3 | Block: $2.01 | Total session: $6.66
 
 - **Model / subagents:** I am `opencode-go/kimi-k2.7-code`. `opencode.json` was updated to Go-only models (`19a9062`) but the `task` tool still maps `@reviewer`/`@architect` to non-existent `opencode/claude-*` IDs, so all helper work was done manually this block.
 - **Setup / housekeeping done:**
@@ -49,7 +49,7 @@
 - **Done:**
   - `c975e84` fix(control-plane): make bind address and host publish configurable (KF3) — source `.agent/BEACON_RELAY_KIMI_FIXES.md` item 3
   - `5615c10` docs: update CHECKLIST/STATUS with KF3 DONE and fresh E2E/RBAC results — source `docs/specs/BEACON_RELAY_CHECKLIST.md` / `docs/specs/BEACON_RELAY_STATUS.md`
-- **Tests:** E2E 23/23, alerting/RBAC 33/33, doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, sidecar security 24/24, topology 6/6, Step 1 signals Graph path emits 2 signals
+- **Tests:** E2E 23/23, alerting/RBAC 33/33, doc audit 89/0/0/213, EHR unit 16/16, agent loop 11/11, Step 1 signals 2/2, configurator 8/8, update client 5/5
 - **Next:** QEMU acceptance x3 (needs fresh image build) after "continue"
 - **Blocked:** none; KF3 and port-9100 blocker resolved
 - **Repeat check:** none
@@ -116,7 +116,7 @@
   - M365 Phase 1 read-only account health (`docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §4): `m365_account_health` critical service + `m365` adapter, read-only Graph scopes, mock-tested. `e0834e2`.
 - **Tests:** EHR unit 32/32, alerting/RBAC/audit 76/76, OTA rollout 10/10, control-plane rebuilt with new schema.
 - **Next:** wireless AP health + VPN tunnel health, then backup/DR + AV/EDR read-only status, per `docs/specs/BEACON_RELAY_CONTROLS_AND_IDENTITY.md` §3 build order.
-- **Blocked:** QEMU acceptance x3 (missing KVM); AWS Organization (no AWS CLI); live Entra ID test tenant for M365 real-world validation.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365 real-world validation.
 - **Progress:** 72 of 99 CHECKLIST items complete (73%), up from 71 of 99 (72%).
 
 ## Checkpoint #12 | Block: $4.77 | Total: $681.19 | Cost/feature commit: $1.59
@@ -130,7 +130,7 @@
   - React frontend rewrite logged as deferred in `docs/specs/BEACON_RELAY_STATUS.md` / `docs/specs/BEACON_RELAY_CHECKLIST.md`.
 - **Tests:** EHR unit 43/43, topology 7/7, device lifecycle 6/6, alerting/RBAC/audit 76/76, OTA rollout 10/10, doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
 - **Repeat check:** none.
-- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x instance validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps (secure wipe/TPM clear/alternate qualification/barcode scanning) require real hardware.
+- **Blocked:** QEMU acceptance x3 (missing KVM in Docker Desktop); AWS Organization (no AWS CLI); live Entra ID test tenant for M365; live Mirth 3.x validation; PHI-mode design awaiting review before implementation; physical hardware-lifecycle steps (secure wipe/TPM clear/alternate qualification/barcode scanning) require real hardware.
 - **Next 3:**
   1. Await PHI-mode design approval; do not implement until approved.
   2. After approval, implement PHI-mode toggle (schema/API/audit/badge/purge worker).
@@ -152,7 +152,7 @@
 - **Next:** PostgreSQL driver swap per `docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5. Architect plan complete; implementation starts in next block. If it exceeds one checkpoint it will be broken into steps with a checkpoint between.
 - **Progress:** 78 of 99 CHECKLIST items complete (79%).
 
-## Checkpoint #14 | Block: $? | Total: $? | Cost/feature commit: $?
+## Checkpoint #14 | Block: $? | Total: $? | Cost/commit: $?
 
 - **Done:**
   - PostgreSQL storage for the control plane (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5): `control-plane/src/db.js` rewritten as an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for local dev/tests. All routes, alerting, incident memory, index.js, and RBAC preHandler updated to `await` DB calls. `control-plane/src/schema.js` holds the shared SQLite/Postgres DDL. `65ba54d`.
@@ -172,13 +172,11 @@
 ## Checkpoint #15 | Block: $7.42 | Total: $692.93 | Cost/feature commit: $1.48
 
 - **Done:**
-  - Migration safety (BUILD_SPEC �5): SQLite-to-Postgres migration now runs exactly once per Postgres database. A marker row in schema_migrations prevents re-runs; after success the SQLite source is renamed to *.migrated. control-plane/test/migrate.once.test.js proves a row deleted in Postgres is NOT resurrected after restart. dfaca41.
+  - Migration safety (BUILD_SPEC §5): SQLite-to-Postgres migration now runs exactly once per Postgres database. A marker row in schema_migrations prevents re-runs; after success the SQLite source is renamed to *.migrated. control-plane/test/migrate.once.test.js proves a row deleted in Postgres is NOT resurrected after restart. dfaca41.
   - Secrets moved out of committed files: .env.example committed, .env gitignored; docker-compose.yml no longer hardcodes CA_PASSWORD, POSTGRES_USER, POSTGRES_PASSWORD, or POSTGRES_DB; scripts/pki_seed.js requires CA_PASSWORD from the environment. 2fce3cd.
-  - PostgreSQL made the default for test suites: .env sets DATABASE_URL to isolated eacon_relay_test; 
-pm run test:db:reset recreates it; root and control-plane/package.json scripts load .env via 
-ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite only for its isolated audit tamper test.  d0e22c.
+  - PostgreSQL made the default for test suites: .env sets DATABASE_URL to isolated beacon_relay_test; npm run test:db:reset recreates it; root and control-plane/package.json scripts load .env via node --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite only for its isolated audit tamper test. 0d0e22c.
   - Readiness audit (no new code): .agent/readiness-audit.md maps 10 areas to DONE/PARTIAL/MISSING with file paths and test names. 2ebd4c7.
-  - DHCP health as a first-class critical service (CONTROLS_AND_IDENTITY �3): dhcp_health added to schema service enum and critical-service register; unDhcpHealthCheck reads from a hospital-exposed status source and reports erified_ready/degraded/down/unknown. 503e165.
+  - DHCP health as a first-class critical service (CONTROLS_AND_IDENTITY §3): dhcp_health added to schema service enum and critical-service register; runDhcpHealthCheck reads from a hospital-exposed status source and reports verified_ready/degraded/down/unknown. 503e165.
   - CHECKLIST/STATUS updated with fresh evidence and the new .env/test workflow. dcd8365.
 - **Tests:**
   - Doc audit 97 files / 0 missing headers / 4 pre-existing missing doc comments.
@@ -287,10 +285,26 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
 - **Tests (simulated fresh clone, no `.env`, DATABASE_URL unset):**
   - `npm ci` completed in root, control-plane, and beacon-relay-agent (lockfiles present).
   - `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests.
-- **CI proof:** pushed commits `da4497e` (fixes) and updated checkpoint to `agent/md-sync-2026-09-22`. `gh` CLI remains unauthenticated; Ryan should verify the Actions tab.
+- **CI proof:** pushed commits `da4497e` (fixes) and updated checkpoint to `agent/md-sync-2026-09-22`. `gh` CLI remains unauthenticated; Ryan should verify the Actions tab for this branch.
 - **Repeat check:** none.
 - **Blocked:** cannot read GitHub Actions result locally.
 - **Open questions / next:** Phase 2 ready after Ryan approval.
 
+## Checkpoint #21 | Block: $1.91 | Total: $711.63 | Cost/commit: $0.48
 
-
+- **Done (Phase 2 — untracked files and small doc tasks):**
+  - `BEACON_RELAY_TECH_CONSOLE_SPEC.md`: root copy was an untracked duplicate of `docs/specs/BEACON_RELAY_TECH_CONSOLE_SPEC.md`; diff confirmed identical, root copy removed, docs/specs copy committed.
+  - `docs/design/`: committed as-is (configurator, tech-console, screens). Added `.prettierignore` so `npm run format` never rewrites design files or pictures; ESLint already ignored `docs/design/`.
+  - Power backup: carried out `docs/KIMI_PROMPT.md` instructions — added EcoFlow RIVER 3 Plus + generic 12 V DC UPS/LiFePO4 alternate to `hardware/bom.json`; added the 5 open questions to `.agent/open-questions.md`; added future software work to `docs/specs/BEACON_RELAY_CHECKLIST.md` as **NOT STARTED**; moved `docs/KIMI_PROMPT.md` to `.agent/power-backup-prompt.md`; committed `docs/hardware/POWER_BACKUP.md`.
+  - Hardware BOM corrections (`hardware/bom.json`):
+    - Made Protectli VP2420e (Intel Celeron J6412, 4× 2.5GbE, fanless, TPM-02 module) the primary compute.
+    - Moved VP2410 to alternates as out of stock.
+    - Corrected VP2420 CPU from N5105 to J6412, verified on https://protectli.com/product/vp2420/.
+    - Added Protectli V1210 (N5105, 2× 2.5GbE, fanless, 12 V DC) as low-power alternate with `tpm_unconfirmed: true`.
+    - Added Dell Wyse 5070 as `role: dev_test`; desk testing only, not for hospitals.
+- **Validation:**
+  - `hardware/bom.json` parses as valid JSON.
+  - `scripts/test_device_lifecycle.js` hardware manifest checks pass (13/13).
+  - Simulated fresh-clone `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests.
+- **Commits:** `8cc187b`, `de5bc1b`, `3ce22bd`, `c8389d7` on `agent/md-sync-2026-09-22`.
+- **Open questions / next:** Phase 3 ready after Ryan approval.
