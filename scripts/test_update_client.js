@@ -24,6 +24,7 @@ function check(name, ok, detail = '') {
 }
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'update-test-'));
+process.env.BEACON_DATA_DIR = tmp;
 
 // Case 1: no update available -> no action, no download
 const r1 = await runUpdateCycle(

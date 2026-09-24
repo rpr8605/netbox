@@ -49,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -82,9 +84,7 @@ jobs:
         run: pip-audit --requirement sidecar/requirements.txt
 
       - name: gitleaks secret scan
-        run: |
-          curl -sL https://raw.githubusercontent.com/zricethezav/gitleaks/master/scripts/install.sh | bash
-          ./gitleaks detect --source . --verbose --redact
+        uses: gitleaks/gitleaks-action@v2
 
       # Semgrep and Trivy are run for visibility only; existing findings do
       # not block CI while Ryan reviews them.

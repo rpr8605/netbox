@@ -17,6 +17,11 @@
 // active.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
+
+// Writable data directory. On the device this is /data; tests override it with
+// a temp directory so a real /data folder is never required.
+const DATA_DIR = process.env.BEACON_DATA_DIR ?? '/data';
 
 // Strict version format: major.minor.patch with an optional pre-release label.
 // This is the only shape the update client will write to disk or pass to rauc.
@@ -55,7 +60,8 @@ export async function downloadBundle(ctx, version, fetchBytes) {
   }
   const url = `${ctx.cpBase}/api/releases/${version}/bundle`;
   const bytes = await fetchBytes(url);
-  const tmp = `/data/.update-${version}.raucb`;
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const tmp = path.join(DATA_DIR, `.update-${version}.raucb`);
   fs.writeFileSync(tmp, bytes);
   return tmp;
 }

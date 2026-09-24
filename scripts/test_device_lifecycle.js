@@ -5,7 +5,7 @@
 //   - BOM / golden-manifest JSON shape
 //   - golden-manifest validator behavior against a fake manifest
 // Run via: node --test scripts/test_device_lifecycle.js
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -14,12 +14,30 @@ import os from 'node:os';
 import { upsertDevice, getDevice, replaceDevice, listAudit, appendAudit, recordRevokedSerial, isSerialRevoked } from '../control-plane/src/db.js';
 import deviceRoutes from '../control-plane/src/routes/devices.js';
 import { can, requirePerm } from '../control-plane/src/rbac.js';
-import { canonicalSerial, mintStepCaRevokeToken, setCaRootMaterial } from '../control-plane/src/ca.js';
-import { importJWK, jwtVerify } from 'jose';
+import { importJWK, jwtVerify, generateKeyPair, exportJWK } from 'jose';
 import { execFileSync } from 'node:child_process';
 
 const role = 'operations-manager';
-const publicJwk = JSON.parse(fs.readFileSync('pki-config/provisioner/public_jwk.json', 'utf8')).public;
+
+// Generate a throwaway ES256 key pair in a temp directory. The real
+// pki-config/provisioner/*.jwk.json files do not exist on a clean checkout,
+// and we must never commit key material just to make tests pass.
+const tmpKeyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'br-test-keys-'));
+const keyPair = await generateKeyPair('ES256', { extractable: true });
+const publicJwk = await exportJWK(keyPair.publicKey);
+const privateJwk = await exportJWK(keyPair.privateKey);
+publicJwk.kid = privateJwk.kid = 'beacon-relay-device';
+publicJwk.alg = privateJwk.alg = 'ES256';
+fs.writeFileSync(path.join(tmpKeyDir, 'public_jwk.json'), JSON.stringify({ public: publicJwk }));
+fs.writeFileSync(path.join(tmpKeyDir, 'private_jwk.json'), JSON.stringify({ private: privateJwk }));
+process.env.PROVISIONER_PRIVATE_JWK_PATH = path.join(tmpKeyDir, 'private_jwk.json');
+
+// Dynamic import so ca.js reads PROVISIONER_PRIVATE_JWK_PATH after we set it.
+const { canonicalSerial, mintStepCaRevokeToken, setCaRootMaterial } = await import('../control-plane/src/ca.js');
+
+after(() => {
+  fs.rmSync(tmpKeyDir, { recursive: true, force: true });
+});
 
 describe('device replacement workflow', () => {
   it('retires old device, creates replacement in quarantine, and audits', async () => {

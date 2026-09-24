@@ -6,10 +6,25 @@
 // After reboot into the NEW slot:
 //   health-check-pass -> mark-good on the booted (new) slot
 //   health-check-fail -> mark-bad on the booted (new) slot, then reboot
-import { describe, it } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+let tmpDir;
 
 describe('H2 — OTA rollback targets the booted slot after reboot', () => {
+  before(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'br-update-test-'));
+    process.env.BEACON_DATA_DIR = tmpDir;
+  });
+
+  after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env.BEACON_DATA_DIR;
+  });
+
   it('runUpdateCycle installs and requests reboot, never touches slots in-cycle', async () => {
     const { runUpdateCycle } = await import('../lib/update.js');
     const calls = [];

@@ -13,8 +13,13 @@ import { Agent, fetch as undiciFetch } from 'undici';
 
 const CA_URL = process.env.CA_URL ?? 'https://localhost:9000';
 const PROV_NAME = process.env.PROVISIONER_NAME ?? 'beacon-relay-device';
-const PRIV_PATH = process.env.PROVISIONER_PRIVATE_JWK_PATH ??
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../pki-config/provisioner/private_jwk.json');
+
+// Resolve the provisioner private key path lazily so tests can set the env var
+// after importing modules that transitively depend on ca.js.
+function privPath() {
+  return process.env.PROVISIONER_PRIVATE_JWK_PATH ??
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../pki-config/provisioner/private_jwk.json');
+}
 
 // Cached CA root material. We need both the PEM (for device bootstrap) and the
 // SHA-256 fingerprint (as the `sha` root claim in step-ca revocation tokens).
@@ -45,7 +50,7 @@ export function canonicalSerial(serial) {
 let _privKey = null;
 async function provisionerKey() {
   if (_privKey) return _privKey;
-  const raw = JSON.parse(fs.readFileSync(PRIV_PATH, 'utf8'));
+  const raw = JSON.parse(fs.readFileSync(privPath(), 'utf8'));
   _privKey = await importJWK(raw.private ?? raw, 'ES256');
   return _privKey;
 }
