@@ -308,3 +308,22 @@
   - Simulated fresh-clone `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests.
 - **Commits:** `8cc187b`, `de5bc1b`, `3ce22bd`, `c8389d7` on `agent/md-sync-2026-09-22`.
 - **Open questions / next:** Phase 3 ready after Ryan approval.
+
+## Checkpoint #22 | Block: $3.67 | Total: $715.30 | Cost/commit: $1.22
+
+- **Done (Phase 3 Part A — inventory + decisions):**
+  - Verified RD-PHI-2 DONE (M1, commit `f54226b`; `control-plane/test/deliver.phi.test.js` covers SMS, voice, webhook, email).
+  - Applied all Ryan's decisions to `docs/planning/PHASE3_INVENTORY.md` (C1 Cognito, AWS-1 Ryan setup, Postgres-only Option B, PHI-mode deferred, legal templates, power backup Option A, BOM decisions, M365/IDP/EHR/TIX deferred, CK-ENG-1 decided).
+- **Done (Console Step 1 — scaffold):**
+  - React 18 + Vite + TypeScript console scaffold at `control-plane/console/`.
+  - Dev-auth stub (`control-plane/src/auth/dev_auth.js`) sets `req.user` when `CONSOLE_DEV_AUTH=1` and `NODE_ENV != production`; relies on compose host publish staying `127.0.0.1`.
+  - `requirePerm` in `control-plane/src/rbac.js` now reads role only from `req.user`; no longer reads query/body role.
+  - Test `api()` helpers translate `?role=` to `X-Dev-Role` header so existing test URLs keep working.
+  - Control plane serves `/console/` from `control-plane/console/dist` with SPA fallback; Dockerfile builds console in multi-stage image.
+  - Added `CONSOLE_DEV_AUTH=1` to `.env.example` and `docker-compose.yml`; added `/console/*` to `route-auth.test.js`; excluded console `dist/` and `node_modules/` from ESLint.
+- **Validation:**
+  - `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests (clean no-`.env` run).
+  - `npm run lint` passes (warnings only, no errors).
+  - Console builds successfully (`cd control-plane/console && npm run build`).
+- **Commits:** `8da88fe`, `691230f`, `7cc53c6`, `6bc4126` on `agent/md-sync-2026-09-22`.
+- **Open questions / next:** Stage 2 AGENT item SQLITE-1/M6 — Postgres-only phase.
