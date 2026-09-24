@@ -327,3 +327,25 @@
   - Console builds successfully (`cd control-plane/console && npm run build`).
 - **Commits:** `8da88fe`, `691230f`, `7cc53c6`, `6bc4126` on `agent/md-sync-2026-09-22`.
 - **Open questions / next:** Stage 2 AGENT item SQLITE-1/M6 — Postgres-only phase.
+
+## Checkpoint #23 | Block: $6.22 | Total: $721.52 | Cost/commit: $6.22
+
+- **Done (Stage 2 AGENT item SQLITE-1/M6 — PostgreSQL-only storage):**
+  - Removed SQLite from the control plane: deleted `control-plane/migrate.js`, `control-plane/test/migrate.once.test.js`, `scripts/migrate_sqlite_to_postgres.js`, `scripts/run_sqlite_tests.js`, and the `better-sqlite3` dependency.
+  - Rewrote `control-plane/src/db.js` as PostgreSQL-only with lazy `pg.Pool` initialization, `$n` placeholders, no `pgize()` translation, and `SET TIME ZONE 'UTC'` on every connection.
+  - Rewrote `control-plane/src/schema.js` for Postgres with native `TIMESTAMPTZ` columns and `NOW()` defaults.
+  - Updated `control-plane/reset_test_db.js` to require `DATABASE_URL` and recreate `beacon_relay_test` via Postgres.
+  - Updated `docker-compose.yml` to publish Postgres on `127.0.0.1:${POSTGRES_HOST_PORT}` and removed `DB_PATH`/`cp-data` volume.
+  - Updated `control-plane/Dockerfile` and `entrypoint.sh` to remove SQLite build tools and migration step.
+  - Updated `.github/workflows/ci.yml` to use a Postgres service container.
+  - Fixed timestamp and role-read call sites across `alerting.js`, `support.js`, `enroll.js`, `action_registry.js`, `devices.js`, `releases.js`, `topology_view.js`, `index.js`.
+  - Fixed `api()` test helpers in `test_alerting_rbac_audit_support.js`, `test_device_replace_e2e.js`, `test_ehr_e2e.js` to preserve non-role query params when translating `?role=` to `X-Dev-Role`.
+  - Rewrote the audit-log tamper test to use a direct Postgres client with savepoints.
+  - Updated `docs/specs/BEACON_RELAY_CHECKLIST.md`, `docs/specs/BEACON_RELAY_STATUS.md`, `.agent/open-questions.md`, and `.agent/review-triage.md` with fresh evidence and resolved M6/C3/H3/M3/maintainability findings.
+- **Validation:**
+  - `npm test`: 96/96 (29 unit + 29 security + 38 Python).
+  - `npm run test:integration`: 127/127 (agent loop 11/11, E2E 23/23, OTA 21/21, device swap 7/7, alerting/RBAC/audit/support 76/76).
+  - `npm run lint`: warnings only, no errors (ruff not installed locally).
+  - `node audit_docs.cjs .`: 121 files, 4 missing header, 64 missing doc comments (heuristic).
+- **Commit:** `9e48d3f` on `agent/md-sync-2026-09-22`.
+- **Open questions / next:** Stage 3 AGENT item — continue React console work or next CHECKLIST priority per `docs/specs/BEACON_RELAY_STATUS.md` §4.
