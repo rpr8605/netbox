@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Sites</span></a>
+    <a href="Routing.dc.html"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 18px 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+        <a href="Fleet.dc.html" style="font-size: 13px; text-decoration: none">Fleet /</a>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">Demo County Memorial</h1>
+        <span style="font-size: 14px; color: #5A635E">Critical access hospital · 25 beds · Jefferson City area, MO · Tier 2 managed service</span>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <span style="font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; background: #E3F1E8; color: #1E7042">17 working</span>
+        <span style="font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; background: #FBF0D9; color: #8A5A00">2 degraded</span>
+        <span style="font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 8px; background: #FBE4E1; color: #A8261B">1 down</span>
+      </div>
+      <a class="btn" href="Topology.dc.html" style="border: 1px solid #1F4FB8; background: #1F4FB8; color: #FFFFFF; display: inline-flex; align-items: center; gap: 8px; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"></circle><circle cx="5" cy="19" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M12 7.5v4M12 11.5l-5.5 5.5M12 11.5l5.5 5.5"></path></svg>Topology</a>
+      <span style="font-size: 12px; color: #8A5A00; background: #FBF0D9; padding: 4px 10px; border-radius: 6px">Sample data</span>
+    </header>
+    <div role="tablist" aria-label="Site sections" style="flex-shrink: 0; display: flex; gap: 4px; padding: 0 32px; background: #FFFFFF; border-bottom: 1px solid #DCDFD8">
+      <a role="tab" aria-selected="true" href="Site.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 600; color: #17201C; text-decoration: none; border-bottom: 3px solid #1F4FB8">Overview</a>
+      <a role="tab" aria-selected="false" href="SiteSupport.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Support <span style="margin-left: 8px; background: #FBE4E1; color: #A8261B; border-radius: 10px; padding: 0 8px; font-size: 12px; font-weight: 600">2 open</span></a>
+      <a role="tab" aria-selected="false" href="Topology.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Topology</a>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; gap: 24px; padding: 24px 32px; min-height: 0">
+      <section aria-label="Critical services" style="flex-grow: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+          <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px">
+            <h2 style="margin: 0 0 8px; font-size: 15px; font-weight: 600">{{g.name}}</h2>
+            <sc-for list="{{g.items}}" as="s" hint-placeholder-count="5">
+              <div style="display: flex; align-items: center; gap: 10px; min-height: 34px; border-top: 1px solid #EEF0EC">
+                <span style="width: 10px; height: 10px; border-radius: 5px; flex-shrink: 0; background: {{s.dot}}"></span>
+                <span style="font-size: 14px; font-weight: 500; width: 150px; flex-shrink: 0">{{s.name}}</span>
+                <span style="font-size: 13px; color: #5A635E; flex-grow: 1">{{s.note}}</span>
+                <span style="font-size: 12px; font-weight: 600; color: {{s.ink}}">{{s.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </section>
+
+      <aside style="width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Beacon Link</h2>
+          <div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); row-gap: 6px; font-size: 14px">
+            <span style="color: #5A635E">Device</span><span class="mono">br-dcm-01</span>
+            <span style="color: #5A635E">Status</span><span style="color: #1E7042; font-weight: 500">Online · 12 s ago</span>
+            <span style="color: #5A635E">Connection</span><span>Fiber, LTE backup ready</span>
+            <span style="color: #5A635E">Software</span><span class="mono">1.4.2 (current)</span>
+            <span style="color: #5A635E">Certificate</span><span>Auto-renews in 18 h</span>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 600">Who gets paged</h2>
+            <a href="Routing.dc.html" style="font-size: 14px">Edit</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+            <span><b style="font-weight: 600">Tier 1</b> · Onsite tech · SMS + call · 5 min</span>
+            <span><b style="font-weight: 600">Tier 2</b> · Service desk · call + Teams · 10 min</span>
+            <span><b style="font-weight: 600">Tier 3</b> · On-call engineer · call</span>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Recent incidents</h2>
+          <div style="font-size: 14px; display: flex; flex-direction: column; gap: 8px">
+            <span>Sep 23 · Lab results interface <b style="color: #A8261B; font-weight: 600">open</b></span>
+            <span>Sep 23 · Printing down <b style="color: #A8261B; font-weight: 600">open</b></span>
+            <span style="color: #5A635E">Sep 11 · WAN failover to LTE · 14 min</span>
+            <span style="color: #5A635E">Jul 2 · LIS certificate expired · 1 h 10 min</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <a class="btn" href="Topology.dc.html" style="flex-grow: 1; border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C; display: inline-flex; align-items: center; justify-content: center; text-decoration: none">Topology</a>
+          <button class="btn" style="flex-grow: 1; border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C">Downtime page</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = { ok: ['#1E7042', 'Working'], warn: ['#B7791F', 'Degraded'], down: ['#A8261B', 'Down'], unk: ['#6B7278', 'Unknown'] };
+    const s = (name, state, note) => ({ name, note, dot: st[state][0], ink: state === 'warn' ? '#8A5A00' : st[state][0], label: st[state][1] });
+    return {
+      groups: [
+        { name: 'Clinical systems', items: [
+          s('EHR', 'ok', 'MEDITECH Expanse · L3 read OK'), s('ADT', 'ok', ''), s('Lab', 'warn', 'Results delayed'),
+          s('Pharmacy', 'ok', ''), s('Imaging', 'ok', ''), s('e-Prescribing', 'ok', 'Surescripts reachable') ] },
+        { name: 'Interfaces', items: [
+          s('ADT feed', 'ok', 'Mirth · last msg 8 s ago'), s('Lab results', 'warn', 'Mirth · 3 errors in 15 min'),
+          s('Pharmacy orders', 'ok', 'Mirth · last msg 21 s ago'), s('Custom check', 'unk', 'Not configured') ] },
+        { name: 'Network and site', items: [
+          s('Internet', 'ok', ''), s('WAN circuit', 'ok', 'Primary fiber'), s('Firewall', 'ok', ''), s('DNS', 'ok', ''),
+          s('DHCP', 'ok', ''), s('Wireless APs', 'ok', '14 of 14 up'), s('VPN tunnel', 'ok', 'To clinic'), s('Phones', 'ok', ''),
+          s('Printing', 'down', '2nd floor label printers') ] },
+        { name: 'Security and identity', items: [
+          s('Certificates', 'ok', 'Next expiry in 41 days'), s('Microsoft 365', 'ok', 'No risky sign-ins'),
+          s('Backups', 'ok', 'Last success 02:10'), s('Antivirus / EDR', 'ok', '42 of 42 checked in') ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

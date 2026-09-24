@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site support log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Sites</span></a>
+    <a href="Routing.dc.html"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 18px 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+        <a href="Fleet.dc.html" style="font-size: 13px; text-decoration: none">Fleet /</a>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">Demo County Memorial</h1>
+        <span style="font-size: 14px; color: #5A635E">Critical access hospital · 25 beds · Tier 2 managed service</span>
+      </div>
+      <button class="btn" style="border: 1px solid #1F4FB8; background: #1F4FB8; color: #FFFFFF">Log a reported issue</button>
+      <span style="font-size: 12px; color: #8A5A00; background: #FBF0D9; padding: 4px 10px; border-radius: 6px">Sample data</span>
+    </header>
+    <div role="tablist" aria-label="Site sections" style="flex-shrink: 0; display: flex; gap: 4px; padding: 0 32px; background: #FFFFFF; border-bottom: 1px solid #DCDFD8">
+      <a role="tab" aria-selected="false" href="Site.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Overview</a>
+      <a role="tab" aria-selected="true" href="SiteSupport.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 600; color: #17201C; text-decoration: none; border-bottom: 3px solid #1F4FB8">Support</a>
+      <a role="tab" aria-selected="false" href="Topology.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Topology</a>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px; padding: 20px 32px; min-height: 0">
+      <section aria-label="Last 30 days" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 12px 16px"><div style="font-size: 13px; color: #5A635E">Issues, last 30 days</div><div style="font-size: 28px; font-weight: 600">12</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 12px 16px"><div style="font-size: 13px; color: #5A635E">Caught before anyone called</div><div style="font-size: 28px; font-weight: 600; color: #1F4FB8">9</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 12px 16px"><div style="font-size: 13px; color: #5A635E">Reported by hospital staff</div><div style="font-size: 28px; font-weight: 600; color: #6A3FB0">3</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 12px 16px"><div style="font-size: 13px; color: #5A635E">Median time to resolve</div><div class="mono" style="font-size: 28px; font-weight: 600">24 min</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 12px 16px"><div style="font-size: 13px; color: #5A635E">Open now</div><div style="font-size: 28px; font-weight: 600; color: #A8261B">2</div></div>
+      </section>
+
+      <section aria-label="Support log" style="flex-grow: 1; min-height: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #DCDFD8">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 600; flex-grow: 1">Support log</h2>
+          <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+            <button class="btn" onClick="{{f.pick}}" style="min-height: 36px; font-size: 14px; border: 1px solid {{f.border}}; background: {{f.bg}}; color: {{f.ink}}">{{f.label}}</button>
+          </sc-for>
+        </div>
+        <div style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 190px 120px 150px 90px; gap: 12px; padding: 10px 16px; background: #F4F6F2; font-size: 12px; font-weight: 600; color: #5A635E">
+          <span>When</span><span>Issue</span><span>How we found out</span><span>Status</span><span>Owner</span><span>Time</span>
+        </div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 190px 120px 150px 90px; gap: 12px; padding: 12px 16px; border-top: 1px solid #EEF0EC; align-items: start">
+            <span class="mono" style="font-size: 13px; color: #3E4742">{{r.when}}</span>
+            <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+              <a href="{{r.href}}" style="font-size: 14px; font-weight: 600; text-decoration: none">{{r.title}}</a>
+              <span style="font-size: 13px; color: #5A635E">{{r.note}}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <span style="align-self: flex-start; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: {{r.srcBg}}; color: {{r.srcInk}}">{{r.src}}</span>
+              <span style="font-size: 12px; color: #5A635E">{{r.srcSub}}</span>
+            </div>
+            <span style="align-self: start; font-size: 13px; font-weight: 600; color: {{r.stInk}}">{{r.status}}</span>
+            <span style="font-size: 13px">{{r.owner}}</span>
+            <span class="mono" style="font-size: 13px; color: #3E4742">{{r.dur}}</span>
+          </div>
+        </sc-for>
+      </section>
+      <p style="margin: 0; font-size: 12px; color: #5A635E">When logging a call, record the system and symptom only. Never enter patient names, MRNs or other patient details.</p>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const filter = this.state?.filter ?? 'all';
+    const SRC = {
+      det: ['Detected by Beacon Relay', '#E6EEFB', '#1F4FB8'],
+      both: ['Detected, then reported', '#E6EEFB', '#1F4FB8'],
+      rep: ['Reported by hospital', '#EFE8FA', '#6A3FB0'],
+    };
+    const STI = { Open: '#A8261B', Monitoring: '#8A5A00', Resolved: '#1E7042' };
+    const data = [
+      { when: 'Sep 23 21:36', title: 'Printing down (2nd floor)', note: 'Label printers refuse connections. Nurse station called 12 min after we alerted.', src: 'both', srcSub: 'Call from 2 West nurse station', status: 'Open', owner: 'Service desk', dur: '4 min', href: 'Main.dc.html' },
+      { when: 'Sep 23 21:31', title: 'Lab results interface degraded', note: 'Results from Lab LIS failing into MEDITECH. Orders still flowing.', src: 'det', srcSub: 'No one has reported it yet', status: 'Open', owner: '[Tech name]', dur: '9 min', href: 'Main.dc.html' },
+      { when: 'Sep 19 14:05', title: 'Slow EHR logins, east wing', note: 'Reported slowness. All checks normal; wireless AP 7 reboot resolved it.', src: 'rep', srcSub: 'Email from IT lead', status: 'Resolved', owner: '[Tech name]', dur: '38 min', href: 'SiteSupport.dc.html' },
+      { when: 'Sep 16 03:12', title: 'Backup job failed', note: 'Nightly backup missed. Re-ran at 06:00, verified.', src: 'det', srcSub: 'Caught overnight', status: 'Resolved', owner: 'Service desk', dur: '3 h 1 min', href: 'SiteSupport.dc.html' },
+      { when: 'Sep 11 10:42', title: 'WAN failover to LTE', note: 'Fiber cut by road crew. LTE carried traffic; ISP repaired.', src: 'det', srcSub: 'Before staff noticed', status: 'Resolved', owner: 'Service desk', dur: '14 min', href: 'SiteSupport.dc.html' },
+      { when: 'Sep 8 09:15', title: 'Fax to pharmacy not arriving', note: 'Outside what Beacon Relay monitors. Logged for the record; vendor fixed.', src: 'rep', srcSub: 'Call from pharmacy', status: 'Resolved', owner: '[Tech name]', dur: '1 h 20 min', href: 'SiteSupport.dc.html' },
+      { when: 'Sep 2 16:50', title: 'Certificate expiring on patient portal', note: 'Flagged 14 days out. Hospital IT renewed it.', src: 'det', srcSub: '14 days before expiry', status: 'Resolved', owner: 'Hospital IT', dur: '6 days', href: 'SiteSupport.dc.html' },
+      { when: 'Aug 29 07:20', title: 'Intermittent ADT delays', note: 'Watching queue depth after a MEDITECH patch.', src: 'det', srcSub: 'Pattern over 3 days', status: 'Monitoring', owner: 'Service desk', dur: 'ongoing', href: 'SiteSupport.dc.html' },
+    ];
+    const keep = r => filter === 'all' || (filter === 'open' && r.status !== 'Resolved') ||
+      (filter === 'det' && r.src !== 'rep') || (filter === 'rep' && r.src !== 'det');
+    const rows = data.filter(keep).map(r => ({ ...r, src: SRC[r.src][0], srcBg: SRC[r.src][1], srcInk: SRC[r.src][2], stInk: STI[r.status] }));
+    const opts = [['all', 'All'], ['open', 'Open'], ['det', 'Detected by us'], ['rep', 'Reported by hospital']];
+    const filters = opts.map(([id, label]) => {
+      const on = id === filter;
+      return { label, border: on ? '#17201C' : '#C5CAC3', bg: on ? '#17201C' : '#FFFFFF', ink: on ? '#FFFFFF' : '#17201C',
+        pick: () => this.setState({ filter: id }) };
+    });
+    return { rows, filters };
+  }
+}
+</script>
+</body>
+</html>

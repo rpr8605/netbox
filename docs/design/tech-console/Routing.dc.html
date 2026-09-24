@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alert routing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html"><span>Sites</span></a>
+    <a href="Routing.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 18px 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">Alert routing</h1>
+        <span style="font-size: 14px; color: #5A635E">Who gets paged, how, and how long before it moves up.</span>
+      </div>
+      <label for="site" style="font-size: 14px; color: #5A635E">Site</label>
+      <select id="site" style="height: 44px; border: 1px solid #C5CAC3; border-radius: 8px; padding: 0 12px; font: inherit; font-size: 15px; min-width: 280px">
+        <option>Demo County Memorial (Tier 2 managed)</option>
+      </select>
+      <button class="btn" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C">Send test page</button>
+      <button class="btn" style="border: 1px solid #1F4FB8; background: #1F4FB8; color: #FFFFFF">Save changes</button>
+    </header>
+
+    <div style="flex-grow: 1; display: flex; gap: 24px; padding: 24px 32px; min-height: 0">
+      <section aria-label="Escalation ladders" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <sc-for list="{{ladders}}" as="l" hint-placeholder-count="2">
+          <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: {{l.sevBg}}; color: {{l.sevInk}}">{{l.sev}}</span>
+              <h2 style="margin: 0; font-size: 16px; font-weight: 600">{{l.title}}</h2>
+              <span style="flex-grow: 1"></span>
+              <span style="font-size: 13px; color: #5A635E">{{l.hours}}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+              <sc-for list="{{l.tiers}}" as="t" hint-placeholder-count="3">
+                <div style="border: 1px solid #DCDFD8; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: #FAFBF9">
+                  <span style="font-size: 12px; font-weight: 600; color: #5A635E; letter-spacing: .04em">{{t.tier}}</span>
+                  <span style="font-size: 15px; font-weight: 600">{{t.who}}</span>
+                  <span style="font-size: 13px; color: #3E4742">{{t.how}}</span>
+                  <span class="mono" style="font-size: 12px; color: #5A635E">{{t.wait}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <p style="margin: 0; font-size: 13px; color: #5A635E">Alert messages carry site, service, severity, time and a link. They never include patient information.</p>
+      </section>
+
+      <aside style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Severity by service</h2>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 60px; row-gap: 8px; font-size: 14px">
+            <span>EHR, ADT, Lab, Pharmacy</span><span style="font-weight: 600; color: #A8261B">P1</span>
+            <span>Internet, WAN, Firewall, DNS</span><span style="font-weight: 600; color: #A8261B">P1</span>
+            <span>Interfaces (any channel)</span><span style="font-weight: 600; color: #A8261B">P1</span>
+            <span>Printing, Phones, Wireless</span><span style="font-weight: 600; color: #8A5A00">P2</span>
+            <span>Certificates under 14 days</span><span style="font-weight: 600; color: #8A5A00">P2</span>
+            <span>Backups, AV/EDR, M365</span><span style="font-weight: 600; color: #3E4742">P3</span>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Hours and on-call</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+            <span>Business hours: Mon to Fri, 7:00 to 17:00 CT</span>
+            <span>After hours: P1 only, straight to service desk</span>
+            <span>On-call engineer this week: [name]</span>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Maintenance windows</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+            <span>Sun 02:00 to 04:00 · MEDITECH patching · EHR alerts paused</span>
+            <span style="color: #5A635E">Alerts during a window are logged, not paged.</span>
+          </div>
+          <a href="Routing.dc.html" style="font-size: 14px">Add a window</a>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      ladders: [
+        { sev: 'P1', sevBg: '#A8261B', sevInk: '#FFFFFF', title: 'Critical: patient care affected', hours: 'Any time, day or night', tiers: [
+          { tier: 'TIER 1', who: 'Onsite tech (hospital)', how: 'SMS + phone call', wait: 'Acknowledge within 5 min' },
+          { tier: 'TIER 2', who: 'Beacon Relay service desk', how: 'Phone call + Teams', wait: 'Acknowledge within 10 min' },
+          { tier: 'TIER 3', who: 'On-call engineer', how: 'Phone call', wait: 'Final escalation' } ] },
+        { sev: 'P2', sevBg: '#FBF0D9', sevInk: '#8A5A00', title: 'Degraded: workaround exists', hours: 'Business hours only', tiers: [
+          { tier: 'TIER 1', who: 'Onsite tech (hospital)', how: 'Email + SMS', wait: 'Acknowledge within 30 min' },
+          { tier: 'TIER 2', who: 'Beacon Relay service desk', how: 'Email + Teams', wait: 'Acknowledge within 2 h' },
+          { tier: 'TIER 3', who: 'None', how: 'Ticket only', wait: 'Next business day' } ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

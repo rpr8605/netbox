@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alerts inbox</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html"><span>Sites</span></a>
+    <a href="Routing.dc.html"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="height: 76px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600">Alerts</h1>
+      <div style="display: flex; gap: 8px; margin-left: 12px">
+        <button class="btn" style="border: 1px solid #17201C; background: #17201C; color: #FFFFFF; min-height: 36px; font-size: 14px">Open · 3</button>
+        <button class="btn" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C; min-height: 36px; font-size: 14px">Acknowledged · 1</button>
+        <button class="btn" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C; min-height: 36px; font-size: 14px">Resolved today · 6</button>
+      </div>
+      <div style="flex-grow: 1"></div>
+      <label for="q" style="font-size: 14px; color: #5A635E">Search</label>
+      <input id="q" type="search" placeholder="Site, service, device" style="height: 40px; width: 280px; border: 1px solid #C5CAC3; border-radius: 8px; padding: 0 12px; font: inherit; font-size: 14px">
+      <span style="font-size: 12px; color: #8A5A00; background: #FBF0D9; padding: 4px 10px; border-radius: 6px">Sample data</span>
+    </header>
+
+    <div style="flex-grow: 1; display: flex; gap: 24px; padding: 24px 32px; min-height: 0">
+      <section aria-label="Alert list" style="width: 520px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{alerts}}" as="a" hint-placeholder-count="4">
+          <article style="background: {{a.bg}}; border: {{a.border}}; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: {{a.sevBg}}; color: {{a.sevInk}}">{{a.sev}}</span>
+              <span style="font-weight: 600; font-size: 15px">{{a.site}}</span>
+              <span style="flex-grow: 1"></span>
+              <span class="mono" style="font-size: 12px; color: #5A635E">{{a.age}}</span>
+            </div>
+            <div style="font-size: 15px; font-weight: 500">{{a.title}}</div>
+            <div style="font-size: 14px; color: #3E4742; line-height: 1.45">{{a.impact}}</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{a.stateInk}}">
+              <span style="width: 8px; height: 8px; border-radius: 4px; background: {{a.stateInk}}"></span>{{a.state}}
+            </div>
+          </article>
+        </sc-for>
+      </section>
+
+      <section aria-label="Alert detail" style="flex-grow: 1; min-width: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+        <div style="display: flex; align-items: flex-start; gap: 16px">
+          <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1">
+            <div style="display: flex; gap: 8px; align-items: center">
+              <span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: #A8261B; color: #FFFFFF">P1</span>
+              <span style="font-size: 13px; color: #5A635E">Demo County Memorial · Lab results interface · Mirth channel ch-lab</span>
+            </div>
+            <h2 style="margin: 0; font-size: 22px; font-weight: 600">Lab results aren't reaching MEDITECH</h2>
+            <p style="margin: 0; font-size: 15px; color: #3E4742; line-height: 1.5; max-width: 620px">Clinicians may see delayed or missing lab results in the chart. Orders are still flowing out; results coming back are failing.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+            <span style="font-size: 13px; color: #A8261B; font-weight: 600">Unacknowledged</span>
+            <span class="mono" style="font-size: 13px; color: #5A635E">Escalated to Tier 2 at 21:36</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px">
+          <button class="btn" style="border: 1px solid #1F4FB8; background: #1F4FB8; color: #FFFFFF">Acknowledge</button>
+          <a class="btn" href="Site.dc.html" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C; display: inline-flex; align-items: center; text-decoration: none">Open site</a>
+          <button class="btn" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C">Start support session</button>
+          <button class="btn" style="border: 1px solid #C5CAC3; background: #FFFFFF; color: #17201C">Copy ticket text</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px">
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #5A635E; letter-spacing: .02em">What we see</h3>
+            <div style="display: grid; grid-template-columns: 170px minmax(0, 1fr); row-gap: 8px; font-size: 14px">
+              <span style="color: #5A635E">Last good message</span><span class="mono">21:31:02 (9 min ago)</span>
+              <span style="color: #5A635E">Errors, last 15 min</span><span class="mono">3 NACKs</span>
+              <span style="color: #5A635E">Check depth</span><span>L2, TLS handshake OK</span>
+              <span style="color: #5A635E">Also affected</span><span>Printing is down at this site (may be unrelated)</span>
+            </div>
+            <h3 style="margin: 8px 0 0; font-size: 14px; font-weight: 600; color: #5A635E; letter-spacing: .02em">Confirmed before paging</h3>
+            <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7">
+              <li>Retried the check twice</li>
+              <li>Checked a second dependency (Lab LIS host reachable)</li>
+              <li>Confirmed WAN is up (primary fiber)</li>
+            </ol>
+            <a href="Main.dc.html" style="font-size: 14px">Open runbook: Lab interface stalled</a>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: #5A635E; letter-spacing: .02em">Similar past incidents</h3>
+            <div style="border: 1px solid #DCDFD8; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 14px; font-weight: 500">Aug 14 · Prairie Ridge Hospital</span>
+              <span style="font-size: 14px; color: #3E4742">Root cause: Lab LIS service hung. Fix: restarted LIS interface service.</span>
+              <span class="mono" style="font-size: 12px; color: #5A635E">Resolved in 22 min · match 0.81</span>
+            </div>
+            <div style="border: 1px solid #DCDFD8; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 14px; font-weight: 500">Jul 2 · Demo County Memorial</span>
+              <span style="font-size: 14px; color: #3E4742">Root cause: expired cert on LIS endpoint. Fix: renewed certificate.</span>
+              <span class="mono" style="font-size: 12px; color: #5A635E">Resolved in 1 h 10 min · match 0.64</span>
+            </div>
+
+            <h3 style="margin: 8px 0 0; font-size: 14px; font-weight: 600; color: #5A635E; letter-spacing: .02em">Who's been paged</h3>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+              <div style="display: flex; justify-content: space-between"><span>Tier 1 · Onsite tech (SMS + call)</span><span class="mono" style="color: #A8261B">21:31 · no ack</span></div>
+              <div style="display: flex; justify-content: space-between"><span>Tier 2 · Beacon Relay service desk</span><span class="mono" style="color: #8A5A00">21:36 · ringing</span></div>
+              <div style="display: flex; justify-content: space-between; color: #5A635E"><span>Tier 3 · On-call engineer</span><span class="mono">at 21:46 if no ack</span></div>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin: auto 0 0; font-size: 12px; color: #5A635E">Facts only: recorded check results and timestamps. Beacon Relay never shows patient data here.</p>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sev = { P1: ['#A8261B', '#FFFFFF'], P2: ['#FBF0D9', '#8A5A00'], P3: ['#ECEEF0', '#3E4742'] };
+    const rows = [
+      { sev: 'P1', site: 'Demo County Memorial', age: '9 min', title: 'Lab results interface degraded', impact: "Lab results aren't reaching MEDITECH.", state: 'Unacknowledged · escalated to Tier 2', stateInk: '#A8261B', selected: true },
+      { sev: 'P1', site: 'Osage Creek Medical Center', age: '4 min', title: 'Printing down (2nd floor)', impact: "Wristband and label printers can't print.", state: 'Unacknowledged · escalates in 1:12', stateInk: '#A8261B' },
+      { sev: 'P2', site: 'Prairie Ridge Hospital', age: '2 h', title: 'TLS certificate expires in 6 days', impact: 'Patient portal certificate expires Sep 29.', state: 'Acknowledged by [tech name]', stateInk: '#1E7042' },
+      { sev: 'P3', site: 'Flint Hills Community Hospital', age: '1 d', title: 'New Beacon Link awaiting confirmation', impact: 'Device br-flh-01 is in quarantine until confirmed.', state: 'Waiting on operations', stateInk: '#555E66' },
+    ];
+    return {
+      alerts: rows.map(r => ({ ...r, sevBg: sev[r.sev][0], sevInk: sev[r.sev][1],
+        bg: r.selected ? '#EEF3FD' : '#FFFFFF', border: r.selected ? '2px solid #1F4FB8' : '1px solid #DCDFD8' })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Profiles and history</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:14px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:40px;padding:0 16px;border-radius:8px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;border:1px solid #C5CAC3;background:#FFFFFF;color:#17201C}
+.pri{background:#1F4FB8;border-color:#1F4FB8;color:#FFFFFF}
+.dng{background:#A8261B;border-color:#A8261B;color:#FFFFFF}
+.card{background:#FFFFFF;border:1px solid #DCDFD8;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.h2{margin:0;font-size:17px;font-weight:600}
+.sub{font-size:13px;color:#4F5853}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f label{font-size:13px;font-weight:500;color:#2B332F}
+.f input{height:38px;border:1px solid #C5CAC3;border-radius:7px;padding:0 10px;font:inherit;font-size:14px;color:#17201C;background:#FFFFFF;box-sizing:border-box;width:100%}
+.f .hint{font-size:12px;color:#5A635E}
+.sel{height:38px;border:1px solid #C5CAC3;border-radius:7px;padding:0 10px;font:inherit;font-size:14px;background:#FFFFFF;color:#17201C;display:flex;align-items:center;justify-content:space-between;cursor:pointer;width:100%;text-align:left}
+.sw{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;font:inherit;font-size:14px;color:#17201C;cursor:pointer;text-align:left;min-height:32px}
+.pill{font-size:12px;font-weight:500;padding:3px 9px;border-radius:6px;white-space:nowrap}
+.opt{border:1px solid #C5CAC3;border-radius:10px;padding:12px 14px;background:#FFFFFF;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:4px;color:#17201C}
+.opt.on{border:2px solid #1F4FB8;background:#EEF3FF;padding:11px 13px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;color:#4F5853;font-size:12px;padding:8px 10px;border-bottom:1px solid #DCDFD8}
+td{padding:9px 10px;border-bottom:1px solid #ECEEEA;vertical-align:middle}
+.log{background:#10160F;color:#CFE3D2;border-radius:10px;padding:14px 16px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.6;white-space:pre;overflow:hidden}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; display: flex; background: #F2F3F0; overflow: hidden">
+<nav class="nav" aria-label="Configurator" style="width: 256px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 22px 12px; gap: 3px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 18px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg><div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Configurator · build bench</div></div></div>
+<div style="color: #8C968F; font-size: 11px; font-weight: 600; letter-spacing: .08em; padding: 4px 12px 6px">BUILD A BOX</div>
+<a href="Main.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">1</span><span>Site and hardware</span><span style="margin-left: auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8FD1A8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></a>
+<a href="Clinical.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">2</span><span>Clinical systems</span><span style="margin-left: auto; background: #6B4A0E; color: #FCE3B0; border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: 600">2 to fix</span></a>
+<a href="Network.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">3</span><span>Network and ports</span><span style="margin-left: auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8FD1A8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></a>
+<a href="Security.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">4</span><span>Security and enrollment</span><span style="margin-left: auto; background: #6B4A0E; color: #FCE3B0; border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: 600">1 to fix</span></a>
+<a href="Build.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">5</span><span>Review and build image</span></a>
+<a href="Flash.dc.html"><span class="mono" style="width: 22px; height: 22px; border-radius: 11px; background: #2F3B35; color: #C9D0CB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">6</span><span>Flash and verify</span></a>
+<div style="color: #8C968F; font-size: 11px; font-weight: 600; letter-spacing: .08em; padding: 18px 12px 6px">TOOLS</div>
+<a href="Disks.dc.html"><span>Drive tools (erase, format)</span></a>
+<a href="Profiles.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Profiles and history</span></a>
+<div style="flex-grow: 1"></div>
+<div style="border-top: 1px solid #2F3B35; padding: 14px 10px 0; font-size: 12px; color: #C9D0CB; display: flex; flex-direction: column; gap: 5px"><span style="color: #FFFFFF; font-weight: 500; font-size: 13px">This computer</span><span>Ubuntu 24.04 · running as admin</span><span style="color: #8FD1A8">Docker engine ready</span><span style="color: #8FD1A8">Signing key: USB token present</span><span class="mono" style="color: #A9B2AC">UI bound to 127.0.0.1:7443</span></div>
+</nav>
+<main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="display: flex; align-items: center; gap: 16px; padding: 18px 28px; background: #FFFFFF; border-bottom: 1px solid #DCDFD8"><div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1"><span class="sub">Tools</span><h1 style="margin: 0; font-size: 24px; font-weight: 600">Profiles and history</h1></div><div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px"><span style="font-size: 13px; color: #4F5853">Profile: <b style="color: #17201C; font-weight: 600">Cedar County Memorial · relay 01</b> · draft saved 21:52</span><div style="display: flex; gap: 8px"><button class="btn pri">New site profile</button><button class="btn">Import YAML</button></div></div></header><div style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box"><section class="card"><div style="display: flex; flex-direction: column; gap: 3px"><h2 class="h2">Site profiles</h2><span class="sub">One profile per box. Saved as YAML so it can live in the repo (secrets stay in the vault).</span></div><table><thead><tr><th>Site</th><th>EHR</th><th>Box serial</th><th>Status</th><th></th></tr></thead><tbody><tr><td><b style="font-weight: 600">Cedar County Memorial</b><br><span class="sub mono">cedar-county-mo</span></td><td>MEDITECH Expanse</td><td class="mono">PT24E-00417</td><td><span class="pill" style="background: #E6EDFB; color: #1F3F8F">Building</span></td><td style="text-align: right"><a href="Main.dc.html">Open</a> · <a href="Main.dc.html">Duplicate</a></td></tr><tr><td><b style="font-weight: 600">Harlan Valley Hospital</b><br><span class="sub mono">harlan-valley-ks</span></td><td>TruBridge</td><td class="mono">PT24E-00391</td><td><span class="pill" style="background: #E3F1E8; color: #1E5E38">Live</span></td><td style="text-align: right"><a href="Main.dc.html">Open</a> · <a href="Main.dc.html">Duplicate</a></td></tr><tr><td><b style="font-weight: 600">Ozark Ridge Medical</b><br><span class="sub mono">ozark-ridge-mo</span></td><td>athenahealth</td><td class="mono">PT24E-00402</td><td><span class="pill" style="background: #E3F1E8; color: #1E5E38">Live</span></td><td style="text-align: right"><a href="Main.dc.html">Open</a> · <a href="Main.dc.html">Duplicate</a></td></tr><tr><td><b style="font-weight: 600">Prairie View Clinic</b><br><span class="sub mono">prairie-view-ks</span></td><td>Epic Community Connect</td><td class="mono">—</td><td><span class="pill" style="background: #ECEEEA; color: #3E4742">Draft</span></td><td style="text-align: right"><a href="Main.dc.html">Open</a> · <a href="Main.dc.html">Duplicate</a></td></tr><tr><td><b style="font-weight: 600">Bench test unit</b><br><span class="sub mono">dev-bench</span></td><td>No EHR checks</td><td class="mono">WY5070-0021</td><td><span class="pill" style="background: #FBF0D9; color: #7A4F00">Desk test</span></td><td style="text-align: right"><a href="Main.dc.html">Open</a> · <a href="Main.dc.html">Duplicate</a></td></tr></tbody></table></section><section class="card"><div style="display: flex; flex-direction: column; gap: 3px"><h2 class="h2">Start from a template</h2></div><div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px"><button class="opt"><b style="font-weight: 600">Critical access hospital · MEDITECH</b><span class="sub">Mirth + SPAN, 16 checks, static IP</span></button><button class="opt"><b style="font-weight: 600">Critical access hospital · TruBridge</b><span class="sub">SPAN only, 14 checks</span></button><button class="opt"><b style="font-weight: 600">Rural clinic · athena</b><span class="sub">Cloud EHR, network checks only</span></button></div></section><section class="card"><div style="display: flex; flex-direction: column; gap: 3px"><h2 class="h2">Audit log</h2><span class="sub">Every build, flash and erase on this computer. Operator: [Your name]. Kept 7 years; export for the hospital on request.</span></div><table><thead><tr><th>When</th><th>Action</th><th>Site</th><th>Device</th><th>Detail</th><th>Proof</th><th>Result</th></tr></thead><tbody><tr><td class="mono">21:52</td><td>Build started</td><td class="mono">cedar-county-mo</td><td class="mono">PT24E-00417</td><td>v0.9.3 fast</td><td class="mono">—</td><td><span class="pill" style="background: #E6EDFB; color: #1F3F8F">Running</span></td></tr><tr><td class="mono">21:49</td><td>Drive erased</td><td class="mono">—</td><td class="mono">Kingston …B77</td><td>Zeros, 1 pass, 10% verify</td><td class="mono">Cert #E-0031</td><td><span class="pill" style="background: #E3F1E8; color: #1E5E38">OK</span></td></tr><tr><td class="mono">Sep 22 16:10</td><td>Box flashed</td><td class="mono">harlan-valley-ks</td><td class="mono">PT24E-00391</td><td>v0.9.3</td><td class="mono">sha256 9f2c…a41e matched</td><td><span class="pill" style="background: #E3F1E8; color: #1E5E38">OK</span></td></tr><tr><td class="mono">Sep 22 15:58</td><td>Flash refused</td><td class="mono">—</td><td class="mono">/dev/sda</td><td>System disk</td><td class="mono">Blocked by guard</td><td><span class="pill" style="background: #FBE4E1; color: #8E1F16">Blocked</span></td></tr><tr><td class="mono">Sep 20 11:02</td><td>Profile edited</td><td class="mono">ozark-ridge-mo</td><td class="mono">—</td><td>Mirth channels +1</td><td class="mono">—</td><td><span class="pill" style="background: #E3F1E8; color: #1E5E38">OK</span></td></tr></tbody></table><div style="display: flex; gap: 8px"><button class="btn">Export CSV</button><button class="btn">Export PDF</button></div></section></div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

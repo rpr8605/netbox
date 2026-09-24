@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fleet overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html"><span>Sites</span></a>
+    <a href="Routing.dc.html"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="height: 76px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600">Fleet</h1>
+      <div style="flex-grow: 1"></div>
+      <span style="font-size: 12px; color: #8A5A00; background: #FBF0D9; padding: 4px 10px; border-radius: 6px">Sample data</span>
+    </header>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 24px 32px; min-height: 0">
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px"><div style="font-size: 13px; color: #5A635E">Sites monitored</div><div style="font-size: 30px; font-weight: 600">4</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px"><div style="font-size: 13px; color: #5A635E">All systems working</div><div style="font-size: 30px; font-weight: 600; color: #1E7042">1</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px"><div style="font-size: 13px; color: #5A635E">Need attention</div><div style="font-size: 30px; font-weight: 600; color: #A8261B">2</div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px"><div style="font-size: 13px; color: #5A635E">Devices awaiting confirmation</div><div style="font-size: 30px; font-weight: 600; color: #555E66">1</div></div>
+      </div>
+
+      <div style="display: flex; gap: 20px; min-height: 0; flex-grow: 1">
+        <section aria-label="Map" style="width: 520px; flex-shrink: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Kansas and Missouri</h2>
+          <div style="position: relative; height: 330px; background: #F4F6F2; border-radius: 10px; border: 1px dashed #C5CAC3">
+            <span style="position: absolute; left: 60px; top: 14px; font-size: 13px; color: #8A918C; letter-spacing: .05em">KANSAS</span>
+            <span style="position: absolute; left: 330px; top: 14px; font-size: 13px; color: #8A918C; letter-spacing: .05em">MISSOURI</span>
+            <div style="position: absolute; left: 250px; top: 0; bottom: 0; border-left: 1px dashed #C5CAC3"></div>
+            <sc-for list="{{pins}}" as="p" hint-placeholder-count="4">
+              <div style="position: absolute; left: {{p.x}}; top: {{p.y}}; display: flex; align-items: center; gap: 6px">
+                <span style="width: 16px; height: 16px; border-radius: 8px; background: {{p.color}}; border: 3px solid #FFFFFF; box-shadow: 0 0 0 1px {{p.color}}"></span>
+                <span style="font-size: 12px; font-weight: 500; background: #FFFFFF; padding: 2px 6px; border-radius: 4px">{{p.name}}</span>
+              </div>
+            </sc-for>
+            <span style="position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: #8A918C">Schematic. Real state basemap in build.</span>
+          </div>
+          <div style="display: flex; gap: 14px; font-size: 13px; color: #3E4742">
+            <span>● <span style="color: #1E7042">Working</span></span><span>● <span style="color: #8A5A00">Degraded</span></span><span>● <span style="color: #A8261B">Down</span></span><span>● <span style="color: #555E66">Not reporting</span></span>
+          </div>
+        </section>
+
+        <section aria-label="Sites" style="flex-grow: 1; min-width: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; overflow: hidden">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+            <thead>
+              <tr style="background: #F4F6F2; text-align: left">
+                <th style="padding: 12px 16px; font-weight: 600">Site</th>
+                <th style="padding: 12px 8px; font-weight: 600">Service tier</th>
+                <th style="padding: 12px 8px; font-weight: 600">Status</th>
+                <th style="padding: 12px 8px; font-weight: 600">Open alerts</th>
+                <th style="padding: 12px 16px 12px 8px; font-weight: 600">Last heartbeat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{sites}}" as="s" hint-placeholder-count="4">
+                <tr style="border-top: 1px solid #EEF0EC">
+                  <td style="padding: 14px 16px"><a href="Site.dc.html" style="font-weight: 500; text-decoration: none">{{s.name}}</a><div style="font-size: 12px; color: #5A635E">{{s.meta}}</div></td>
+                  <td style="padding: 14px 8px">{{s.tier}}</td>
+                  <td style="padding: 14px 8px"><span style="font-size: 13px; font-weight: 500; padding: 4px 10px; border-radius: 6px; background: {{s.bg}}; color: {{s.ink}}">{{s.status}}</span></td>
+                  <td style="padding: 14px 8px" class="mono">{{s.alerts}}</td>
+                  <td style="padding: 14px 16px 14px 8px" class="mono">{{s.seen}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = { ok: ['#E3F1E8', '#1E7042', '#1E7042'], warn: ['#FBF0D9', '#8A5A00', '#B7791F'], down: ['#FBE4E1', '#A8261B', '#A8261B'], unk: ['#ECEEF0', '#555E66', '#6B7278'] };
+    const list = [
+      { name: 'Demo County Memorial', meta: 'MO · 25 beds · br-dcm-01', tier: 'Tier 2 managed', st: 'down', status: '1 down, 2 degraded', alerts: '2', seen: '12 s ago', x: '380px', y: '120px' },
+      { name: 'Osage Creek Medical Center', meta: 'MO · 22 beds · br-ocm-01', tier: 'Tier 1 watch', st: 'down', status: '1 down', alerts: '1', seen: '1 m ago', x: '330px', y: '230px' },
+      { name: 'Prairie Ridge Hospital', meta: 'KS · 18 beds · br-prh-01', tier: 'Tier 2 managed', st: 'ok', status: 'All working', alerts: '1 (ack)', seen: '9 s ago', x: '150px', y: '90px' },
+      { name: 'Flint Hills Community Hospital', meta: 'KS · 25 beds · br-flh-01', tier: 'Tier 1 watch', st: 'unk', status: 'Awaiting confirmation', alerts: '0', seen: 'never', x: '70px', y: '200px' },
+    ];
+    return {
+      sites: list.map(s => ({ ...s, bg: c[s.st][0], ink: c[s.st][1] })),
+      pins: list.map(s => ({ name: s.name, x: s.x, y: s.y, color: c[s.st][2] })),
+    };
+  }
+}
+</script>
+</body>
+</html>

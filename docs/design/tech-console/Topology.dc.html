@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site topology</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#17201C;background:#F2F3F0}
+a{color:#1F4FB8}a:hover{color:#163A8A}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 14px;border-radius:8px;color:#C9D0CB;text-decoration:none;font-size:15px}
+.nav a:hover{background:#243029;color:#FFFFFF}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+.node{position:absolute;box-sizing:border-box;display:flex;align-items:center;gap:8px;font:inherit;text-align:left;cursor:pointer;border-radius:10px}
+.node:hover{outline:2px solid #17201C;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; display: flex; background: #F2F3F0; overflow: hidden">
+  <nav class="nav" aria-label="Main" style="width: 240px; flex-shrink: 0; background: #17201C; display: flex; flex-direction: column; padding: 24px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px 22px">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7FB7FF" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8"></path></svg>
+      <div><div style="color: #FFFFFF; font-weight: 600; font-size: 16px">Beacon Relay</div><div style="color: #A9B2AC; font-size: 12px">Service desk</div></div>
+    </div>
+    <a href="Board.dc.html"><span>Master board</span></a>
+    <a href="Main.dc.html"><span>Alerts</span><span style="background: #A8261B; color: #FFFFFF; border-radius: 10px; padding: 1px 9px; font-size: 13px; font-weight: 600">2</span></a>
+    <a href="Fleet.dc.html"><span>Fleet</span><span style="color: #A9B2AC; font-size: 13px">8 sites</span></a>
+    <a href="Site.dc.html" style="background: #2A3831; color: #FFFFFF"><span>Sites</span></a>
+    <a href="Routing.dc.html"><span>Alert routing</span></a>
+    <a href="Main.dc.html"><span>Support sessions</span></a>
+    <a href="Main.dc.html"><span>Audit log</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="border-top: 1px solid #2F3B35; padding: 16px 10px 0; font-size: 13px; color: #C9D0CB; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #FFFFFF; font-weight: 500">[Your name]</span>
+      <span>Operations manager</span>
+      <span style="color: #8FD1A8">MFA verified</span>
+    </div>
+  </nav>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+    <header style="flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 18px 32px; border-bottom: 1px solid #DCDFD8; background: #FFFFFF">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+        <span style="font-size: 13px"><a href="Fleet.dc.html" style="text-decoration: none">Fleet</a> / <a href="Site.dc.html" style="text-decoration: none">Demo County Memorial</a> /</span>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">Topology</h1>
+      </div>
+      <div role="group" aria-label="Topology layer" style="display: flex; border: 1px solid #C5CAC3; border-radius: 10px; padding: 3px; gap: 3px; background: #F4F6F2">
+        <button class="btn" onClick="{{toNet}}" style="border: 0; min-height: 40px; background: {{netBg}}; color: {{netInk}}">Network</button>
+        <button class="btn" onClick="{{toIntf}}" style="border: 0; min-height: 40px; background: {{intfBg}}; color: {{intfInk}}">Interfaces</button>
+      </div>
+      <span style="font-size: 12px; color: #8A5A00; background: #FBF0D9; padding: 4px 10px; border-radius: 6px">Sample data</span>
+    </header>
+    <div role="tablist" aria-label="Site sections" style="flex-shrink: 0; display: flex; gap: 4px; padding: 0 32px; background: #FFFFFF; border-bottom: 1px solid #DCDFD8">
+      <a role="tab" aria-selected="false" href="Site.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Overview</a>
+      <a role="tab" aria-selected="false" href="SiteSupport.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 500; color: #5A635E; text-decoration: none; border-bottom: 3px solid transparent">Support <span style="margin-left: 8px; background: #FBE4E1; color: #A8261B; border-radius: 10px; padding: 0 8px; font-size: 12px; font-weight: 600">2 open</span></a>
+      <a role="tab" aria-selected="true" href="Topology.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 600; color: #17201C; text-decoration: none; border-bottom: 3px solid #1F4FB8">Topology</a>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; gap: 20px; padding: 20px 28px; min-height: 0">
+      <section aria-label="Diagram" style="flex-grow: 1; min-width: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; position: relative; overflow: hidden">
+        <div style="position: absolute; left: 20px; top: 16px; right: 20px; bottom: 16px">
+          <sc-if value="{{isNet}}" hint-placeholder-val="{{isNet}}">
+            <svg width="820" height="640" viewBox="0 0 820 640" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+              <g stroke-width="2" fill="none" stroke-linecap="round">
+                <line x1="150" y1="60" x2="275" y2="170" stroke="#9BC4AA"></line>
+                <line x1="400" y1="60" x2="275" y2="170" stroke="#9DB3D9" stroke-dasharray="6 6"></line>
+                <line x1="275" y1="170" x2="580" y2="170" stroke="#9BC4AA"></line>
+                <line x1="275" y1="170" x2="275" y2="290" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="580" y2="290" stroke="#9DB3D9" stroke-dasharray="3 5"></line>
+                <line x1="275" y1="290" x2="95" y2="420" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="265" y2="420" stroke="#E0A93A" stroke-width="3" stroke-dasharray="8 5"></line>
+                <line x1="275" y1="290" x2="435" y2="420" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="605" y2="420" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="95" y2="560" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="265" y2="560" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="435" y2="560" stroke="#9BC4AA"></line>
+                <line x1="275" y1="290" x2="605" y2="560" stroke="#A8261B" stroke-width="3" stroke-dasharray="8 5"></line>
+              </g>
+              <text x="440" y="282" font-size="11" fill="#5A635E" font-family="IBM Plex Mono, monospace">passive tap (read only)</text>
+              <text x="310" y="52" font-size="11" fill="#5A635E" font-family="IBM Plex Mono, monospace">standby</text>
+            </svg>
+          </sc-if>
+          <sc-if value="{{isIntf}}" hint-placeholder-val="{{isIntf}}">
+            <svg width="820" height="640" viewBox="0 0 820 640" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+              <defs>
+                <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#5FA07A"></path></marker>
+                <marker id="warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#C9891E"></path></marker>
+              </defs>
+              <g stroke-width="2.5" fill="none" stroke-linecap="round">
+                <path d="M205 280 C 300 240, 330 240, 355 285" stroke="#5FA07A" marker-end="url(#ok)"></path>
+                <path d="M505 285 C 560 200, 600 170, 655 170" stroke="#5FA07A" marker-end="url(#ok)"></path>
+                <path d="M655 195 C 600 230, 560 260, 505 300" stroke="#C9891E" stroke-width="3.5" stroke-dasharray="9 6" marker-end="url(#warn)"></path>
+                <path d="M355 320 C 330 360, 290 360, 205 322" stroke="#C9891E" stroke-width="3.5" stroke-dasharray="9 6" marker-end="url(#warn)"></path>
+                <path d="M505 310 L 655 310" stroke="#5FA07A" marker-end="url(#ok)"></path>
+                <path d="M505 330 C 560 400, 600 430, 655 440" stroke="#5FA07A" marker-end="url(#ok)"></path>
+                <path d="M130 330 L 130 470" stroke="#5FA07A" marker-end="url(#ok)"></path>
+              </g>
+            </svg>
+          </sc-if>
+          <sc-for list="{{nodes}}" as="n" hint-placeholder-count="8">
+            <button class="node" onClick="{{n.pick}}" aria-label="{{n.label}}: {{n.word}}" style="left: {{n.left}}; top: {{n.top}}; width: {{n.w}}; height: {{n.h}}; padding: 0 12px; background: {{n.bg}}; border: {{n.border}}; color: #17201C">
+              <span style="width: 12px; height: 12px; border-radius: 6px; flex-shrink: 0; background: {{n.dot}}"></span>
+              <span style="display: flex; flex-direction: column; min-width: 0">
+                <span style="font-size: 13px; font-weight: 600; white-space: nowrap">{{n.label}}</span>
+                <span style="font-size: 11px; color: #5A635E; white-space: nowrap">{{n.sub}}</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="position: absolute; left: 20px; bottom: 14px; display: flex; gap: 16px; font-size: 12px; color: #3E4742; background: #FFFFFF; padding: 4px 8px; border-radius: 6px">
+          <span>● <span style="color: #1E7042">Working</span></span><span>● <span style="color: #8A5A00">Degraded (dashed)</span></span><span>● <span style="color: #A8261B">Down (dashed)</span></span><span>● <span style="color: #1F4FB8">Standby / passive</span></span>
+        </div>
+      </section>
+
+      <aside aria-label="Selected item" style="width: 330px; flex-shrink: 0; background: #FFFFFF; border: 1px solid #DCDFD8; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box">
+        <span style="font-size: 12px; font-weight: 600; color: #5A635E; letter-spacing: .04em">{{sel.kind}}</span>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600">{{sel.label}}</h2>
+        <span style="align-self: flex-start; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 6px; background: {{sel.bg}}; color: {{sel.ink}}">{{sel.word}}</span>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{sel.facts}}" as="f" hint-placeholder-count="3">
+            <div style="display: flex; flex-direction: column; gap: 1px; border-top: 1px solid #EEF0EC; padding-top: 8px">
+              <span style="font-size: 12px; color: #5A635E">{{f.k}}</span>
+              <span class="mono" style="font-size: 13px">{{f.v}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{sel.issue}}" hint-placeholder-val="{{sel.issue}}">
+          <a class="btn" href="Main.dc.html" style="margin-top: 4px; border: 1px solid #1F4FB8; background: #1F4FB8; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; text-decoration: none">Open this issue</a>
+        </sc-if>
+        <p style="margin: auto 0 0; font-size: 12px; color: #5A635E; line-height: 1.5">Click any box in the diagram to see its facts here. Facts are recorded check results; related problems are shown side by side, never guessed as causes.</p>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const view = this.state?.view ?? 'net';
+    const ST = {
+      ok: { dot: '#1E7042', bg: '#F3FAF5', border: '1px solid #A9D3B8', pill: '#E3F1E8', ink: '#1E7042', word: 'Working' },
+      warn: { dot: '#C9891E', bg: '#FFF8EA', border: '2px solid #E0A93A', pill: '#FBF0D9', ink: '#8A5A00', word: 'Degraded' },
+      down: { dot: '#A8261B', bg: '#FDF1EF', border: '2px solid #A8261B', pill: '#FBE4E1', ink: '#A8261B', word: 'Down' },
+      info: { dot: '#1F4FB8', bg: '#F2F6FE', border: '1px solid #9DB3D9', pill: '#E6EEFB', ink: '#1F4FB8', word: 'Standby' },
+    };
+    const N = (id, label, sub, x, y, st, kind, facts, w) => ({ id, label, sub, x, y, st, kind, facts, w: w ?? 170 });
+    const net = [
+      N('inet', 'Internet · fiber', 'ISP [name] · 18 ms', 150, 60, 'ok', 'WAN CIRCUIT', [{ k: 'Latency', v: '18 ms' }, { k: 'Packet loss (15 min)', v: '0%' }]),
+      N('lte', 'LTE backup', 'Ready, not in use', 400, 60, 'info', 'WAN CIRCUIT', [{ k: 'Signal', v: 'Good (-84 dBm)' }, { k: 'Last failover test', v: 'Sep 11 · passed' }]),
+      N('fw', 'Firewall', 'Reachable · config unchanged', 275, 170, 'ok', 'NETWORK DEVICE', [{ k: 'Check', v: 'L1 · HTTPS mgmt port open' }]),
+      N('vpn', 'VPN to Eastside Clinic', 'Tunnel up · 31 ms', 580, 170, 'ok', 'SITE-TO-SITE VPN', [{ k: 'Far side', v: 'Clinic gateway reachable' }]),
+      N('sw', 'Core switch', 'Reachable', 275, 290, 'ok', 'NETWORK DEVICE', [{ k: 'Check', v: 'L0 · ping 2 ms' }]),
+      N('bl', 'Beacon Link', 'br-dcm-01 · online', 580, 290, 'info', 'MONITORING DEVICE', [{ k: 'Mode', v: 'Passive, read only' }, { k: 'Software', v: '1.4.2' }]),
+      N('ehr', 'MEDITECH EHR', 'L3 read OK', 95, 420, 'ok', 'CLINICAL SYSTEM', [{ k: 'Check', v: 'L3 · FHIR scoped read OK' }, { k: 'Latency', v: '212 ms' }]),
+      N('lis', 'Lab LIS', 'Results delayed', 265, 420, 'warn', 'CLINICAL SYSTEM', [{ k: 'Host', v: 'Reachable (L2 TLS OK)' }, { k: 'Interface', v: 'Lab results channel degraded' }, { k: 'Also at this site', v: 'Printing down' }], 170),
+      N('rx', 'Pharmacy system', 'Reachable', 435, 420, 'ok', 'CLINICAL SYSTEM', [{ k: 'Check', v: 'L2 · TLS OK' }]),
+      N('pacs', 'PACS imaging', 'Reachable', 605, 420, 'ok', 'CLINICAL SYSTEM', [{ k: 'Check', v: 'L1 · DICOM port open' }]),
+      N('dns', 'DNS / DHCP', 'Resolving · leases OK', 95, 560, 'ok', 'SITE SERVICE', [{ k: 'DNS', v: 'meditech host resolves' }, { k: 'DHCP pool', v: '61% used' }]),
+      N('wifi', 'Wireless', '14 of 14 APs up', 265, 560, 'ok', 'SITE SERVICE', [{ k: 'Controller', v: 'Reachable' }]),
+      N('tel', 'Phones', 'SIP registrar up', 435, 560, 'ok', 'SITE SERVICE', [{ k: 'Check', v: 'L1 · SIP port open' }]),
+      N('prn', 'Printers · 2nd floor', 'Port 9100 refused', 605, 560, 'down', 'SITE SERVICE', [{ k: 'Last check', v: 'TCP 9100 refused on 10.20.4.15' }, { k: 'Confirmed', v: '2 retries, gateway OK' }, { k: 'Down since', v: '21:36' }]),
+    ];
+    const intf = [
+      N('ehr2', 'MEDITECH EHR', 'Source + destination', 130, 300, 'ok', 'CLINICAL SYSTEM', [{ k: 'Check', v: 'L3 · FHIR scoped read OK' }], 180),
+      N('mirth', 'Mirth Connect', 'Interface engine · 4 channels', 430, 305, 'ok', 'INTERFACE ENGINE', [{ k: 'Admin API', v: 'Reachable, read only' }, { k: 'Channels', v: '3 working, 1 degraded' }], 190),
+      N('lis2', 'Lab LIS', 'Destination + source', 730, 170, 'warn', 'CLINICAL SYSTEM', [{ k: 'Host', v: 'Reachable' }], 150),
+      N('rx2', 'Pharmacy system', 'Destination', 730, 310, 'ok', 'CLINICAL SYSTEM', [{ k: 'Host', v: 'Reachable' }], 150),
+      N('pacs2', 'PACS imaging', 'Destination', 730, 445, 'ok', 'CLINICAL SYSTEM', [{ k: 'Host', v: 'Reachable' }], 150),
+      N('erx', 'Surescripts', 'e-Prescribing (external)', 130, 500, 'ok', 'EXTERNAL SERVICE', [{ k: 'Check', v: 'Network reachability only' }], 180),
+      N('ch-adt', 'ADT feed', 'Last msg 8 s ago', 280, 225, 'ok', 'CHANNEL', [{ k: 'Route', v: 'EHR → Mirth → Lab LIS' }, { k: 'Errors (15 min)', v: '0' }], 150),
+      N('ch-lab', 'Lab results', '3 errors · last msg 21:31', 585, 225, 'warn', 'CHANNEL', [{ k: 'Route', v: 'Lab LIS → Mirth → EHR' }, { k: 'Last good message', v: '21:31:02 (9 min ago)' }, { k: 'Errors (15 min)', v: '3 NACKs' }], 170),
+      N('ch-rx', 'Pharmacy orders', 'Last msg 21 s ago', 580, 355, 'ok', 'CHANNEL', [{ k: 'Route', v: 'EHR → Mirth → Pharmacy' }, { k: 'Errors (15 min)', v: '0' }], 160),
+      N('ch-img', 'Imaging orders', 'Last msg 2 m ago', 580, 470, 'ok', 'CHANNEL', [{ k: 'Route', v: 'EHR → Mirth → PACS' }, { k: 'Errors (15 min)', v: '0' }], 160),
+    ];
+    const list = view === 'net' ? net : intf;
+    const selId = this.state?.sel ?? (view === 'net' ? 'lis' : 'ch-lab');
+    const nodes = list.map(n => {
+      const s = ST[n.st], h = 50, picked = n.id === selId;
+      return { ...n, dot: s.dot, bg: picked ? '#EEF3FD' : s.bg, border: picked ? '2px solid #1F4FB8' : s.border, word: s.word,
+        left: (n.x - n.w / 2) + 'px', top: (n.y - h / 2) + 'px', w: n.w + 'px', h: h + 'px',
+        pick: () => this.setState({ sel: n.id }) };
+    });
+    const found = list.find(n => n.id === selId) ?? list[0];
+    const fs = ST[found.st];
+    const tab = (on) => on ? ['#17201C', '#FFFFFF'] : ['transparent', '#17201C'];
+    const [nb, ni] = tab(view === 'net'), [ib, ii] = tab(view === 'intf');
+    return {
+      nodes, isNet: view === 'net', isIntf: view === 'intf',
+      sel: { label: found.label, kind: found.kind, facts: found.facts, word: fs.word, bg: fs.pill, ink: fs.ink, issue: found.st === 'warn' || found.st === 'down' },
+      toNet: () => this.setState({ view: 'net', sel: null }), toIntf: () => this.setState({ view: 'intf', sel: null }),
+      netBg: nb, netInk: ni, intfBg: ib, intfInk: ii,
+    };
+  }
+}
+</script>
+</body>
+</html>
