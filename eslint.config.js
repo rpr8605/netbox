@@ -3,7 +3,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['node_modules/**', 'control-plane/node_modules/**', 'beacon-relay-agent/node_modules/**', 'device-sim/node_modules/**', 'pipeline/rootfs_files/**', '.venv/**', '.agent/**', 'docs/design/**'],
+    ignores: ['node_modules/**', 'control-plane/node_modules/**', 'beacon-relay-agent/node_modules/**', 'device-sim/node_modules/**', 'control-plane/console/node_modules/**', 'control-plane/console/dist/**', 'pipeline/rootfs_files/**', '.venv/**', '.agent/**', 'docs/design/**'],
   },
   {
     files: ['**/*.js'],

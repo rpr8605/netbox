@@ -24,11 +24,12 @@ function check(name, ok, detail = '') {
 }
 
 async function api(method, path, body, role) {
-  const sep = path.includes('?') ? '&' : '?';
-  const rolePath = role ? `${path}${sep}role=${role}` : path;
-  const res = await request(`${CP}${rolePath}`, {
+  const headers = {};
+  if (body) headers['content-type'] = 'application/json';
+  if (role) headers['x-dev-role'] = role;
+  const res = await request(`${CP}${path}`, {
     method, dispatcher: insecure,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.body.text();

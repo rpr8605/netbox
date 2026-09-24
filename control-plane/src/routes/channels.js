@@ -113,7 +113,7 @@ export default async function channelRoutes(app) {
     preHandler: requirePerm('topology:rollup', appendAudit),
     config: { auth: 'operator:topology:rollup' },
   }, async (req, reply) => {
-    const role = req.query.role ?? req.body?.role ?? null;
+    const role = req.user?.role ?? null;
     if (!rollupAllowed(role, reply)) return;
     // Gather each registered device's recent events and fold by site/channel.
     const all = [];

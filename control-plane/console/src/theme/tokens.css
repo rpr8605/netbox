@@ -1,0 +1,52 @@
+:root {
+  --ground: #F2F3F0;
+  --surface: #FFFFFF;
+  --surface-muted: #F4F6F2;
+  --line: #DCDFD8;
+  --line-soft: #EEF0EC;
+  --control-border: #C5CAC3;
+  --ink: #17201C;
+  --ink-2: #3E4742;
+  --muted: #5A635E;
+  --accent: #1F4FB8;
+  --accent-bg: #EEF3FD;
+  --sidebar: #17201C;
+  --sidebar-active: #2A3831;
+  --sidebar-text: #C9D0CB;
+  --ok: #1E7042;
+  --ok-bg: #E3F1E8;
+  --ok-cell: #CFE8D8;
+  --warn: #8A5A00;
+  --warn-bg: #FBF0D9;
+  --warn-cell: #F5C66B;
+  --down: #A8261B;
+  --down-bg: #FBE4E1;
+  --unknown: #555E66;
+  --unknown-bg: #E4E6E8;
+  --standby: #1F4FB8;
+  --standby-bg: #E6EEFB;
+  --reported: #6A3FB0;
+  --reported-bg: #EFE8FA;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  min-width: 1200px;
+}

@@ -43,12 +43,13 @@ export function can(role, perm) {
   return ROLE_PERMISSIONS[role]?.has(perm) === true;
 }
 
-// requirePerm — a Fastify preHandler. Reads role from req (query.role here in
-// the current stub layer; a bearer principal once real auth lands) and 403s on deny. Audits every DENY
-// so attempted privilege use is itself a logged event.
+// requirePerm — a Fastify preHandler. Reads role from req.user (set by the
+// auth preHandler). In Step 1 this is the dev-auth stub; in C1 it becomes the
+// Cognito/OIDC preHandler. Audits every DENY so attempted privilege use is
+// itself a logged event.
 export function requirePerm(perm, appendAuditFn) {
   return async (req, reply) => {
-    const role = req.query?.role ?? req.body?.role ?? null;
+    const role = req.user?.role ?? null;
     if (!can(role, perm)) {
       if (appendAuditFn) {
         await appendAuditFn({

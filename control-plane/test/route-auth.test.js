@@ -48,6 +48,7 @@ describe('H3 — every route declares an auth policy', () => {
     // Static file route and health/audit/demo are registered below so the test
     // covers the whole surface.
     app.get('/fleet.html', { config: { auth: 'operator:topology:rollup' } }, async () => 'ok');
+    app.get('/console/*', { config: { auth: 'operator:devices:read' } }, async () => 'ok');
     app.get('/api/health', { config: { auth: 'public' } }, async () => ({ ok: true }));
     app.get('/api/demo', { config: { auth: 'public' } }, async () => ({ demo: false }));
     app.get('/api/audit', { config: { auth: 'operator:audit:read' } }, async () => []);

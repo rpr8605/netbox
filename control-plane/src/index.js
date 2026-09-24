@@ -31,6 +31,7 @@ import { sweepEscalations } from './alerting.js';
 import { deliver } from './deliver.js';
 import { appendAudit, listAudit } from './db.js';
 import { requirePerm } from './rbac.js';
+import { devAuthPreHandler } from './auth/dev_auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 9100);
@@ -86,21 +87,44 @@ const app = Fastify({
   trustProxy: false,
 });
 
-// Console pages should not be reachable without at least a declared role, even
-// though the current operator-auth layer has no real identity verification. The Fleet Map page is protected
-// here; the data endpoint enforces the same RBAC as the rollup gate.
+// Dev auth stub runs first on every request so req.user is available to
+// requirePerm. In production or without CONSOLE_DEV_AUTH=1 it is a no-op and
+// RBAC-gated routes deny until C1 auth is wired.
+app.addHook('preHandler', devAuthPreHandler);
+
+// Console pages should not be reachable without at least a declared role. The
+// Fleet Map page is protected here; the data endpoint enforces the same RBAC as
+// the rollup gate. After the React console reaches parity this route is retired.
 app.get('/fleet.html', {
-  preHandler: (req, reply, done) => {
-    const role = req.query?.role;
-    if (!role) return reply.code(403).send({ error: 'role required' });
-    done();
-  },
+  preHandler: requirePerm('topology:rollup', appendAudit),
   config: { auth: 'operator:topology:rollup' },
 }, async (req, reply) => {
   return reply.sendFile('fleet.html');
 });
 
 await app.register(fastifyStatic, { root: path.join(__dirname, '..', 'public') });
+
+// React console static files + SPA fallback. Served under an encapsulated
+// prefix so an onRoute hook can tag every console route with the same auth
+// policy. The dev-auth/Cognito preHandler runs before this and sets req.user.
+await app.register(async function consoleStatic(consoleApp) {
+  consoleApp.addHook('onRoute', (routeOptions) => {
+    if (!routeOptions.config) routeOptions.config = {};
+    if (!routeOptions.config.auth) {
+      routeOptions.config.auth = 'operator:devices:read';
+    }
+  });
+  await consoleApp.register(fastifyStatic, {
+    root: path.join(__dirname, '..', 'console', 'dist'),
+    prefix: '/',
+    wildcard: false,
+  });
+  // SPA fallback: any non-asset /console/* path returns index.html.
+  consoleApp.get('/*', async (req, reply) => {
+    return reply.sendFile('index.html', path.join(__dirname, '..', 'console', 'dist'));
+  });
+}, { prefix: '/console' });
+
 await app.register(enrollRoutes);
 await app.register(deviceRoutes);
 await app.register(eventRoutes);

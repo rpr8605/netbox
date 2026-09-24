@@ -75,6 +75,9 @@ services:
       RELEASES_DIR: /out
       # DEMO_MODE=1 puts a banner on every console page and seeds synthetic data.
       DEMO_MODE: ${DEMO_MODE}
+      # Dev-only auth stub until C1 lands. The compose host publish is already
+      # bound to 127.0.0.1, so this stays localhost-only.
+      CONSOLE_DEV_AUTH: ${CONSOLE_DEV_AUTH:-1}
     volumes:
       - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
       - ./out:/out:ro

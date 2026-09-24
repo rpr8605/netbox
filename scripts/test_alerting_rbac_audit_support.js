@@ -48,9 +48,23 @@ function check(name, ok, detail = '') {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function api(method, path, body, agent) {
-  const res = await request(`${CP}${path}`, {
+  // Translate ?role= in the URL to the X-Dev-Role header so the dev-auth stub
+  // can set req.user; requirePerm no longer reads role from query/body.
+  let urlPath = path;
+  const headers = {};
+  if (body) headers['content-type'] = 'application/json';
+  const roleMatch = path.match(/[?&]role=([^&]+)/);
+  if (roleMatch) {
+    headers['x-dev-role'] = decodeURIComponent(roleMatch[1]);
+    urlPath = path.replace(/[?&]role=[^&]+/, '').replace(/\?$/, '').replace(/&$/, '');
+    if (urlPath.includes('?') && urlPath.endsWith('&')) urlPath = urlPath.slice(0, -1);
+    if (urlPath.includes('&') && !urlPath.includes('?')) {
+      urlPath = '?' + urlPath.replace('&', '');
+    }
+  }
+  const res = await request(`${CP}${urlPath}`, {
     method, dispatcher: agent ?? insecure,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.body.text();
