@@ -100,7 +100,10 @@ app.addHook('preHandler', devAuthPreHandler);
 // operations-manager for local development.
 app.get('/fleet.html', {
   preHandler: async (req, reply) => {
-    const role = req.headers['x-dev-role'] ?? req.query?.role ?? null;
+    // Role comes from the auth preHandler (dev-auth stub or future Cognito).
+    // Do not read X-Dev-Role or ?role= directly here; that bypasses the
+    // CONSOLE_DEV_AUTH=1 + NODE_ENV !== production guard.
+    const role = req.user?.role ?? null;
     if (!can(role, 'topology:rollup')) {
       await appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
       return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks topology:rollup` });
