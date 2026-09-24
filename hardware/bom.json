@@ -1,8 +1,8 @@
 {
-  "_comment": "Beacon Relay reference hardware BOM. This is the default build target; every alternate must satisfy the required_features list for its role. No patient data lives in this file.",
+  "_comment": "Beacon Relay reference hardware BOM. This is the default build target; every alternate must satisfy the required_features list for its role unless a specific caveat is noted. No patient data lives in this file.",
   "product": "Beacon Relay Edge Appliance",
-  "revision": "1.0",
-  "last_updated": "2026-09-23",
+  "revision": "1.1",
+  "last_updated": "2026-09-24",
   "components": [
     {
       "role": "compute",
@@ -58,6 +58,19 @@
         { "mpn": "SIERRA-WP7607", "description": "Sierra Wireless WP7607 LTE modem", "notes": "Approved where the hospital already standardizes on Sierra." }
       ],
       "required_features": ["usb_or_pcie", "mbim_or_qmi", "linux_driver_in_kernel"]
+    },
+    {
+      "role": "power_backup",
+      "required": false,
+      "primary": {
+        "mpn": "ECOFLOW-RIVER3-PLUS",
+        "description": "EcoFlow RIVER 3 Plus, 286 Wh LiFePO4 power station with UPS mode",
+        "notes": "Power the box from the 12 V DC output, not AC. Recommended for about 24 h runtime. See docs/hardware/POWER_BACKUP.md."
+      },
+      "alternates": [
+        { "mpn": "GENERIC-12V-DC-UPS-LIFEPO4", "description": "12 V DC UPS module plus 12 V 20 to 30 Ah LiFePO4 battery", "notes": "Parts must come from a known industrial supplier." }
+      ],
+      "required_features": ["lifepo4", "ups_switchover_under_20ms", "dc_12v_output", "about_300wh_min"]
     }
   ]
 }

@@ -41,6 +41,16 @@ Two acceptance runs failed identically with `Could not access KVM kernel module:
 
 **Status:** LOGGED for post-Batch-3 work. `control-plane/src/db.js` still uses `pgize()` to translate SQLite SQL into Postgres, and timestamp columns are stored as `TEXT` with `NOW()::TEXT` comparisons. Converting to native `TIMESTAMPTZ` requires removing the SQLite driver path (part of Batch 3 maintainability: "Remove SQLite; Postgres only, native timestamps, delete pgize"). Do not attempt before SQLite removal is approved/undertaken.
 
+## Power backup
+
+From `docs/hardware/POWER_BACKUP.md` (2026-09-24). Hardware is selected and documented; these questions must be answered before adoption:
+
+1. Does the RIVER 3 Plus 12 V output stay live in UPS mode, with no dropout on switchover? Test by pulling the plug with the box running.
+2. Can the box read battery status (on battery, percent left, time left)? Check whether the power station's data port works with Linux, or choose a unit that reports over USB.
+3. Actual average draw of a VP2420 and a V1210 running Beacon Relay, with and without an LTE modem.
+4. Hospital facilities approval for a lithium battery in the network closet (LiFePO4 is the easiest to approve).
+5. Whether the V1210 has TPM 2.0 enabled in Protectli's firmware (not listed on its product page) before choosing it as the low-power option.
+
 ## Plan for removing SQLite entirely
 
 `control-plane/src/db.js` is currently a dual-driver layer (Postgres when `DATABASE_URL` is set, SQLite otherwise). SQLite is still convenient for zero-ops local runs and a few unit tests, but PostgreSQL is the spec'd production store. Removal checklist:

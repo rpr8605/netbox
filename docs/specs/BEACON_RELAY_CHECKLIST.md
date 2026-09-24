@@ -119,6 +119,8 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 
 - PHI-mode toggle — **DESIGN ONLY** (under review). Design note in `.agent/phi-mode-design.md`; no code implemented pending approval.
 - Hardware lifecycle tooling (no-hardware portion) — **DONE**. Added `hardware/bom.json` (reference components + approved alternates), `hardware/golden_manifest.json` (reference hardware/software requirements), `scripts/validate_golden_manifest.js` (software-only validation of a built manifest), `hardware/swap_procedure.md`, control-plane `POST /api/devices/:id/replace` workflow, and `scripts/swap_device.js`. Physical steps (secure wipe, TPM clear, alternate qualification, barcode scanning) are logged in `.agent/open-questions.md` as requiring real hardware. Covered by `node --test scripts/test_device_lifecycle.js`.
+- Power backup hardware — **DONE**. Added EcoFlow RIVER 3 Plus primary and a generic 12 V DC UPS + LiFePO4 battery alternate to `hardware/bom.json`; documented in `docs/hardware/POWER_BACKUP.md`.
+- Power backup software work — **NOT STARTED** (deferred until the open questions in `docs/hardware/POWER_BACKUP.md` are answered). Includes: agent reports power source/battery percent/estimated time left; new alerts for "Site on battery power" and "Battery below 25%"; console/site view shows power status; clean shutdown at low battery threshold.
 
 ---
 
