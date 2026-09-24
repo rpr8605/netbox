@@ -276,7 +276,7 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
 - **Blocked:** cannot read GitHub Actions result locally (no `gh auth`).
 - **Open questions / next:** Phase 2 (untracked files and small doc tasks) ready to start after Ryan approval.
 
-## Checkpoint #20 | Block: $1.09 | Total: $709.48 | Cost/commit: $0.36
+## Checkpoint #20 | Block: $1.33 | Total: $709.72 | Cost/commit: $0.44
 
 - **Done (Phase 1 follow-up — clean-machine failures):**
   - Fixed `scripts/test_device_lifecycle.js`: generates a throwaway ES256 key pair in a temp directory instead of reading `pki-config/provisioner/public_jwk.json`. Key material is never committed.
