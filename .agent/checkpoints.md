@@ -349,3 +349,19 @@
   - `node audit_docs.cjs .`: 121 files, 4 missing header, 64 missing doc comments (heuristic).
 - **Commit:** `9e48d3f` on `agent/md-sync-2026-09-22`.
 - **Open questions / next:** Stage 3 AGENT item — continue React console work or next CHECKLIST priority per `docs/specs/BEACON_RELAY_STATUS.md` §4.
+
+## Checkpoint #24 | Block: $0.42 | Total: $721.94 | Cost/commit: $0.42
+
+- **Done (pre-console security hardening):**
+  - Fixed `/fleet.html` in `control-plane/src/index.js` to read role from `req.user` (set by the auth preHandler) instead of reading `X-Dev-Role`/`?role=` directly, so the dev-auth guard cannot be bypassed.
+  - Added `control-plane/test/dev-auth.security.test.js` plus fixture `control-plane/test/fixtures/dev-auth-minimal-server.js`:
+    - header `X-Dev-Role` and query `?role=` are ignored when `CONSOLE_DEV_AUTH` is off (all return 403);
+    - both are honored when `CONSOLE_DEV_AUTH=1` and `NODE_ENV !== 'production'`;
+    - unknown roles are denied;
+    - the process exits with an error when `NODE_ENV=production` and `CONSOLE_DEV_AUTH=1`.
+- **Validation:**
+  - `npm test`: 96/96 (29 unit + 29 security + 38 Python).
+  - `node --test control-plane/test/dev-auth.security.test.js`: 3/3.
+  - Confirmed `npm test` with `DATABASE_URL` unset fails immediately with `DATABASE_URL is required (SQLite support removed in SQLITE-1/M6)`.
+- **Commit:** `8244cba` on `agent/md-sync-2026-09-22`.
+- **Open questions / next:** Console build plan Step 2 — site profile + board endpoint → Master board.
