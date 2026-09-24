@@ -9,7 +9,7 @@ Replace `control-plane/public/index.html`, `topology.html`, and `fleet.html` wit
 ## Constraints
 
 - **Localhost-only until C1 auth is merged and tested.** The console shows every hospital; it must never be exposed without real operator login + MFA.
-- **Dev auth stub:** `CONSOLE_DEV_AUTH=1` is allowed only when `NODE_ENV !== 'production'` and `BIND_HOST === '127.0.0.1'`. Otherwise the server refuses to start with a clear error.
+- **Dev auth stub:** `CONSOLE_DEV_AUTH=1` is allowed only when `NODE_ENV !== 'production'`. The control-plane host port is already constrained to `127.0.0.1` by `docker-compose.yml` and is covered by `control-plane/test/compose.security.test.js` (extend that test if the compose file changes).
 - **Every new API route declares an auth policy** and is covered by `control-plane/test/route-auth.test.js`.
 - **PHI rule:** the console only shows metadata. All human free text goes through `phi_guard.js` on the server.
 - **Nothing is exposed beyond localhost until C1 lands.**
@@ -55,10 +55,13 @@ A minimal `devAuth` preHandler used only when `CONSOLE_DEV_AUTH=1`:
 
 - Sets `req.user = { id: 'dev', role: 'operations-manager', mfaVerified: false }`.
 - Refuses to start if `NODE_ENV === 'production'`.
-- Refuses to start if `BIND_HOST !== '127.0.0.1'`.
 - Logs a warning on every server start: "Console running in dev-auth mode. Not for production."
 
-After C1 lands, this stub is removed and the real Cognito/JWT preHandler is used everywhere.
+After C1 lands, this stub is swapped for the real Cognito/JWT preHandler.
+
+### RBAC principal change (Step 1)
+
+In Step 1, change `requirePerm` in `control-plane/src/rbac.js` to read the role **only** from `req.user` (set by the auth preHandler). Stop accepting `role` from query string or body entirely. Update `control-plane/test/route-auth.test.js` and the alerting/RBAC tests. C1 then only needs to swap `devAuth` for the real Cognito preHandler.
 
 ## Backend additions
 
@@ -69,7 +72,7 @@ All new tables go through `control-plane/src/schema.js` with migrations; all rou
 3. **Alert response + confirmation record**: `confirmation_steps`, `pages` history; `GET /api/alerts` and `GET /api/alerts/:id` extended.
 4. **Support log** (`support_log` table): detected/reported issues, PHI-guarded free text, summary tiles.
 5. **Site asset inventory** (`site_assets` table): network topology assets.
-6. **Per-site alert routing** (`routing_ladders`, `routing_tiers`, `site_hours`, `service_severity`, `maintenance_windows`, `oncall`): replaces fleet-wide `alert_contacts`; escalation engine updated.
+6. **Per-site alert routing** (`routing_ladders`, `routing_tiers`, `site_hours`, `service_severity`, `maintenance_windows`, `oncall`): replaces fleet-wide `alert_contacts`; escalation engine updated. Migrate existing `alert_contacts` rows into the new tables, keep the old escalation path working until the new one passes its tests, and include a test that a real alert pages the same people before and after the migration.
 
 ## Build order (one screen / one backend addition per checkpoint)
 
@@ -81,13 +84,27 @@ All new tables go through `control-plane/src/schema.js` with migrations; all rou
 6. **Site asset inventory → Site Topology tab** (`/console/sites/:id/topology`); retire `public/topology.html`.
 7. **Per-site routing → Routing screen** (`/console/routing/:siteId`).
 8. **Bundled basemap → Fleet screen** (`/console/fleet`); retire `public/fleet.html` and `public/index.html`.
-9. **Demo seed update + `DEMO.md` + screenshots + full test pass.**
+9. **Demo seed update + `DEMO.md` + screenshots + full test pass.** After each screen, save a screenshot to `docs/design/screens/built/` next to the matching design PNG for Ryan to compare.
+
+## Status vocabulary additions
+
+`src/status.ts` and the server-side board endpoint apply these rules:
+
+- **Stale:** if a device's last report is older than a configured threshold, all its services show **No data** (never green).
+- **Not monitored:** services explicitly turned off for a site show **Not monitored** (gray, never green).
+
+Both rules are tested in unit tests and in the board-endpoint tests.
+
+## Known layout fixes
+
+- The Master board service grid must fit inside its card at 1440 px (the design currently overflows by ~80 px).
+- The Topology tab must display all 20 critical services, not 9.
 
 ## Tests
 
-- **Unit:** `status.ts` mapping, site rollup, response state, schema enum → service group coverage.
+- **Unit:** `status.ts` mapping, site rollup, response state, stale/unmonitored rules, schema enum → service group coverage.
 - **API:** auth policy, RBAC allow/deny, customer-it-admin site scoping, PHI guard on support-log/routing free text.
-- **Escalation:** per-site ladder, business-hours scoping, maintenance suppression, test-page rate limit.
+- **Escalation:** per-site ladder, business-hours scoping, maintenance suppression, test-page rate limit, migration parity (a real alert pages the same people before and after `alert_contacts` migration).
 - **UI:** Playwright smoke per screen in demo mode: renders, key numbers match `/api/board`, degraded cell links to alert, tabs route correctly, Wall display mode toggles.
 - **Accessibility:** keyboard focus, non-color-only statuses, 44 px targets.
 
@@ -99,11 +116,11 @@ All new tables go through `control-plane/src/schema.js` with migrations; all rou
 - The dev auth stub is committed first and removed only after C1 is merged and the real auth preHandler is wired.
 - CI builds the console and runs the new unit/API tests; Playwright UI tests run locally or in CI if headless setup is straightforward.
 
-## Open questions to resolve during build
+## Open questions / decisions logged
 
-1. Do we keep the existing `public/index.html` as a redirect to `/console/` or delete it outright after Fleet parity?
-2. Should the board endpoint be a new route or an aggregation of existing endpoints? Recommendation: new route for performance.
-3. Where does the bundled TopoJSON come from? Recommendation: `us-atlas` package or a checked-in lightweight file.
+1. Keep `public/index.html` as a redirect to `/console/` for one release, then delete it.
+2. Add a dedicated `GET /api/board` route (new, not an aggregation of existing endpoints) for Master board performance.
+3. Use the `us-atlas` package for the bundled US states TopoJSON, after confirming its license. Log the license check in the checkpoint.
 
 ## Blockers
 
