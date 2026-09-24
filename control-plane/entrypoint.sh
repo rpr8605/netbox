@@ -1,8 +1,5 @@
 #!/bin/sh
 set -e
-# Run the SQLite -> Postgre migration once per Postgres database, then start the
-# control plane. The migration is guarded by a marker row in Postgres and by
-# renaming the SQLite source to *.migrated after success, so it is safe to run
-# on every boot.
-node migrate.js
+# Start the control plane. Schema creation/updates run automatically inside
+# src/db.js on boot (PostgreSQL-only, guarded by an advisory transaction lock).
 exec node src/index.js

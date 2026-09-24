@@ -42,7 +42,7 @@ export default async function actionRegistryRoutes(app) {
     }
     await createActionRegistryEntry({ action_id, site_id, requires_role, max_scope });
     await appendAudit({
-      auditId: crypto.randomUUID(), actor: req.body?.actor ?? req.query?.role ?? 'operations-manager',
+      auditId: crypto.randomUUID(), actor: req.user?.role ?? 'operations-manager',
       action: 'action_registry.created', target: `${site_id}:${action_id}`,
       detail: `requires_role=${requires_role} session=true`,
     });
@@ -67,7 +67,7 @@ export default async function actionRegistryRoutes(app) {
     config: { auth: 'operator:action_registry:execute' },
   }, async (req, reply) => {
     const { action_id, site_id, device_id, requested_by } = req.body ?? {};
-    const requesterRole = req.query?.role ?? req.body?.role ?? 'unknown';
+    const requesterRole = req.user?.role ?? 'unknown';
     if (!action_id || !site_id || !device_id || !requested_by) {
       return reply.code(400).send({ error: 'action_id, site_id, device_id, requested_by required' });
     }
@@ -100,7 +100,7 @@ export default async function actionRegistryRoutes(app) {
     const sessionId = crypto.randomUUID();
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + SESSION_TTL_S * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const expiresAt = new Date(Date.now() + SESSION_TTL_S * 1000).toISOString();
     await createSupportSession({
       session_id: sessionId, device_id, requested_by, token_hash: tokenHash, expires_at: expiresAt,
       action_id,

@@ -153,7 +153,10 @@ export default async function topologyViewRoutes(app) {
   }
   app.get('/api/fleet/map', {
     preHandler: async (req, reply) => {
-      const role = req.query?.role ?? req.body?.role ?? null;
+      // Read the explicitly declared role. The dev-auth stub defaults missing
+      // roles to operations-manager for local API convenience, but the fleet
+      // map (like /fleet.html) must require an explicit role.
+      const role = req.headers['x-dev-role'] ?? req.query?.role ?? null;
       const requestedSite = req.query?.site_id ?? null;
       if (can(role, 'topology:rollup')) return;
       // customer-it-admin may see only their own site pin.
@@ -163,7 +166,7 @@ export default async function topologyViewRoutes(app) {
     },
     config: { auth: 'operator:topology:rollup' },
   }, async (req) => {
-    const role = req.query?.role ?? req.body?.role ?? null;
+    const role = req.headers['x-dev-role'] ?? req.query?.role ?? null;
     const requestedSite = req.query?.site_id ?? null;
     const sites = [];
     for (const site of await listSites()) {

@@ -12,33 +12,23 @@ import crypto from 'node:crypto';
 import {
   createEnrollmentToken, consumeEnrollmentToken,
   createRetrustChallenge, consumeRetrustChallenge,
-  db,
+  getDevice, db,
 } from '../src/db.js';
 
 describe('M3 — atomic token/challenge consumption', () => {
   let queryCount;
   let driverRestore = null;
 
-  before(() => {
-    // Patch the active driver's statement function so we can count statements.
-    // Postgres exposes `db.query`; SQLite exposes `db.prepare`. Both are async
-    // enough for our purposes (SQLite prepare is synchronous, but the test only
-    // needs to count invocations).
-    if (db.query) {
-      const originalQuery = db.query.bind(db);
-      db.query = async (...args) => {
-        queryCount += 1;
-        return originalQuery(...args);
-      };
-      driverRestore = () => { db.query = originalQuery; };
-    } else if (db.prepare) {
-      const originalPrepare = db.prepare.bind(db);
-      db.prepare = (...args) => {
-        queryCount += 1;
-        return originalPrepare(...args);
-      };
-      driverRestore = () => { db.prepare = originalPrepare; };
-    }
+  before(async () => {
+    // Prime the lazy pool so `db` is the Postgres Pool, then patch its query
+    // function so we can count statements.
+    await getDevice('__init__');
+    const originalQuery = db.query.bind(db);
+    db.query = async (...args) => {
+      queryCount += 1;
+      return originalQuery(...args);
+    };
+    driverRestore = () => { db.query = originalQuery; };
   });
 
   after(() => {
@@ -49,7 +39,7 @@ describe('M3 — atomic token/challenge consumption', () => {
     const deviceId = `dev-${crypto.randomUUID()}`;
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 60_000).toISOString().replace('T', ' ').slice(0, 19);
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
     await createEnrollmentToken({ tokenHash, deviceId, siteId: 'site-test', expiresAt });
 
     queryCount = 0;

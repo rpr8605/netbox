@@ -1,26 +1,15 @@
 #!/usr/bin/env node
 // scripts/reset_test_db.js
-// Resets the test database. When DATABASE_URL is set, drops and recreates an
-// isolated Postgres database. When DATABASE_URL is not set (SQLite / zero-ops
-// local tests), removes the on-disk SQLite file if configured, or no-ops when
-// tests use an in-memory database.
-import fs from 'node:fs';
+// Resets the PostgreSQL test database named by DATABASE_URL.
+// Drops and recreates an isolated database so test suites start from a clean schema.
 import pg from 'pg';
 
 const { Client } = pg;
 
 const baseUrl = process.env.DATABASE_URL;
 if (!baseUrl) {
-  // SQLite / zero-ops path: delete the on-disk file if one is configured,
-  // otherwise there is nothing to reset (tests use :memory:).
-  const dbPath = process.env.DB_PATH;
-  if (dbPath && dbPath !== ':memory:' && fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-    console.log(`reset_test_db: removed SQLite file ${dbPath}`);
-  } else {
-    console.log('reset_test_db: DATABASE_URL not set; SQLite tests are self-isolating');
-  }
-  process.exit(0);
+  console.error('reset_test_db: DATABASE_URL is required (SQLite support removed in SQLITE-1/M6)');
+  process.exit(1);
 }
 
 function rewriteDbName(urlString, dbName) {

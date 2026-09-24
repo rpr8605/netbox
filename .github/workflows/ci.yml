@@ -9,13 +9,21 @@ on:
 jobs:
   unit-and-python:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
-      # SQLite is used in CI because the control-plane dual-driver layer
-      # already supports it, no service container is required, and the suite
-      # runs faster. Postgres-specific tests (test:migrate) are run locally
-      # against the compose Postgres service.
       NODE_ENV: test
-      DATABASE_URL: ''
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/beacon_relay_test
     steps:
       - uses: actions/checkout@v4
 

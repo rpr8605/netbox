@@ -51,7 +51,7 @@ export async function fireAlert({ ruleId, deviceId, siteId, deliver, auditActor 
   }
   const alertId = crypto.randomUUID();
   const openedAt = new Date();
-  const ackDeadline = new Date(openedAt.getTime() + rule.ack_window_s * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  const ackDeadline = new Date(openedAt.getTime() + rule.ack_window_s * 1000).toISOString();
   await createAlert({
     alert_id: alertId, rule_id: ruleId, device_id: deviceId, site_id: siteId,
     severity: rule.severity, impact_stmt: rule.impact_stmt, ack_deadline: ackDeadline,
@@ -81,7 +81,7 @@ export async function acknowledgeAlert({ alertId, actor }) {
 // escalated to the next tier and re-delivered. The escalation is audit-logged
 // and returns the list of alerts escalated this sweep (for tests + console).
 export async function sweepEscalations({ deliver, now = new Date() }) {
-  const nowIso = now.toISOString().replace('T', ' ').slice(0, 19);
+  const nowIso = now.toISOString();
   const overdue = await openUnackedPastDeadline(nowIso);
   const escalated = [];
   for (const a of overdue) {

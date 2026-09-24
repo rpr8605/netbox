@@ -32,7 +32,7 @@ export default async function supportRoutes(app) {
     const sessionId = crypto.randomUUID();
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
     await createSupportSession({ session_id: sessionId, device_id, requested_by, token_hash: tokenHash, expires_at: expiresAt });
     await appendAudit({ auditId: crypto.randomUUID(), actor: requested_by, action: 'support.requested', target: sessionId, detail: `device=${device_id} ttl=${ttl}s` });
     return { session_id: sessionId, token, expires_at: expiresAt };
@@ -86,7 +86,7 @@ export default async function supportRoutes(app) {
       await appendAudit({ auditId: crypto.randomUUID(), actor: 'device', action: 'support.open_denied', target: s.session_id, detail: 'bad token' });
       return reply.code(403).send({ error: 'invalid session token' });
     }
-    if (new Date(s.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now()) {
+    if (new Date(s.expires_at).getTime() < Date.now()) {
       await closeSupportSession(s.session_id, 'expired');
       return reply.code(410).send({ error: 'session expired' });
     }
@@ -114,7 +114,7 @@ export default async function supportRoutes(app) {
   }, async (req, reply) => {
     const s = await getSupportSession(req.params.id);
     if (!s) return reply.code(404).send({ error: 'unknown session' });
-    const expired = new Date(s.expires_at.replace(' ', 'T') + 'Z').getTime() < Date.now();
+    const expired = new Date(s.expires_at).getTime() < Date.now();
     if (expired && (s.state === 'open' || s.state === 'pending')) {
       await closeSupportSession(s.session_id, 'expired');
       return { ...s, state: 'expired' };
@@ -126,7 +126,7 @@ export default async function supportRoutes(app) {
 // sweepSupportSessions — close any pending/open session past its expires_at.
 // Called on a timer from index.js; returns the sessions closed this sweep.
 export async function sweepSupportSessions() {
-  const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const nowIso = new Date().toISOString();
   const expired = await expiredSupportSessions(nowIso);
   for (const s of expired) {
     await closeSupportSession(s.session_id, 'expired');

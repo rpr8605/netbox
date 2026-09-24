@@ -82,7 +82,7 @@ export default async function releaseRoutes(app) {
     }
     const rolloutId = await createRollout({ version, stage, percentage });
     await appendAudit({
-      auditId: crypto.randomUUID(), actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
+      auditId: crypto.randomUUID(), actor: req.user?.role ?? 'operations-manager',
       action: 'rollout.created', target: rolloutId, detail: `${version} ${stage} ${percentage}%`,
     });
     return { rollout_id: rolloutId, version, stage, percentage, active: false };
@@ -101,7 +101,7 @@ export default async function releaseRoutes(app) {
     if (!changes) return reply.code(404).send({ error: 'rollout not found' });
     const active = await getActiveRollout();
     await appendAudit({
-      auditId: crypto.randomUUID(), actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
+      auditId: crypto.randomUUID(), actor: req.user?.role ?? 'operations-manager',
       action: 'rollout.activated', target: req.params.id,
       detail: `${active.version} ${active.stage} ${active.percentage}%`,
     });

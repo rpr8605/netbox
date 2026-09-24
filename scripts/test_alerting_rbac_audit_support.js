@@ -50,19 +50,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function api(method, path, body, agent) {
   // Translate ?role= in the URL to the X-Dev-Role header so the dev-auth stub
   // can set req.user; requirePerm no longer reads role from query/body.
-  let urlPath = path;
   const headers = {};
   if (body) headers['content-type'] = 'application/json';
-  const roleMatch = path.match(/[?&]role=([^&]+)/);
-  if (roleMatch) {
-    headers['x-dev-role'] = decodeURIComponent(roleMatch[1]);
-    urlPath = path.replace(/[?&]role=[^&]+/, '').replace(/\?$/, '').replace(/&$/, '');
-    if (urlPath.includes('?') && urlPath.endsWith('&')) urlPath = urlPath.slice(0, -1);
-    if (urlPath.includes('&') && !urlPath.includes('?')) {
-      urlPath = '?' + urlPath.replace('&', '');
-    }
+  const url = new URL(path, CP);
+  const role = url.searchParams.get('role');
+  if (role) {
+    headers['x-dev-role'] = role;
+    url.searchParams.delete('role');
   }
-  const res = await request(`${CP}${urlPath}`, {
+  const res = await request(url.toString(), {
     method, dispatcher: agent ?? insecure,
     headers: Object.keys(headers).length ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
@@ -183,30 +179,55 @@ async function partC() {
   const hasFired = audit.body.some(e => e.action === 'alert.fired');
   const hasEscalated = audit.body.some(e => e.action === 'alert.escalated');
   check('C2. alert.fire + alert.escalated are audit-logged', hasFired && hasEscalated);
-  // Tamper: insert a row into a THROWAWAY local SQLite DB (same schema+triggers),
-  // then try to UPDATE and DELETE it. Both must raise — the append-only
-  // guarantee is enforced by the database triggers, not by the API.
-  // This sub-test intentionally forces SQLite so the tamper attempt runs against
-  // an isolated throwaway file regardless of whether the suite's DATABASE_URL
-  // points at Postgres.
+  // Tamper: use a dedicated Postgres client in a transaction with savepoints.
+  // Insert a row, then try to UPDATE and DELETE it. Both must raise — the
+  // append-only guarantee is enforced by database triggers, not the API.
+  // Savepoints let us recover from each trigger abort and verify the row is
+  // still intact before rolling the whole transaction back.
+  const { default: pg } = await import('../control-plane/node_modules/pg/lib/index.js');
+  const { Client } = pg;
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
   let updateThrew = false, deleteThrew = false;
-  const os = await import('node:os');
-  const path = await import('node:path');
-  const fs = await import('node:fs');
-  const tmpDb = path.join(os.tmpdir(), `beacon-relay-audit-test-${crypto.randomUUID()}.db`);
-  const savedDatabaseUrl = process.env.DATABASE_URL;
-  delete process.env.DATABASE_URL;
-  process.env.DB_PATH = tmpDb;
-  const { db, appendAudit } = await import(`../control-plane/src/db.js?cacheBust=${crypto.randomUUID()}`);
-  await appendAudit({ auditId: 'tamper-target', actor: 'test', action: 'test.entry' });
-  try { db.prepare(`UPDATE audit_log SET action='tampered' WHERE audit_id='tamper-target'`).run(); } catch { updateThrew = true; }
-  try { db.prepare(`DELETE FROM audit_log WHERE audit_id='tamper-target'`).run(); } catch { deleteThrew = true; }
-  const intact = db.prepare(`SELECT action FROM audit_log WHERE audit_id='tamper-target'`).get()?.action === 'test.entry';
-  db.close(); // release the file lock BEFORE cleanup (Windows EPERM otherwise)
-  fs.rmSync(tmpDb, { force: true }); fs.rmSync(tmpDb + '-wal', { force: true }); fs.rmSync(tmpDb + '-shm', { force: true });
-  if (savedDatabaseUrl !== undefined) process.env.DATABASE_URL = savedDatabaseUrl;
-  check('C3. UPDATE on audit_log is rejected', updateThrew && intact);
-  check('C4. DELETE on audit_log is rejected', deleteThrew && intact);
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO audit_log (audit_id, actor, action) VALUES ($1, $2, $3)`,
+      ['tamper-target', 'test', 'test.entry']
+    );
+
+    await client.query('SAVEPOINT sp_update');
+    try {
+      await client.query(`UPDATE audit_log SET action='tampered' WHERE audit_id='tamper-target'`);
+    } catch {
+      updateThrew = true;
+      await client.query('ROLLBACK TO SAVEPOINT sp_update');
+    }
+    const intactRes1 = await client.query(
+      `SELECT action FROM audit_log WHERE audit_id = $1`,
+      ['tamper-target']
+    );
+    const intact1 = intactRes1.rows[0]?.action === 'test.entry';
+
+    await client.query('SAVEPOINT sp_delete');
+    try {
+      await client.query(`DELETE FROM audit_log WHERE audit_id='tamper-target'`);
+    } catch {
+      deleteThrew = true;
+      await client.query('ROLLBACK TO SAVEPOINT sp_delete');
+    }
+    const intactRes2 = await client.query(
+      `SELECT action FROM audit_log WHERE audit_id = $1`,
+      ['tamper-target']
+    );
+    const intact2 = intactRes2.rows[0]?.action === 'test.entry';
+
+    check('C3. UPDATE on audit_log is rejected', updateThrew && intact1);
+    check('C4. DELETE on audit_log is rejected', deleteThrew && intact2);
+  } finally {
+    await client.query('ROLLBACK').catch(() => {});
+    await client.end();
+  }
 }
 
 // ------------------------------------------------------- D. support broker ---
@@ -243,7 +264,7 @@ async function partD() {
   let afterExpiry = null;
   for (let i = 0; i < 10; i++) {
     await sleep(1500);
-    const cur = await api('GET', `/api/support/sessions/${shortS.body.session_id}`);
+    const cur = await api('GET', `/api/support/sessions/${shortS.body.session_id}?role=support-technician`);
     if (cur.body?.state === 'expired') { afterExpiry = cur; break; }
   }
   check('D6. session closes at its time limit (not left open)', afterExpiry?.body?.state === 'expired', `state=${afterExpiry?.body?.state}`);

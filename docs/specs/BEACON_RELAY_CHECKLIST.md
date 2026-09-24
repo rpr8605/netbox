@@ -4,7 +4,7 @@ Audit pass with live re-runs. Every status below was verified against the actual
 by re-running the test suites on the current commit — not copied from `docs/specs/BEACON_RELAY_STATUS.md`
 or any prior summary. Where a claim couldn't be re-verified live, it says so and why.
 
-**Audited at commit:** `503e165` (agent/md-sync-2026-09-22).
+**Audited at commit:** `b2b2cc1` (agent/md-sync-2026-09-22).
 
 > **Re-verification scope note:** All no-Docker suites and the Docker-dependent E2E/RBAC suites were re-run fresh this pass against PostgreSQL. QEMU acceptance was not re-run yet; it is blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md`.
 
@@ -12,19 +12,17 @@ or any prior summary. Where a claim couldn't be re-verified live, it says so and
 
 | Suite | Command | Result |
 |---|---|---|
-| Doc audit | `node audit_docs.cjs .` | 89 files, 0 missing header, 0 missing doc comment (213 exports) |
-| Doc audit | `node audit_docs.cjs .` | 97 files, 0 missing header, 4 pre-existing missing doc comments |
+| Doc audit | `node audit_docs.cjs .` | 121 files, 4 missing header, 64 missing doc comments (heuristic; db.js exports need JSDoc) |
+| Control-plane unit + security + Python | `npm test` | 96/96 (29 unit + 29 security + 38 Python) |
 | EHR adapters unit | `node --env-file=.env scripts/test_ehr_unit.js` | 48/48 |
 | Agent loop (monitor + self-monitor + downtime) | `node --env-file=.env scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node --env-file=.env scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | Sidecar security (incl. adversarial payload-recovery) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --env-file=.env --test scripts/test_topology.js` | 7/7 |
 | Device lifecycle / hardware tooling (no-hardware) | `node --env-file=.env --test scripts/test_device_lifecycle.js` | 13/13 |
-| SQLite-to-PostgreSQL migration safety | `node --env-file=.env --test control-plane/test/migrate.once.test.js` | 1/1 (deleted row not resurrected after restart) |
-| Control-plane storage + migration against PostgreSQL | `npm run test:db:reset && node --env-file=.env --test scripts/test_device_lifecycle.js scripts/test_topology.js control-plane/test/migrate.once.test.js` | 21/21 |
 | EHR E2E through real stack | `node --env-file=.env scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node --env-file=.env scripts/test_alerting_rbac_audit_support.js` | 76/76 |
-| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 9/9 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 11/11 |
 | OTA staged rollout control-plane policy + audit | `node --env-file=.env scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` (fresh build) | **NOT RE-RUN** — blocked by missing KVM in Docker Desktop on Windows (`-enable-kvm` fails); see `.agent/attempts.md` |
 
@@ -51,7 +49,8 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 - AWS Organization + three accounts remains blocked on Ryan's side; skipped per session instructions.
 - QEMU acceptance x3 remains blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md`.
 - PHI-mode toggle remains design-only (`.agent/phi-mode-design.md`) pending review; not implemented per session instructions.
-- `.env` is now required for `docker compose up` and for the default Postgres test suite; `.env.example` is committed.
+- `.env` is required for `docker compose up` and for the Postgres test suite; `.env.example` is committed.
+- SQLite has been removed from the control plane; there is no zero-ops fallback database. Local dev must have a reachable Postgres (the `docker compose` stack provides one).
 
 ---
 
@@ -91,7 +90,7 @@ code exists but stubbed/mocked/unverified/missing a spec'd piece (the gap is sta
 ### §5 — Cloud Control Plane
 - Device registry + mTLS ingestion API — **DONE** (EHR E2E 23/23 through real mTLS).
 - Quarantine gate — **DONE** (device-sim + acceptance).
-- PostgreSQL storage — **DONE**. `control-plane/src/db.js` is now an async dual-driver layer that uses PostgreSQL when `DATABASE_URL` is set and falls back to SQLite for zero-ops local dev/tests. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; `control-plane/migrate.js` copies legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
+- PostgreSQL storage — **DONE**. `control-plane/src/db.js` is now PostgreSQL-only (no SQLite fallback). Timestamps are native `TIMESTAMPTZ` with `NOW()`; the lazy pool is initialized on first query so module imports that do not touch the database stay testable without a live Postgres. `docker-compose.yml` publishes Postgres to `127.0.0.1:${POSTGRES_HOST_PORT}` and wires `DATABASE_URL` from `.env`. The obsolete SQLite migration path (`control-plane/migrate.js`), dual-driver translation (`pgize()`), and `better-sqlite3` dependency have been removed. Verified by `npm test` (96/96) and `npm run test:integration` (127/127) against `beacon_relay_test`.
 - RBAC five roles (support technician, customer IT admin, operations manager, security auditor, read-only executive) — **PARTIAL**. The role→permission map and per-route allow/deny are real and tested (alerting/RBAC suite 23/23), but Phase 2 has no auth — `role` arrives as a request attribute, not a verified principal. The Cognito/JWT layer is not built.
 - Audit log: append-only, immutable — **DONE** (trigger-enforced UPDATE/DELETE raise; tamper test fails; suite 23/23).
 

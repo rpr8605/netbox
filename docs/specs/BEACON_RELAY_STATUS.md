@@ -8,7 +8,7 @@ Written at a deliberate stopping point, after a credit-limited break call. This 
 the honest "what's actually true right now" record — nothing in it is a plan or a
 projection; every "built" line below has a test suite that currently passes and proves it.
 
-**Current commit on `main`:** `503e165` (agent/md-sync-2026-09-22; this session added migration safety marker + `.migrated` rename, `.env`/`.env.example` secret handling, PostgreSQL as the default test database, a readiness audit, and DHCP as a first-class critical service; previous work includes PostgreSQL storage, channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory, and PHI guard).
+**Current commit on `main`:** `b2b2cc1` (agent/md-sync-2026-09-22; this session removed SQLite from the control plane, made PostgreSQL the sole storage driver with native `TIMESTAMPTZ`, added lazy pool initialization, updated CI to a Postgres service container, and fixed route-auth static testability; previous work includes PostgreSQL migration safety, channel-registry, TLS-cert-expiration, firewall, DNS, WAN/ISP circuit health, ticketing Tier-0, SES email-sender, geographic fleet-map, troubleshooting-memory, and PHI guard).
 
 > **History note (read before pulling into another clone):** history was rewritten on
 > 2026-09-02 to strip large build-artifact binaries (two ~1 GB disk images and a ~440 MB
@@ -95,8 +95,8 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
   runbook attachment, required ack with automatic escalation on timeout, suppression/
   maintenance windows. Delivery rails (Twilio SMS/voice, SendGrid email, SES email via
   `@aws-sdk/client-sesv2`, Slack/Teams webhook) wired as injected senders.
-- **PostgreSQL storage + migration safety for the control plane** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). `control-plane/src/db.js` is an async dual-driver layer: PostgreSQL when `DATABASE_URL` is set, SQLite otherwise. `docker-compose.yml` adds a `postgres` service and wires `DATABASE_URL` from `.env`; the image entrypoint runs `control-plane/migrate.js` to copy legacy SQLite data exactly once per Postgres database (guarded by a marker row in `schema_migrations`) and renames the SQLite source to `*.migrated` on success. Verified by running all DB-touching unit tests against Postgres and by `control-plane/test/migrate.once.test.js` (deleted row is not resurrected after restart).
-- **PostgreSQL as the default for test suites.** `.env` (gitignored) and `.env.example` set `DATABASE_URL` to the isolated `beacon_relay_test` database by default; `npm run test:db:reset` recreates it. DB-touching tests now run against Postgres unless `DATABASE_URL` is explicitly unset for SQLite-specific coverage.
+- **PostgreSQL storage for the control plane** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). `control-plane/src/db.js` is PostgreSQL-only: a lazy `pg.Pool`, `$n` placeholders, native `TIMESTAMPTZ` columns, and no SQLite fallback. The lazy initialization means importing the module without running a query does not require a live database (e.g., `control-plane/test/route-auth.test.js`). `docker-compose.yml` publishes Postgres to `127.0.0.1:${POSTGRES_HOST_PORT}` and wires `DATABASE_URL` from `.env`. The obsolete SQLite migration (`control-plane/migrate.js`), the dual-driver `pgize()` translation layer, and the `better-sqlite3` dependency have been removed.
+- **PostgreSQL as the default for test suites.** `.env` (gitignored) and `.env.example` set `DATABASE_URL` to the isolated `beacon_relay_test` database by default; `npm run test:db:reset` recreates it. GitHub Actions CI uses a Postgres service container; local tests require the `docker compose` Postgres or another reachable database.
 - **RBAC completeness** (`docs/specs/BEACON_RELAY_BUILD_SPEC.md` §5). All five roles (support technician, customer IT
   admin, operations manager, security auditor, read-only executive) with per-route
   allow/deny proven.
@@ -207,18 +207,17 @@ commit. Nothing is listed as built on the strength of a prior prose summary.
 
 | Suite | Command | Result |
 |---|---|---|
-| Documentation audit | `node audit_docs.cjs .` | 97 files scanned, 0 missing header, 4 pre-existing missing doc comments |
+| Documentation audit | `node audit_docs.cjs .` | 121 files scanned, 4 missing header, 64 missing doc comments (heuristic; db.js exports need JSDoc) |
+| Control-plane unit + security + Python | `npm test` | 96/96 (29 unit + 29 security + 38 Python) |
 | EHR adapters unit | `node --env-file=.env scripts/test_ehr_unit.js` | 48/48 |
 | Device agent loop (monitor + self-monitor + downtime) | `node --env-file=.env scripts/test_agent_loop.js` | 11/11 |
 | Step 1 Graph signals | `node --env-file=.env scripts/test_step1_signals.js` | Graph path emits 2 security_signal events; Bearer prefix asserted |
 | HL7 sidecar security (incl. adversarial payload-recovery, must fail) | `python scripts/test_sidecar_security.py` | 24/24 |
 | Topology (channel registry, RBAC rollup gate, detail panel) | `node --env-file=.env --test scripts/test_topology.js` | 7/7 |
 | Device lifecycle / hardware tooling (no-hardware) | `node --env-file=.env --test scripts/test_device_lifecycle.js` | 13/13 |
-| SQLite-to-PostgreSQL migration safety | `node --env-file=.env --test control-plane/test/migrate.once.test.js` | 1/1 (deleted row not resurrected after restart) |
-| Control-plane storage + migration against PostgreSQL | `npm run test:db:reset && node --env-file=.env --test scripts/test_device_lifecycle.js scripts/test_topology.js control-plane/test/migrate.once.test.js` | 21/21 |
 | EHR E2E through the real stack (incl. feed-down, public sandbox) | `node --env-file=.env scripts/test_ehr_e2e.js` | 23/23 |
 | Alerting / RBAC / audit / support broker / ticketing Tier 0 / SES skip / PHI guard / fleet map / troubleshooting memory / Action Registry | `node --env-file=.env scripts/test_alerting_rbac_audit_support.js` | 76/76 |
-| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 9/9 |
+| OTA update client (signed bundles, staged rollout, rollback) | `node --env-file=.env scripts/test_update_client.js` | 11/11 |
 | OTA staged rollout control-plane policy + audit | `node --env-file=.env scripts/test_ota_rollout.js` | 10/10 |
 | Phase 3 QEMU acceptance | `vm-harness/acceptance.sh` | **not re-run this pass** — blocked by missing KVM in Docker Desktop on Windows; see `.agent/attempts.md` |
 
@@ -259,7 +258,7 @@ built image plus the harness container.
 - **The Epic Community Connect profile ships with its FHIR check `enabled: false` by
   default** (parent-org API grant is not guaranteed) — that's a deliberate product decision,
   not a bug; the `unknown`-not-`down` auth mapping exists because of it.
-- **PostgreSQL is now the production storage target; SQLite remains the zero-ops dev fallback.** The dual-driver layer is tested, and the SQLite-to-Postgres migration is guarded by a marker row in `schema_migrations` and renames the SQLite source to `*.migrated` after the first successful run. The default test database is now `beacon_relay_test` via `.env`; `npm run test:db:reset` recreates it. The RDS/TimescaleDB partitioning decision (per the AWS doc) is still deferred until the AWS phase.
+- **PostgreSQL is the only control-plane storage.** SQLite has been removed entirely (`better-sqlite3` dependency deleted, `control-plane/migrate.js` removed, `pgize()` translation removed). Local dev requires a reachable Postgres; the `docker compose` stack provides one on `127.0.0.1:${POSTGRES_HOST_PORT}`. The default test database is `beacon_relay_test` via `.env`; `npm run test:db:reset` recreates it. The RDS/TimescaleDB partitioning decision (per the AWS doc) is still deferred until the AWS phase.
 - **`git push` history was rewritten** — see the note at the top. Clones need fetch+reset.
 - **`.env` is now required for local compose and default test runs.** Copy `.env.example` to `.env` before `docker compose up` or `npm test`. `.env` is gitignored and must never be committed.
 - **Host port 9100 is inside a Windows/Hyper-V excluded port range (`9035-9134`) on the current build machine.** Worked around by remapping the published host port to `10443` in `docker-compose.yml` and updating host-side test/seed defaults. The container port remains `9100` for compose-internal services.

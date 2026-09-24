@@ -55,7 +55,7 @@ export default async function enrollRoutes(app) {
     if (!policy.ok) {
       await appendAudit({
         auditId: crypto.randomUUID(),
-        actor: req.query?.role ?? req.body?.role ?? 'unknown',
+        actor: req.user?.role ?? 'unknown',
         action: 'enroll.token_denied',
         target: device_id,
         detail: policy.error,
@@ -65,8 +65,7 @@ export default async function enrollRoutes(app) {
 
     const token = crypto.randomBytes(32).toString('base64url');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + ttl_minutes * 60_000)
-      .toISOString().replace('T', ' ').slice(0, 19);
+    const expiresAt = new Date(Date.now() + ttl_minutes * 60_000).toISOString();
     await createEnrollmentToken({ tokenHash, deviceId: device_id, siteId: site_id, expiresAt });
     // Register the device in quarantine NOW — before any cert exists. A device
     // that shows up with a valid cert but no registry row is refused later;
@@ -80,7 +79,7 @@ export default async function enrollRoutes(app) {
     }
     await appendAudit({
       auditId: crypto.randomUUID(),
-      actor: req.query?.role ?? req.body?.role ?? 'operations-manager',
+      actor: req.user?.role ?? 'operations-manager',
       action: existingDevice ? 'enroll.token_reenroll' : 'enroll.token_created',
       target: device_id,
       detail: `site=${site_id} re_enroll=${re_enroll === true}`,

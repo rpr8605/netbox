@@ -2,8 +2,7 @@
 // control-plane/test/compose.security.test.js
 // Verifies the local docker-compose.yml hardening required by the 2026-09-23
 // independent review (finding C3):
-//   - control-plane and step-ca host ports bind 127.0.0.1 only
-//   - Postgres is not published to the host at all
+//   - control-plane, step-ca, and Postgres host ports bind 127.0.0.1 only
 //   - POSTGRES_PASSWORD and CA_PASSWORD are required with no defaults
 //   - .env.example exists and .env is gitignored
 // This test inspects files only; it does not start Docker.
@@ -71,9 +70,13 @@ describe('docker-compose security hardening (C3)', () => {
     }
   });
 
-  it('does not publish Postgres to the host', () => {
-    const portLines = portsList(serviceBlock(raw, 'postgres'));
-    assert.ok(portLines.length === 0, 'postgres must not publish any host port');
+  it('binds the Postgres host port to 127.0.0.1 only', () => {
+    const portLines = portsList(serviceBlock(raw, 'postgres')).filter(l => l.includes(':5432'));
+    assert.ok(portLines.length > 0, 'postgres must publish port 5432 to the host for local dev/tests');
+    for (const line of portLines) {
+      assert.ok(line.startsWith('- "127.0.0.1:') || line.startsWith("- '127.0.0.1:"),
+        `postgres port must bind 127.0.0.1: ${line}`);
+    }
   });
 
   it('requires POSTGRES_PASSWORD with no default', () => {

@@ -42,8 +42,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-beacon_relay}
     volumes:
       - pg-data:/var/lib/postgresql/data
-    # Postgres is intentionally NOT published to the host. Only the control-plane
-    # service inside this compose network needs it (C3).
+    # Postgres is published to the host on 127.0.0.1 only so local `npm test`
+    # can reach it. Compose-internal services also reach it by service name.
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -66,10 +68,8 @@ services:
       CA_FINGERPRINT: ${CA_FINGERPRINT}
       PROVISIONER_NAME: ${PROVISIONER_NAME}
       PROVISIONER_PRIVATE_JWK_PATH: /run/secrets/provisioner_private_jwk
-      # Production storage is PostgreSQL. The legacy DB_PATH is kept only for
-      # the one-time migration script; new installs write straight to Postgres.
+      # Production storage is PostgreSQL (SQLite removed in SQLITE-1/M6).
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      DB_PATH: /data/beacon-relay.db
       # The OTA release surface (routes/releases.js) reads the build's out/
       # tree for the latest-version pointer and the signed bundle bytes.
       RELEASES_DIR: /out
@@ -81,7 +81,6 @@ services:
     volumes:
       - ./pki-config/provisioner/private_jwk.json:/run/secrets/provisioner_private_jwk:ro
       - ./out:/out:ro
-      - cp-data:/data
     ports:
       # Localhost-only host publish. The container port remains 9100 for
       # compose-internal services (device-sim, vm-harness). Binding to all
@@ -113,5 +112,4 @@ volumes:
   pki-db:
   pki-certs:
   pki-secrets:
-  cp-data:
   pg-data:

@@ -30,7 +30,7 @@ import actionRegistryRoutes from './routes/action_registry.js';
 import { sweepEscalations } from './alerting.js';
 import { deliver } from './deliver.js';
 import { appendAudit, listAudit } from './db.js';
-import { requirePerm } from './rbac.js';
+import { requirePerm, can } from './rbac.js';
 import { devAuthPreHandler } from './auth/dev_auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -93,10 +93,19 @@ const app = Fastify({
 app.addHook('preHandler', devAuthPreHandler);
 
 // Console pages should not be reachable without at least a declared role. The
-// Fleet Map page is protected here; the data endpoint enforces the same RBAC as
-// the rollup gate. After the React console reaches parity this route is retired.
+// legacy Fleet Map page is protected here; the data endpoint enforces the same
+// RBAC as the rollup gate. After the React console reaches parity this route
+// is retired. We check the explicit role source (header or query) so anonymous
+// requests are denied even though the dev-auth stub defaults other routes to
+// operations-manager for local development.
 app.get('/fleet.html', {
-  preHandler: requirePerm('topology:rollup', appendAudit),
+  preHandler: async (req, reply) => {
+    const role = req.headers['x-dev-role'] ?? req.query?.role ?? null;
+    if (!can(role, 'topology:rollup')) {
+      await appendAudit({ auditId: crypto.randomUUID(), actor: role ?? 'anonymous', action: 'rbac.denied', target: 'topology:rollup', detail: req.url });
+      return reply.code(403).send({ error: `role '${role ?? 'none'}' lacks topology:rollup` });
+    }
+  },
   config: { auth: 'operator:topology:rollup' },
 }, async (req, reply) => {
   return reply.sendFile('fleet.html');

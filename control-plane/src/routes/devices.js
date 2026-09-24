@@ -81,7 +81,7 @@ export default async function deviceRoutes(app) {
         await recordRevokedSerial(oldDevice.cert_serial, oldDeviceId, 'replace');
       }
 
-      const role = req.body?.role ?? req.query?.role ?? 'operations-manager';
+      const role = req.user?.role ?? 'operations-manager';
       const result = await replaceDevice({ oldDeviceId, newDeviceId: new_device_id, reason, actor: role });
       return result;
     } catch (e) {

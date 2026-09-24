@@ -39,7 +39,7 @@ Two acceptance runs failed identically with `Could not access KVM kernel module:
 
 ## M6 — Native timestamp handling in PostgreSQL
 
-**Status:** LOGGED for post-Batch-3 work. `control-plane/src/db.js` still uses `pgize()` to translate SQLite SQL into Postgres, and timestamp columns are stored as `TEXT` with `NOW()::TEXT` comparisons. Converting to native `TIMESTAMPTZ` requires removing the SQLite driver path (part of Batch 3 maintainability: "Remove SQLite; Postgres only, native timestamps, delete pgize"). Do not attempt before SQLite removal is approved/undertaken.
+**Status:** RESOLVED. SQLite has been removed from the control plane. `control-plane/src/db.js` is PostgreSQL-only with `$n` placeholders, no `pgize()`, and `control-plane/src/schema.js` stores timestamp columns as `TIMESTAMPTZ` using `NOW()`. Every connection runs `SET TIME ZONE 'UTC'`, and the JS layer passes full ISO-8601 strings. Verified by `npm test` 96/96 and `npm run test:integration` 127/127.
 
 ## Power backup
 
@@ -53,23 +53,14 @@ From `docs/hardware/POWER_BACKUP.md` (2026-09-24). Hardware is selected and docu
 
 ## Plan for removing SQLite entirely
 
-`control-plane/src/db.js` is currently a dual-driver layer (Postgres when `DATABASE_URL` is set, SQLite otherwise). SQLite is still convenient for zero-ops local runs and a few unit tests, but PostgreSQL is the spec'd production store. Removal checklist:
+**Status:** COMPLETED in this session.
 
-1. **Test-suite migration (this session):**
-   - `.env` now sets `DATABASE_URL` to the isolated `beacon_relay_test` database by default.
-   - `npm run test:db:reset` recreates the test database.
-   - `npm test` runs the DB-touching suites against Postgres.
-   - `control-plane/test/migrate.once.test.js` verifies the one-shot SQLite migration.
-2. **Remaining SQLite-only call sites to migrate:**
-   - Audit-log tamper test currently reaches into the SQLite driver directly; it needs a Postgres equivalent (use a read-only role or trigger check).
-   - Any host-side scripts that rely on `DB_PATH` or the absence of `DATABASE_URL` should require `DATABASE_URL` instead.
-3. **Drop the dual-driver code:**
-   - Remove the `isPg` branch and the `pgize()` placeholder conversion in `control-plane/src/db.js`.
-   - Keep only Postgres SQL and use `$n` placeholders everywhere.
-   - Remove `better-sqlite3` from `control-plane/package.json`.
-   - Remove `DB_PATH` from `docker-compose.yml` and the control-plane environment.
-   - Retire `control-plane/migrate.js` once all deployed environments have migrated (it is now marker-guarded and renames the source file).
-4. **Validation gate before removal:**
-   - All `node --test` suites must pass with `DATABASE_URL` set and SQLite unavailable.
-   - The Docker image must build and start with only `pg` installed.
-    - Document the final removal commit and update `docs/specs/BEACON_RELAY_STATUS.md` / `docs/specs/BEACON_RELAY_CHECKLIST.md`.
+- `control-plane/src/db.js` is PostgreSQL-only; the `isPg`/`pgize()` dual-driver code is gone.
+- `control-plane/src/schema.js` uses native `TIMESTAMPTZ` columns.
+- `better-sqlite3` removed from `control-plane/package.json`; lockfile regenerated.
+- `control-plane/migrate.js`, `control-plane/test/migrate.once.test.js`, `scripts/migrate_sqlite_to_postgres.js`, and `scripts/run_sqlite_tests.js` deleted.
+- `DB_PATH` and the `cp-data` volume removed from `docker-compose.yml`.
+- Audit-log tamper test now uses a direct Postgres client with savepoints (`scripts/test_alerting_rbac_audit_support.js`).
+- All `node --test` suites pass with `DATABASE_URL` set and SQLite unavailable: `npm test` 96/96, `npm run test:integration` 127/127.
+- Docker image builds and starts with only `pg` installed.
+- Docs updated in `docs/specs/BEACON_RELAY_STATUS.md` and `docs/specs/BEACON_RELAY_CHECKLIST.md`.

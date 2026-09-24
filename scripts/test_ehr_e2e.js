@@ -36,19 +36,15 @@ function check(name, ok, detail = '') {
 // verifies server-side TLS; client auth on device endpoints IS tested.
 const insecure = new Agent({ connect: { rejectUnauthorized: false } });
 async function api(method, path, body, agent = insecure) {
-  let urlPath = path;
   const headers = {};
   if (body) headers['content-type'] = 'application/json';
-  const roleMatch = path.match(/[?&]role=([^&]+)/);
-  if (roleMatch) {
-    headers['x-dev-role'] = decodeURIComponent(roleMatch[1]);
-    urlPath = path.replace(/[?&]role=[^&]+/, '').replace(/\?$/, '').replace(/&$/, '');
-    if (urlPath.includes('?') && urlPath.endsWith('&')) urlPath = urlPath.slice(0, -1);
-    if (urlPath.includes('&') && !urlPath.includes('?')) {
-      urlPath = '?' + urlPath.replace('&', '');
-    }
+  const url = new URL(path, CP);
+  const role = url.searchParams.get('role');
+  if (role) {
+    headers['x-dev-role'] = role;
+    url.searchParams.delete('role');
   }
-  const res = await request(`${CP}${urlPath}`, {
+  const res = await request(url.toString(), {
     method, dispatcher: agent,
     headers: Object.keys(headers).length ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
