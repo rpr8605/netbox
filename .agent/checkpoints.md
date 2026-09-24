@@ -276,5 +276,21 @@ ode --env-file=.env; scripts/test_alerting_rbac_audit_support.js forces SQLite o
 - **Blocked:** cannot read GitHub Actions result locally (no `gh auth`).
 - **Open questions / next:** Phase 2 (untracked files and small doc tasks) ready to start after Ryan approval.
 
+## Checkpoint #20 | Block: $1.09 | Total: $709.48 | Cost/commit: $0.36
+
+- **Done (Phase 1 follow-up — clean-machine failures):**
+  - Fixed `scripts/test_device_lifecycle.js`: generates a throwaway ES256 key pair in a temp directory instead of reading `pki-config/provisioner/public_jwk.json`. Key material is never committed.
+  - Fixed `control-plane/src/ca.js`: resolves `PROVISIONER_PRIVATE_JWK_PATH` lazily inside `provisionerKey()` so tests can set the env var after modules that transitively import `ca.js` are loaded.
+  - Fixed `beacon-relay-agent/lib/update.js`: bundle download path now uses `process.env.BEACON_DATA_DIR ?? '/data'` instead of hardcoded `/data`.
+  - Fixed `scripts/test_update_client.js` and `beacon-relay-agent/test/update.rollback.test.js`: both set `BEACON_DATA_DIR` to a temp directory and clean it up.
+  - Fixed `.github/workflows/ci.yml`: replaced the 404 gitleaks install URL with `gitleaks/gitleaks-action@v2` and added `fetch-depth: 0` to the security-scans checkout.
+- **Tests (simulated fresh clone, no `.env`, DATABASE_URL unset):**
+  - `npm ci` completed in root, control-plane, and beacon-relay-agent (lockfiles present).
+  - `npm test` passes: 29 unit + 29 security + 38 Python = 96 tests.
+- **CI proof:** pushed commits `da4497e` (fixes) and updated checkpoint to `agent/md-sync-2026-09-22`. `gh` CLI remains unauthenticated; Ryan should verify the Actions tab.
+- **Repeat check:** none.
+- **Blocked:** cannot read GitHub Actions result locally.
+- **Open questions / next:** Phase 2 ready after Ryan approval.
+
 
 
