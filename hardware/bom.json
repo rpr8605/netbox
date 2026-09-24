@@ -8,12 +8,13 @@
       "role": "compute",
       "required": true,
       "primary": {
-        "mpn": "PROTECTLI-VP2410-4",
-        "description": "Intel Celeron J4125 quad-core mini-PC, 4 GB RAM, fanless",
-        "notes": "Reference SKU. Any alternate must expose a TPM 2.0 header or on-chip fTPM and support 64-bit UEFI boot."
+        "mpn": "PROTECTLI-VP2420E-4",
+        "description": "Intel Celeron J6412 quad-core mini-PC, 4 GB RAM, fanless, 4x 2.5GbE",
+        "notes": "Primary compute. Requires add-on TPM-02 module. CPU verified on https://protectli.com/product/vp2420/ (Intel Celeron J6412, 4x 2.5GbE). VP2420e is the current shipping variant without eMMC."
       },
       "alternates": [
-        { "mpn": "PROTECTLI-VP2420-4", "description": "Intel Celeron N5105, 4 GB RAM, fanless", "notes": "Slightly faster TDP; validated boot and TPM path identical." },
+        { "mpn": "PROTECTLI-VP2410-4", "description": "Intel Celeron J4125 quad-core mini-PC, 4 GB RAM, fanless", "notes": "Out of stock at vendor; recertified units sold out. Use only if already on hand." },
+        { "mpn": "PROTECTLI-V1210-4", "description": "Intel Celeron N5105 quad-core mini-PC, 4 GB RAM, fanless, 2x 2.5GbE, 12V DC", "notes": "Low-power alternate. TPM 2.0 enablement in Protectli firmware is not yet confirmed.", "tpm_unconfirmed": true },
         { "mpn": "CUSTOM-N100-4", "description": "Intel N100, 4 GB RAM, M.2 NVMe", "notes": "Only approved if NVMe alternate SSD is also selected." }
       ],
       "required_features": ["x86_64", "uefi", "tpm2_or_ftpm", "2x_ethernet_min", "usb3"]
@@ -58,6 +59,17 @@
         { "mpn": "SIERRA-WP7607", "description": "Sierra Wireless WP7607 LTE modem", "notes": "Approved where the hospital already standardizes on Sierra." }
       ],
       "required_features": ["usb_or_pcie", "mbim_or_qmi", "linux_driver_in_kernel"]
+    },
+    {
+      "role": "dev_test",
+      "required": false,
+      "primary": {
+        "mpn": "DELL-WYSE-5070",
+        "description": "Dell Wyse 5070 thin client, Intel J4105/J5005, TPM 2.0, fanless",
+        "notes": "Desk testing only, not for customer sites. Add USB 3 gigabit Ethernet adapter for second NIC and 128 GB M.2 SATA SSD."
+      },
+      "alternates": [],
+      "required_features": ["x86_64", "uefi", "tpm2_or_ftpm", "2x_ethernet_min", "usb3"]
     },
     {
       "role": "power_backup",
